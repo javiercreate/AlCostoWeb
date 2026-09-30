@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150" viewBox="0 0 300 150">
+  <defs>
+    <linearGradient id="woodBase" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3d2314"/>
+      <stop offset="35%" stop-color="#4a2a18"/>
+      <stop offset="70%" stop-color="#361f12"/>
+      <stop offset="100%" stop-color="#2c180d"/>
+    </linearGradient>
+    <linearGradient id="plankShade" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.08)"/>
+      <stop offset="2%" stop-color="rgba(0,0,0,0.3)"/>
+      <stop offset="50%" stop-color="rgba(0,0,0,0)"/>
+      <stop offset="98%" stop-color="rgba(0,0,0,0.4)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.05)"/>
+    </linearGradient>
+    <filter id="woodGrain" x="0%" y="0%" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03 0.004" numOctaves="4" result="noise" seed="5"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.5   0 0 0 0 0.35   0 0 0 0 0.2   0 0 0 0.35 0" in="noise" result="coloredNoise"/>
+      <feBlend mode="multiply" in="SourceGraphic" in2="coloredNoise"/>
+    </filter>
+  </defs>
+
+  <!-- Base Wood Board -->
+  <rect width="300" height="150" fill="url(#woodBase)"/>
+  
+  <!-- Subtle wood fiber streaks -->
+  <g opacity="0.22" stroke="#1f1109" stroke-width="1">
+    <line x1="0" y1="12" x2="300" y2="14" stroke-dasharray="40 10 90 20"/>
+    <line x1="0" y1="28" x2="300" y2="29" stroke-dasharray="70 30 110 15"/>
+    <line x1="0" y1="45" x2="300" y2="44" stroke-dasharray="20 40 150 10"/>
+    <line x1="0" y1="62" x2="300" y2="63" stroke-dasharray="80 15 60 25"/>
+    <line x1="0" y1="78" x2="300" y2="77" stroke-dasharray="30 50 120 18"/>
+    <line x1="0" y1="95" x2="300" y2="96" stroke-dasharray="100 20 50 30"/>
+    <line x1="0" y1="112" x2="300" y2="111" stroke-dasharray="50 35 80 20"/>
+    <line x1="0" y1="132" x2="300" y2="133" stroke-dasharray="110 15 40 25"/>
+  </g>
+
+  <!-- Highlights -->
+  <g opacity="0.12" stroke="#d49b6a" stroke-width="1.2">
+    <line x1="0" y1="20" x2="300" y2="21" stroke-dasharray="60 40 100 20"/>
+    <line x1="0" y1="52" x2="300" y2="51" stroke-dasharray="90 30 70 40"/>
+    <line x1="0" y1="88" x2="300" y2="89" stroke-dasharray="40 60 80 30"/>
+    <line x1="0" y1="124" x2="300" y2="123" stroke-dasharray="120 20 60 25"/>
+  </g>
+
+  <!-- Plank horizontal seams for realistic supermarket counter timber look -->
+  <line x1="0" y1="50" x2="300" y2="50" stroke="#150a04" stroke-width="2"/>
+  <line x1="0" y1="51" x2="300" y2="51" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+  
+  <line x1="0" y1="100" x2="300" y2="100" stroke="#150a04" stroke-width="2"/>
+  <line x1="0" y1="101" x2="300" y2="101" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+
+  <!-- Planks overlay shading -->
+  <rect y="0" width="300" height="50" fill="url(#plankShade)"/>
+  <rect y="50" width="300" height="50" fill="url(#plankShade)"/>
+  <rect y="100" width="300" height="50" fill="url(#plankShade)"/>
+</svg>

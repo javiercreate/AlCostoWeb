@@ -1,0 +1,254 @@
+// Tasas de cambio multimoneda (USD base, Bs y COP)
+let CURRENCY_RATES = {
+  USD: 1,
+  BS: 890.00,   // Tasa actual de Bolívares (~860 - 950 Bs)
+  COP: 3800     // Tasa actual de COP
+};
+
+// Cargar tasas dinámicas guardadas en localStorage
+(function loadSavedRates() {
+  try {
+    const saved = localStorage.getItem('alcosto_rates');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.BS) CURRENCY_RATES.BS = parseFloat(parsed.BS);
+      if (parsed.COP) CURRENCY_RATES.COP = parseFloat(parsed.COP);
+    }
+  } catch (e) {
+    console.warn('No se pudieron leer tasas guardadas:', e);
+  }
+})();
+
+function updateCurrencyRates(newBs, newCop, notify = true) {
+  if (newBs && !isNaN(newBs) && parseFloat(newBs) > 0) {
+    CURRENCY_RATES.BS = parseFloat(newBs);
+  }
+  if (newCop && !isNaN(newCop) && parseFloat(newCop) > 0) {
+    CURRENCY_RATES.COP = parseFloat(newCop);
+  }
+  const payload = {
+    USD: 1,
+    BS: CURRENCY_RATES.BS,
+    COP: CURRENCY_RATES.COP,
+    updatedAt: new Date().toISOString()
+  };
+  localStorage.setItem('alcosto_rates', JSON.stringify(payload));
+  if (notify && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('alcosto:rates-updated', { detail: payload }));
+  }
+}
+
+/**
+ * Consulta las APIs públicas diarias de Venezuela (DolarApi) y Colombia (Open Exchange API)
+ * Actualiza automáticamente las tasas en segundo plano
+ */
+async function syncDailyExchangeRates(force = false) {
+  const today = new Date().toISOString().slice(0, 10);
+  const lastSync = localStorage.getItem('alcosto_rates_last_sync');
+
+  if (!force && lastSync === today) {
+    return { success: true, rates: CURRENCY_RATES, fromCache: true };
+  }
+
+  let newBs = null;
+  let newCop = null;
+
+  // 1. Tasa Venezuela (DolarApi - Oficial y Paralelo)
+  try {
+    const resOficial = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+    if (resOficial.ok) {
+      const data = await resOficial.json();
+      if (data && data.promedio) {
+        newBs = parseFloat(data.promedio);
+      }
+    }
+  } catch (e) {
+    console.warn('Fallo consultando oficial DolarApi, intentando paralelo:', e);
+    try {
+      const resParalelo = await fetch('https://ve.dolarapi.com/v1/dolares/paralelo');
+      if (resParalelo.ok) {
+        const dataPar = await resParalelo.json();
+        if (dataPar && dataPar.promedio) {
+          newBs = parseFloat(dataPar.promedio);
+        }
+      }
+    } catch (e2) {
+      console.warn('Fallo consultando DolarApi:', e2);
+    }
+  }
+
+  // 2. Tasa Colombia (Open Exchange API)
+  try {
+    const resCop = await fetch('https://open.er-api.com/v6/latest/USD');
+    if (resCop.ok) {
+      const copData = await resCop.json();
+      if (copData && copData.rates && copData.rates.COP) {
+        newCop = Math.round(parseFloat(copData.rates.COP));
+      }
+    }
+  } catch (e) {
+    console.warn('Fallo consultando API de COP:', e);
+  }
+
+  if (newBs || newCop) {
+    updateCurrencyRates(newBs || CURRENCY_RATES.BS, newCop || CURRENCY_RATES.COP, true);
+    localStorage.setItem('alcosto_rates_last_sync', today);
+    return {
+      success: true,
+      bs: CURRENCY_RATES.BS,
+      cop: CURRENCY_RATES.COP,
+      updatedAt: new Date().toLocaleString()
+    };
+  } else {
+    return {
+      success: false,
+      message: 'No se pudo contactar con los servidores de tasa del día, se mantuvieron las tasas actuales.'
+    };
+  }
+}
+
+// Iniciar sincronización automática diaria al cargar la página
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    syncDailyExchangeRates(false).catch(console.error);
+  }, 1000);
+}
+
+function formatMultiPrice(priceInUSD) {
+  const usd = parseFloat(priceInUSD || 0);
+  const bs = (usd * CURRENCY_RATES.BS).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const cop = Math.round(usd * CURRENCY_RATES.COP).toLocaleString('es-CO');
+  return {
+    usd: `$${usd.toFixed(2)}`,
+    bs: `${bs} Bs`,
+    cop: `${cop} COP`,
+    rawUsd: usd,
+    rawBs: usd * CURRENCY_RATES.BS,
+    rawCop: usd * CURRENCY_RATES.COP
+  };
+}
+
+const CATEGORIES = [
+  { id: 'todos', name: 'Todos los productos', icon: '🏪', badge: 'Catálogo' },
+  { id: 'al-mayor', name: 'Ventas al Mayor 📦', icon: '📦', badge: 'Ahorro Bulto' },
+  { id: 'charcuteria', name: 'Charcutería y Embutidos', icon: '🥓', badge: 'Fresco' },
+  { id: 'viveres', name: 'Víveres y Granos', icon: '🥫', badge: 'Básicos' },
+  { id: 'lacteos', name: 'Lácteos y Quesos', icon: '🧀', badge: 'Frescura' },
+  { id: 'bebidas', name: 'Bebidas y Refrescos', icon: '🥤', badge: 'Frías' },
+  { id: 'confiteria', name: 'Confitería y Dulces', icon: '🍬', badge: 'Snacks' },
+  { id: 'limpieza', name: 'Limpieza y Hogar', icon: '🧼', badge: 'Aseo' },
+  { id: 'carnes-pescados', name: 'Carnicería y Aves', icon: '🥩', badge: 'Cortes' },
+  { id: 'frutas-verduras', name: 'Frutas y Verduras', icon: '🥑', badge: 'Del Campo' }
+];
+
+const PROMOS = [
+  {
+    code: 'ALCOSTO10',
+    discount: 10,
+    type: 'percent',
+    minOrder: 25,
+    description: '10% de descuento en tu primera compra (mínimo $25)'
+  },
+  {
+    code: 'ENVIOGRATIS',
+    discount: 3.99,
+    type: 'shipping',
+    minOrder: 35,
+    description: 'Envío gratis en compras mayores a $35'
+  },
+  {
+    code: 'MAYORISTA',
+    discount: 15,
+    type: 'percent',
+    minOrder: 60,
+    description: '15% de descuento adicional en pedidos mayoristas de más de $60'
+  }
+];
+
+// ==========================================================================
+// CATÁLOGO ACTIVO Y ALMACENAMIENTO DINÁMICO
+// El catálogo inicia VACÍO. Se llena únicamente desde el panel de administración
+// (admin.html), que guarda en localStorage bajo 'alcosto_custom_products'.
+// ==========================================================================
+var PRODUCTS_DATA = [];
+
+// Función para obtener productos activos (cargados desde admin.html)
+function getActiveProducts() {
+  try {
+    const saved = localStorage.getItem('alcosto_custom_products');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        PRODUCTS_DATA = parsed;
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Error al leer productos de localStorage:', e);
+  }
+  // Sin productos precargados: catálogo vacío hasta que se registren en el admin
+  PRODUCTS_DATA = [];
+  return PRODUCTS_DATA;
+}
+
+// Guardar productos y sincronizar instantáneamente con todas las pestañas de index.html
+function saveActiveProducts(productsList) {
+  if (!Array.isArray(productsList)) return;
+  try {
+    localStorage.setItem('alcosto_custom_products', JSON.stringify(productsList));
+  } catch (quotaError) {
+    console.warn('Alcanzado límite de localStorage, optimizando imágenes...', quotaError);
+    // Si la cuota de localStorage se llena por fotos pesadas, aseguramos que los datos se guarden
+    const optimized = productsList.map(p => {
+      if (p.image && p.image.length > 200000 && p.image.startsWith('data:image')) {
+        return { ...p, image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80' };
+      }
+      return p;
+    });
+    try {
+      localStorage.setItem('alcosto_custom_products', JSON.stringify(optimized));
+    } catch (e2) {
+      console.error('Error crítico guardando productos:', e2);
+    }
+  }
+  PRODUCTS_DATA = productsList;
+
+  // Notificar en la ventana actual y en otras ventanas/pestañas
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('alcosto:products-updated', { detail: productsList }));
+    try {
+      if (window.BroadcastChannel) {
+        const bc = new BroadcastChannel('alcosto_sync_channel');
+        bc.postMessage({ type: 'products_updated', timestamp: Date.now() });
+        bc.close();
+      }
+    } catch (e) {}
+  }
+}
+
+// Inicializar catálogo activo (vacío o con lo guardado en localStorage)
+PRODUCTS_DATA = getActiveProducts();
+
+// Ubicación y Coordenadas del Local Al Costo
+const STORE_COORDINATES = '7º48\'25.6"N 71º11\'12.3"W';
+const STORE_MAPS_URL = 'https://www.google.com/maps?q=7.807111,-71.186750';
+
+// Direcciones preconfiguradas para entrega rápida
+const PRESET_ADDRESSES = [
+  { 
+    id: 'addr-delivery', 
+    label: 'Entrega a Domicilio', 
+    address: 'Configura tu dirección en "Mis Datos"', 
+    zip: '5101', 
+    timeEst: '25-45 min' 
+  },
+  { 
+    id: 'addr-pickup', 
+    label: 'Recoger en Tienda Al Costo (Gratis)', 
+    address: `Sede Al Costo (Coords: ${STORE_COORDINATES})`, 
+    zip: '5101', 
+    timeEst: 'Listo en 15 min',
+    coords: STORE_COORDINATES,
+    mapsUrl: STORE_MAPS_URL
+  }
+];
