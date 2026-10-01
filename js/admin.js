@@ -602,7 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // CONEXIÓN Y SINCRONIZACIÓN CON SUPABASE
   // ==========================================================================
   function initSupabaseConfig() {
-    const config = SupabaseService.getConfig();
+    const config = SupabaseService.getAdminConfig();
     if (supabaseUrlInput) supabaseUrlInput.value = config.url || '';
     if (supabaseAnonKeyInput) supabaseAnonKeyInput.value = config.anonKey || '';
 

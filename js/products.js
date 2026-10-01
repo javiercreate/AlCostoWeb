@@ -1,7 +1,7 @@
 // Tasas de cambio multimoneda (USD base, Bs y COP)
 let CURRENCY_RATES = {
   USD: 1,
-  BS: 890.00,   // Tasa actual de Bolívares (~860 - 950 Bs)
+  BS: 860.18,   // Tasa oficial Banco Central de Venezuela
   COP: 3800     // Tasa actual de COP
 };
 
@@ -39,8 +39,25 @@ function updateCurrencyRates(newBs, newCop, notify = true) {
 }
 
 /**
- * Consulta las APIs públicas diarias de Venezuela (DolarApi) y Colombia (Open Exchange API)
- * Actualiza automáticamente las tasas en segundo plano
+ * Helper con timeout para llamadas de red seguras que no cuelgan el navegador
+ */
+async function fetchWithTimeout(url, timeoutMs = 4000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
+/**
+ * Consulta las tasas de cambio de Venezuela (Bs / VES) y Colombia (COP)
+ * Prioriza Open Exchange API (con soporte oficial para VES y COP sin bloqueos)
+ * y cuenta con fuentes de contingencia automáticas.
  */
 async function syncDailyExchangeRates(force = false) {
   const today = new Date().toISOString().slice(0, 10);
@@ -53,41 +70,59 @@ async function syncDailyExchangeRates(force = false) {
   let newBs = null;
   let newCop = null;
 
-  // 1. Tasa Venezuela (DolarApi - Oficial y Paralelo)
+  // 1. Fuente Principal: Open Exchange API (devuelve VES y COP juntos, alta disponibilidad mundial)
   try {
-    const resOficial = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
-    if (resOficial.ok) {
-      const data = await resOficial.json();
-      if (data && data.promedio) {
-        newBs = parseFloat(data.promedio);
-      }
-    }
-  } catch (e) {
-    console.warn('Fallo consultando oficial DolarApi, intentando paralelo:', e);
-    try {
-      const resParalelo = await fetch('https://ve.dolarapi.com/v1/dolares/paralelo');
-      if (resParalelo.ok) {
-        const dataPar = await resParalelo.json();
-        if (dataPar && dataPar.promedio) {
-          newBs = parseFloat(dataPar.promedio);
+    const res = await fetchWithTimeout('https://open.er-api.com/v6/latest/USD', 3500);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.rates) {
+        if (data.rates.VES) {
+          newBs = parseFloat(data.rates.VES);
+        }
+        if (data.rates.COP) {
+          newCop = Math.round(parseFloat(data.rates.COP));
         }
       }
-    } catch (e2) {
-      console.warn('Fallo consultando DolarApi:', e2);
-    }
-  }
-
-  // 2. Tasa Colombia (Open Exchange API)
-  try {
-    const resCop = await fetch('https://open.er-api.com/v6/latest/USD');
-    if (resCop.ok) {
-      const copData = await resCop.json();
-      if (copData && copData.rates && copData.rates.COP) {
-        newCop = Math.round(parseFloat(copData.rates.COP));
-      }
     }
   } catch (e) {
-    console.warn('Fallo consultando API de COP:', e);
+    // Continuar a fuentes de contingencia
+  }
+
+  // 2. Si falta VES o COP, probar con ExchangeRate-API V4
+  if (!newBs || !newCop) {
+    try {
+      const resV4 = await fetchWithTimeout('https://api.exchangerate-api.com/v4/latest/USD', 3500);
+      if (resV4.ok) {
+        const dataV4 = await resV4.json();
+        if (dataV4 && dataV4.rates) {
+          if (!newBs && dataV4.rates.VES) newBs = parseFloat(dataV4.rates.VES);
+          if (!newCop && dataV4.rates.COP) newCop = Math.round(parseFloat(dataV4.rates.COP));
+        }
+      }
+    } catch (e2) {}
+  }
+
+  // 3. Contingencia para tasa venezolana: DolarApi (con timeout seguro)
+  if (!newBs) {
+    try {
+      const resOficial = await fetchWithTimeout('https://ve.dolarapi.com/v1/dolares/oficial', 3000);
+      if (resOficial.ok) {
+        const dataOficial = await resOficial.json();
+        if (dataOficial && dataOficial.promedio) {
+          newBs = parseFloat(dataOficial.promedio);
+        }
+      }
+    } catch (e3) {
+      try {
+        const resParalelo = await fetchWithTimeout('https://ve.dolarapi.com/v1/dolares/paralelo', 3000);
+        if (resParalelo.ok) {
+          const dataPar = await resParalelo.json();
+          if (dataPar && dataPar.promedio) {
+            newBs = parseFloat(dataPar.promedio);
+          }
+        }
+      } catch (e4) {}
+    }
   }
 
   if (newBs || newCop) {
@@ -110,7 +145,7 @@ async function syncDailyExchangeRates(force = false) {
 // Iniciar sincronización automática diaria al cargar la página
 if (typeof window !== 'undefined') {
   setTimeout(() => {
-    syncDailyExchangeRates(false).catch(console.error);
+    syncDailyExchangeRates(false).catch(() => {});
   }, 1000);
 }
 

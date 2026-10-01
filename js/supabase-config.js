@@ -5,16 +5,50 @@
 
 const OWNER_PHONE = '34602070846'; // +34 602 07 08 46
 
+// Credenciales base de Supabase para la tienda (catálogo y pedidos de clientes)
+const PUBLIC_SUPABASE_CONFIG = {
+  url: 'https://azbrwlamlltimghrhxsj.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6YnJ3bGFtbGx0aW1naHJoeHNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3OTIyNTAsImV4cCI6MjEwNjM2ODI1MH0.cR85t6G8FGNKxVstbxdSTxo9FmOyf-0_f3EJ_fxsAqI'
+};
+
 const SupabaseService = {
-  // Obtener credenciales guardadas
+  // Obtener credenciales para la tienda (usuario cliente: usa configuración guardada o por defecto la pública)
   getConfig() {
     const saved = localStorage.getItem('alcosto_supabase_config');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed.url && parsed.anonKey) {
+          return {
+            url: parsed.url.trim().replace(/\/+$/, ''),
+            anonKey: parsed.anonKey.trim(),
+            connected: true
+          };
+        }
       } catch (e) {
         console.error('Error parseando config de Supabase:', e);
       }
+    }
+    // Usuario general: carga los productos directamente con la nube oficial
+    return {
+      url: PUBLIC_SUPABASE_CONFIG.url,
+      anonKey: PUBLIC_SUPABASE_CONFIG.anonKey,
+      connected: true
+    };
+  },
+
+  // Obtener credenciales exclusivas del panel de administración (no expone las predeterminadas a cualquiera en los campos del admin)
+  getAdminConfig() {
+    const saved = localStorage.getItem('alcosto_supabase_config');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          url: (parsed.url || '').trim(),
+          anonKey: (parsed.anonKey || '').trim(),
+          connected: Boolean(parsed.url && parsed.anonKey)
+        };
+      } catch (e) {}
     }
     return {
       url: '',
