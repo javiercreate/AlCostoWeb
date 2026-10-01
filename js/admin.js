@@ -65,6 +65,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const copySqlBtn = document.getElementById('copySqlBtn');
   const toastContainer = document.getElementById('toastContainer');
 
+  // Deslizante y Cálculo de Porcentaje de Ventas Totales
+  const salesPercentageSlider = document.getElementById('salesPercentageSlider');
+  const salesPercentageNumberInput = document.getElementById('salesPercentageNumberInput');
+  const salesPercentageValueDisplay = document.getElementById('salesPercentageValueDisplay');
+  const salesPercentageResultAmount = document.getElementById('salesPercentageResultAmount');
+  const salesPercentageBsEquiv = document.getElementById('salesPercentageBsEquiv');
+  const salesPctChipsGroup = document.getElementById('salesPctChipsGroup');
+
   // ==========================================================================
   // INICIALIZACIÓN
   // ==========================================================================
@@ -73,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initSupabaseConfig();
     loadCatalogProducts();
     loadOrders();
+    setupSalesPercentageEvents();
     setupEventListeners();
   }
 
@@ -120,9 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (savedOrders) {
           orders = JSON.parse(savedOrders);
         } else {
-          // Si no hay pedidos, creamos uno de muestra para que el dueño vea cómo luce
-          orders = [createSampleOrder()];
-          localStorage.setItem('alcosto_orders', JSON.stringify(orders));
+          orders = [];
         }
       } catch (e) {
         console.error('Error cargando pedidos:', e);
@@ -135,33 +142,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function createSampleOrder() {
+    const sampleItems = (products && products.length > 0)
+      ? [
+          { product: products[0], quantity: 2 },
+          ...(products.length > 1 ? [{ product: products[1], quantity: 1 }] : [])
+        ]
+      : [];
+    const sub = sampleItems.reduce((acc, it) => acc + (it.product.price * it.quantity), 0);
     return {
       id: 'AC-' + Math.floor(1000 + Math.random() * 9000),
-      customerName: 'María Rodríguez',
-      customerPhone: '+34 611 22 33 44',
-      deliveryAddress: 'Calle Mayor 14, 3º B (C.P. 28013)',
+      customerName: 'Cliente Ejemplo',
+      customerPhone: '+58 412 000 00 00',
+      deliveryAddress: 'Dirección de prueba',
       deliverySlot: 'Hoy en 30-45 min',
-      instructions: 'Llamar al telefonillo 3B',
-      paymentMethod: 'Efectivo contra entrega',
-      items: [
-        {
-          product: { id: 'ch-01', name: 'Jamón Cocido Superior Rebanado', price: 3.80, unit: 'Bandeja 300g' },
-          quantity: 2
-        },
-        {
-          product: { id: 'lac-01', name: 'Queso Blanco Llanero / Costeño', price: 4.50, unit: 'Bloque 500g' },
-          quantity: 1
-        },
-        {
-          product: { id: 'viv-02', name: 'Harina de Maíz Blanco Precocida', price: 1.35, unit: 'Paquete 1 kg' },
-          quantity: 4
-        }
-      ],
-      subtotal: 17.50,
+      instructions: '',
+      paymentMethod: 'Efectivo',
+      items: sampleItems,
+      subtotal: sub,
       discount: 0,
       deliveryFee: 0,
-      tip: 1.75,
-      total: 19.25,
+      tip: 0,
+      total: sub,
       status: 'nuevo',
       created_at: new Date().toISOString()
     };
@@ -186,6 +187,78 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tabNewOrdersBadge) {
       tabNewOrdersBadge.textContent = `${newCount} nuevos`;
       tabNewOrdersBadge.style.display = newCount > 0 ? 'inline-block' : 'none';
+    }
+
+    // Actualizar cálculo de porcentaje sobre las ventas totales
+    updateSalesPercentageCalculation(totalSales);
+  }
+
+  // ==========================================================================
+  // CÁLCULO Y CONTROL DEL DESLIZANTE DE PORCENTAJE SOBRE VENTAS TOTALES
+  // ==========================================================================
+  let currentSalesPercentage = parseFloat(localStorage.getItem('alcosto_admin_sales_percentage')) || 20;
+
+  function updateSalesPercentageCalculation(totalSalesAmount) {
+    if (typeof totalSalesAmount === 'undefined') {
+      let calcTotal = 0;
+      orders.forEach(o => {
+        if (o.status !== 'cancelado') calcTotal += (o.total || 0);
+      });
+      totalSalesAmount = calcTotal;
+    }
+
+    const pct = Math.max(0, Math.min(100, currentSalesPercentage));
+    const resultUSD = totalSalesAmount * (pct / 100);
+    const rateBs = (typeof CURRENCY_RATES !== 'undefined' && CURRENCY_RATES.BS) ? CURRENCY_RATES.BS : 860.18;
+    const resultBs = resultUSD * rateBs;
+
+    if (salesPercentageSlider) salesPercentageSlider.value = pct;
+    if (salesPercentageNumberInput) salesPercentageNumberInput.value = pct;
+    if (salesPercentageValueDisplay) salesPercentageValueDisplay.textContent = pct;
+    if (salesPercentageResultAmount) salesPercentageResultAmount.textContent = `$${resultUSD.toFixed(2)}`;
+    if (salesPercentageBsEquiv) {
+      salesPercentageBsEquiv.textContent = `~ ${resultBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
+    }
+
+    if (salesPctChipsGroup) {
+      salesPctChipsGroup.querySelectorAll('.pct-chip-btn').forEach(btn => {
+        const val = parseFloat(btn.getAttribute('data-pct'));
+        btn.classList.toggle('active', val === pct);
+      });
+    }
+
+    localStorage.setItem('alcosto_admin_sales_percentage', pct);
+  }
+
+  function setupSalesPercentageEvents() {
+    if (salesPercentageSlider) {
+      salesPercentageSlider.addEventListener('input', () => {
+        currentSalesPercentage = parseFloat(salesPercentageSlider.value) || 0;
+        updateSalesPercentageCalculation();
+      });
+    }
+
+    if (salesPercentageNumberInput) {
+      salesPercentageNumberInput.addEventListener('input', () => {
+        let val = parseFloat(salesPercentageNumberInput.value);
+        if (isNaN(val)) val = 0;
+        if (val < 0) val = 0;
+        if (val > 100) val = 100;
+        currentSalesPercentage = val;
+        updateSalesPercentageCalculation();
+      });
+    }
+
+    if (salesPctChipsGroup) {
+      salesPctChipsGroup.querySelectorAll('.pct-chip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = parseFloat(btn.getAttribute('data-pct'));
+          if (!isNaN(val)) {
+            currentSalesPercentage = val;
+            updateSalesPercentageCalculation();
+          }
+        });
+      });
     }
   }
 
@@ -370,17 +443,28 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   // GESTIÓN DEL CATÁLOGO DE PRODUCTOS
   // ==========================================================================
-  function loadCatalogProducts() {
+  async function loadCatalogProducts() {
     try {
       const saved = localStorage.getItem('alcosto_custom_products');
       if (saved) {
         products = JSON.parse(saved);
       } else {
-        products = [...DEFAULT_PRODUCTS];
+        // Si no hay productos en localStorage, consultar catálogo en Supabase si está disponible
+        if (typeof SupabaseService !== 'undefined') {
+          const cloud = await SupabaseService.fetchProductsFromSupabase();
+          if (cloud && Array.isArray(cloud) && cloud.length > 0) {
+            products = cloud;
+            localStorage.setItem('alcosto_custom_products', JSON.stringify(products));
+          } else {
+            products = [];
+          }
+        } else {
+          products = [];
+        }
       }
     } catch (e) {
       console.error('Error cargando catálogo:', e);
-      products = [...DEFAULT_PRODUCTS];
+      products = [];
     }
     renderProductsTable();
   }

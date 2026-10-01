@@ -9,10 +9,10 @@
   <!-- Favicon SVG moderno -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
 
-  <!-- Fuente Inter desde Google Fonts -->
+  <!-- Fuente Inter con carga resiliente -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 
   <!-- Estilos CSS -->
   <link rel="stylesheet" href="css/styles.css">
@@ -20,12 +20,22 @@
 <body>
 
   <!-- ==========================================================================
-       BARRA DE ANUNCIOS SUPERIOR (PROMOS Y CUPONES)
+       BARRA DE ANUNCIOS SUPERIOR (PROMOS Y TASAS DE CAMBIO)
        ========================================================================== -->
   <div class="top-announcement-bar">
-    <span class="badge-promo">OFERTA ESPECIAL</span>
-    <span>🎉 ¡Envío GRATIS en tu primer pedido superior a $35! Usa el código:</span>
-    <button class="copy-code-btn" id="copyPromoBtn" title="Copiar cupón">ENVIOGRATIS</button>
+    <div class="top-promo-content">
+      <span class="badge-promo">OFERTA ESPECIAL</span>
+      <span>🎉 ¡Envío GRATIS en tu primer pedido superior a $35! Usa el código:</span>
+      <button class="copy-code-btn" id="copyPromoBtn" title="Copiar cupón">ENVIOGRATIS</button>
+    </div>
+
+    <!-- Tasa de Cambio en Vivo Reubicada para maximizar espacio de búsqueda -->
+    <div class="currency-exchange-ticker" id="liveCurrencyTicker" title="Tasas oficiales de cambio del supermercado">
+      <span>💵 1$ =</span>
+      <strong id="tickerBsRate">860.18 Bs</strong>
+      <span style="opacity: 0.5;">|</span>
+      <strong id="tickerCopRate">3,800 COP</strong>
+    </div>
   </div>
 
   <!-- ==========================================================================
@@ -53,14 +63,6 @@
           </div>
           <span class="delivery-chevron">▼</span>
         </button>
-
-        <!-- Tasa de Cambio en Vivo -->
-        <div class="currency-exchange-ticker" id="liveCurrencyTicker" title="Tasas oficiales de cambio del supermercado">
-          <span>💵 1$ =</span>
-          <strong id="tickerBsRate">37.50 Bs</strong>
-          <span style="opacity: 0.5;">|</span>
-          <strong id="tickerCopRate">4,100 COP</strong>
-        </div>
 
         <!-- Barra de Búsqueda Grande Central -->
         <div class="search-container">
@@ -123,41 +125,133 @@
   <main>
     <div class="container">
 
-      <!-- Banner Hero Promocional -->
+      <!-- Banner Hero Promocional Carrusel Interactivo de 3 Partes -->
       <section class="hero-section">
-        <div class="hero-banner">
-          <div class="hero-content">
-            <div class="hero-tag">⚡ Entrega en 45 Minutos</div>
-            <h1 class="hero-title">Charcutería, víveres, limpieza y <span>ventas al mayor</span> al mejor costo.</h1>
-            <p class="hero-subtitle">
-              Surtido completo en embutidos finos, confitería, abarrotes, bebidas y bultos mayoristas con precios de distribuidor y entrega express en tu puerta.
-            </p>
-            <div class="hero-cta-group">
-              <a href="#catalogo" class="btn-hero-cta">Explorar Catálogo</a>
-              <button class="btn-hero-cta" id="heroOpenProfileBtn" style="background: rgba(255,255,255,0.18); color: white; border: 1px solid rgba(255,255,255,0.4);">📍 Añadir Mi Dirección</button>
-              <div class="hero-coupon-badge">
-                <span>Cupón Mayorista:</span>
-                <strong>MAYORISTA</strong>
+        <div class="hero-carousel-container" id="heroCarousel">
+          
+          <div class="hero-carousel-track" id="heroCarouselTrack">
+            
+            <!-- Slide 1: Ventas al Mayor y Detal -->
+            <div class="hero-slide active" data-slide="0">
+              <div class="hero-banner slide-mayor">
+                <div class="hero-content">
+                  <div class="hero-tag">⚡ Entrega en 45 Minutos</div>
+                  <h1 class="hero-title">Charcutería, víveres y <span>ventas al mayor</span> al mejor costo.</h1>
+                  <p class="hero-subtitle">
+                    Surtido completo en embutidos finos, confitería, abarrotes y bultos mayoristas con precios de distribuidor y entrega express en tu puerta.
+                  </p>
+                  <div class="hero-cta-group">
+                    <a href="#catalogo" class="btn-hero-cta">Explorar Catálogo</a>
+                    <button class="btn-hero-cta btn-hero-secondary hero-copy-coupon-btn" data-coupon="MAYORISTA">
+                      <span>Cupón Mayorista:</span> <strong>MAYORISTA</strong> 📋
+                    </button>
+                  </div>
+                </div>
+
+                <div class="hero-graphic">
+                  <div class="hero-graphic-badge">
+                    <div class="badge-row">
+                      <span class="icon">📦</span>
+                      <span>Precios por Bulto y al Detal</span>
+                    </div>
+                    <div class="badge-row">
+                      <span class="icon">🥓</span>
+                      <span>Charcutería y Lácteos Frescos</span>
+                    </div>
+                    <div class="badge-row">
+                      <span class="icon">🛵</span>
+                      <span>Entrega Rápida en 45 min</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
+
+            <!-- Slide 2: Envío Gratis y Primera Compra -->
+            <div class="hero-slide" data-slide="1">
+              <div class="hero-banner slide-envio">
+                <div class="hero-content">
+                  <div class="hero-tag">🎉 Oferta de Bienvenida</div>
+                  <h1 class="hero-title">¡Tu primer pedido con <span>Envío GRATIS</span> y 10% OFF!</h1>
+                  <p class="hero-subtitle">
+                    Aprovecha nuestras promociones exclusivas. Usa el código ENVIOGRATIS en compras mayores a $35 y te lo llevamos sin costo de entrega.
+                  </p>
+                  <div class="hero-cta-group">
+                    <a href="#catalogo" class="btn-hero-cta">Comprar con Envío Gratis</a>
+                    <button class="btn-hero-cta btn-hero-secondary hero-copy-coupon-btn" data-coupon="ENVIOGRATIS">
+                      <span>Cupón:</span> <strong>ENVIOGRATIS</strong> 📋
+                    </button>
+                  </div>
+                </div>
+
+                <div class="hero-graphic">
+                  <div class="hero-graphic-badge badge-accent">
+                    <div class="badge-row">
+                      <span class="icon">🚚</span>
+                      <span>Flete 100% Bonificado</span>
+                    </div>
+                    <div class="badge-row">
+                      <span class="icon">🎁</span>
+                      <span>10% OFF Código ALCOSTO10</span>
+                    </div>
+                    <div class="badge-row">
+                      <span class="icon">⏱️</span>
+                      <span>Garantía de Puntualidad</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 3: Charcutería Selecta & Quesos Criollos -->
+            <div class="hero-slide" data-slide="2">
+              <div class="hero-banner slide-charcuteria">
+                <div class="hero-content">
+                  <div class="hero-tag">🥩 Calidad y Frescura Garantizada</div>
+                  <h1 class="hero-title">Quesos criollos, jamones y <span>cortes selectos</span>.</h1>
+                  <p class="hero-subtitle">
+                    Rebanados al momento y seleccionados con los más estrictos estándares de higiene. Los mejores sabores para tu hogar o negocio.
+                  </p>
+                  <div class="hero-cta-group">
+                    <a href="#catalogo" class="btn-hero-cta hero-filter-charcuteria-btn">Ver Charcutería y Quesos</a>
+                    <a href="https://wa.me/34602070846?text=Hola,%20quisiera%20consultar%20sobre%20pedidos%20especiales" target="_blank" class="btn-hero-cta btn-hero-secondary">
+                      <span>💬 Pedir por WhatsApp</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div class="hero-graphic">
+                  <div class="hero-graphic-badge badge-fresh">
+                    <div class="badge-row">
+                      <span class="icon">🧀</span>
+                      <span>Queso Llanero y Costeño</span>
+                    </div>
+                    <div class="badge-row">
+                      <span class="icon">🥩</span>
+                      <span>Cortes Vacunos y Aves</span>
+                    </div>
+                    <div class="badge-row">
+                      <span class="icon">❄️</span>
+                      <span>Cadena de Frío Certificada</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          <div class="hero-graphic">
-            <div class="hero-graphic-badge">
-              <div class="badge-row">
-                <span class="icon">📦</span>
-                <span>Precios por Bulto y al Detal</span>
-              </div>
-              <div class="badge-row">
-                <span class="icon">🥓</span>
-                <span>Charcutería y Lácteos Frescos</span>
-              </div>
-              <div class="badge-row">
-                <span class="icon">🛵</span>
-                <span>Entrega Rápida o Retiro en Tienda</span>
-              </div>
-            </div>
+          <!-- Flechas de navegación interactiva del carrusel -->
+          <button class="hero-carousel-arrow prev" id="heroPrevBtn" aria-label="Anterior slide">‹</button>
+          <button class="hero-carousel-arrow next" id="heroNextBtn" aria-label="Siguiente slide">›</button>
+
+          <!-- Puntos / Dots de paginación interactivos -->
+          <div class="hero-carousel-dots" id="heroCarouselDots">
+            <button class="hero-dot active" data-slide-to="0" aria-label="Ir a Slide 1"></button>
+            <button class="hero-dot" data-slide-to="1" aria-label="Ir a Slide 2"></button>
+            <button class="hero-dot" data-slide-to="2" aria-label="Ir a Slide 3"></button>
           </div>
+
         </div>
       </section>
 

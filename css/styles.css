@@ -88,16 +88,23 @@ body {
    BARRA DE ANUNCIO SUPERIOR
    ========================================================================== */
 .top-announcement-bar {
-  background: var(--color-primary);
+  background: #231209;
   color: #FFFFFF;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   font-weight: 500;
-  padding: 8px 16px;
-  text-align: center;
+  padding: 6px 24px;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.top-promo-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .top-announcement-bar .badge-promo {
@@ -144,12 +151,18 @@ body {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
 }
 
+.site-header .container {
+  max-width: 1440px;
+  width: 100%;
+}
+
 .header-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
   padding: 12px 0;
+  width: 100%;
 }
 
 /* Brand Logo */
@@ -287,11 +300,13 @@ body {
   transition: transform var(--transition-fast);
 }
 
-/* Barra de Búsqueda Grande */
+/* Barra de Búsqueda Grande - Ahora se expande aprovechando todo el ancho */
 .search-container {
   flex: 1;
-  max-width: 580px;
+  max-width: none;
+  min-width: 260px;
   position: relative;
+  margin: 0 16px;
 }
 
 .search-input-wrapper {
@@ -573,23 +588,54 @@ body {
 }
 
 /* ==========================================================================
-   BANNER HERO Y PROMOS
+   BANNER HERO Y PROMOS - CARRUSEL INTERACTIVO DE 3 PARTES
    ========================================================================== */
 .hero-section {
-  padding: 24px 0 16px 0;
+  padding: 20px 0 16px 0;
+}
+
+.hero-carousel-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.hero-carousel-track {
+  display: flex;
+  width: 100%;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hero-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  position: relative;
 }
 
 .hero-banner {
-  background: linear-gradient(135deg, #003D29 0%, #05593c 60%, #0d700d 100%);
   border-radius: var(--radius-xl);
   color: white;
-  padding: 36px 40px;
+  padding: 38px 46px;
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 8px 30px rgba(0, 61, 41, 0.2);
+  min-height: 290px;
+}
+
+.hero-banner.slide-mayor {
+  background: linear-gradient(135deg, #003D29 0%, #064E3B 55%, #047857 100%);
+}
+
+.hero-banner.slide-envio {
+  background: linear-gradient(135deg, #7C2D12 0%, #C2410C 50%, #EA580C 100%);
+}
+
+.hero-banner.slide-charcuteria {
+  background: linear-gradient(135deg, #0F172A 0%, #065F46 55%, #059669 100%);
 }
 
 .hero-banner::after {
@@ -597,9 +643,9 @@ body {
   position: absolute;
   top: -50px;
   right: -50px;
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, transparent 70%);
   border-radius: 50%;
   pointer-events: none;
 }
@@ -625,9 +671,9 @@ body {
 }
 
 .hero-title {
-  font-size: 2.3rem;
+  font-size: 2.2rem;
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.18;
   margin-bottom: 12px;
   letter-spacing: -0.5px;
 }
@@ -636,9 +682,17 @@ body {
   color: #55FF88;
 }
 
+.hero-banner.slide-envio .hero-title span {
+  color: #FED7AA;
+}
+
+.hero-banner.slide-charcuteria .hero-title span {
+  color: #A7F3D0;
+}
+
 .hero-subtitle {
-  font-size: 1.05rem;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.02rem;
+  color: rgba(255, 255, 255, 0.92);
   margin-bottom: 22px;
   line-height: 1.45;
 }
@@ -646,7 +700,7 @@ body {
 .hero-cta-group {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -654,13 +708,105 @@ body {
   background-color: #FFFFFF;
   color: var(--color-primary);
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.95rem;
   padding: 12px 24px;
   border-radius: var(--radius-pill);
   border: none;
   cursor: pointer;
   transition: all var(--transition-fast);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-hero-cta:hover {
+  background-color: #F0FFF4;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+.btn-hero-secondary {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: none !important;
+}
+
+.btn-hero-secondary:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+  color: white !important;
+}
+
+/* Flechas Interactivas del Carrusel */
+.hero-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  backdrop-filter: blur(6px);
+  transition: all var(--transition-fast);
+  opacity: 0.75;
+  outline: none;
+}
+
+.hero-carousel-arrow:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.75);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.hero-carousel-arrow.prev {
+  left: 16px;
+}
+
+.hero-carousel-arrow.next {
+  right: 16px;
+}
+
+/* Puntos de paginación interactivos (Dots) */
+.hero-carousel-dots {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  backdrop-filter: blur(6px);
+}
+
+.hero-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.35s ease;
+  padding: 0;
+}
+
+.hero-dot.active {
+  width: 28px;
+  border-radius: var(--radius-pill);
+  background: #55FF88;
+  box-shadow: 0 0 10px rgba(85, 255, 136, 0.7);
 }
 
 .btn-hero-cta:hover {
@@ -2139,33 +2285,280 @@ body {
 }
 
 @media (max-width: 768px) {
-  .delivery-selector-btn .delivery-info {
-    display: none;
+  /* Contenedores y márgenes móviles */
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Barra de anuncio superior */
+  .top-announcement-bar {
+    padding: 6px 10px;
+    font-size: 0.74rem;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    line-height: 1.25;
+    text-align: center;
+  }
+  .top-announcement-bar .badge-promo {
+    font-size: 0.65rem;
+    padding: 1px 6px;
+  }
+  .top-announcement-bar .copy-code-btn {
+    font-size: 0.7rem;
+    padding: 1px 6px;
+  }
+
+  /* Header móvil ultra optimizado: evita que se desborde o se vaya a un lado */
+  .site-header {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .header-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 10px;
+    padding: 8px 0;
+  }
+
+  /* Fila 1: Logo a la izquierda */
+  .brand-logo {
+    order: 1;
+    font-size: 1.2rem;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .brand-logo-img {
+    height: 32px;
+    max-width: 90px;
+  }
+  .brand-name .logo-top {
+    font-size: 1.25rem;
   }
   .brand-name .logo-sub {
     display: none;
   }
+
+  /* Fila 1: Botones de Acción a la derecha */
+  .header-actions {
+    order: 2;
+    margin-left: auto;
+    gap: 6px;
+    display: flex;
+    align-items: center;
+  }
+  .header-actions .header-btn {
+    padding: 5px 8px;
+    font-size: 0.8rem;
+  }
   .header-actions .btn-account-text {
     display: none;
+  }
+  .header-actions .btn-icon-only {
+    width: 34px;
+    height: 34px;
+  }
+  .cart-header-btn {
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    gap: 5px;
   }
   .cart-total-preview {
     display: none;
   }
-  .footer-top-grid {
-    grid-template-columns: 1fr;
+  .cart-badge-count {
+    min-width: 16px;
+    height: 16px;
+    font-size: 0.68rem;
   }
-  .checkout-form-grid {
-    grid-template-columns: 1fr;
+
+  /* Fila 2: Barra de Búsqueda 100% de ancho */
+  .search-container {
+    order: 3;
+    width: 100%;
+    flex: 0 0 100%;
+    max-width: 100%;
+    margin-top: 2px;
+  }
+  .search-input {
+    height: 38px;
+    font-size: 0.86rem;
+    padding: 0 32px 0 36px;
+  }
+  .search-icon {
+    left: 12px;
+    font-size: 0.95rem;
+  }
+
+  /* Fila 3: Selector de Dirección */
+  .delivery-selector-btn {
+    order: 4;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    gap: 6px;
+    width: 100%;
+    flex: 0 0 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    justify-content: flex-start;
+  }
+  .delivery-selector-btn .delivery-icon {
+    font-size: 0.95rem;
+  }
+  .delivery-selector-btn .delivery-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .delivery-type {
+    font-size: 0.62rem;
+  }
+  .delivery-address {
+    font-size: 0.74rem;
+    max-width: 240px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .delivery-chevron {
+    font-size: 0.65rem;
+    margin-left: auto;
+  }
+
+  /* Barra de Categorías Móvil */
+  .categories-nav-bar {
+    padding: 6px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .category-pill-btn {
+    padding: 5px 11px;
+    font-size: 0.78rem;
+    gap: 5px;
+  }
+
+  /* Banner Hero y Carrusel en Celulares */
+  .hero-section {
+    padding: 12px 0 8px 0;
+  }
+  .hero-banner {
+    padding: 20px 16px;
+    border-radius: var(--radius-md);
+    min-height: auto;
+    flex-direction: column;
+    text-align: center;
+  }
+  .hero-title {
+    font-size: 1.35rem;
+    line-height: 1.22;
+    margin-bottom: 8px;
+  }
+  .hero-subtitle {
+    font-size: 0.82rem;
+    margin-bottom: 12px;
+    line-height: 1.38;
+  }
+  .hero-tag {
+    font-size: 0.68rem;
+    padding: 3px 8px;
+    margin-bottom: 8px;
+  }
+  .hero-cta-group {
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .btn-hero-cta {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.85rem;
+    padding: 9px 14px;
+    box-sizing: border-box;
+  }
+  .hero-graphic {
+    display: none;
+  }
+  .hero-carousel-arrow {
+    width: 32px;
+    height: 32px;
+    font-size: 1.3rem;
+  }
+  .hero-carousel-arrow.prev {
+    left: 8px;
+  }
+  .hero-carousel-arrow.next {
+    right: 8px;
+  }
+  .hero-carousel-dots {
+    bottom: 10px;
+    padding: 4px 10px;
+  }
+
+  /* Catálogo y Cuadrícula de Productos */
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-size: 1.25rem;
   }
   .products-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 10px;
   }
   .product-card {
-    padding: 10px;
+    padding: 8px;
+    border-radius: var(--radius-md);
   }
   .product-image-wrap {
-    height: 130px;
+    height: 120px;
+  }
+  .product-title {
+    font-size: 0.82rem;
+    min-height: 34px;
+  }
+  .product-price-primary {
+    font-size: 0.95rem;
+  }
+  .product-price-bs {
+    font-size: 0.74rem;
+  }
+  .product-price-cop {
+    font-size: 0.7rem;
+  }
+  .btn-add-cart {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  /* Drawer de Carrito en Celulares */
+  .cart-drawer {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Modales en Móvil */
+  .modal-content {
+    width: 95%;
+    max-width: 100%;
+    padding: 16px 14px;
+    margin: 10px auto;
+  }
+
+  .footer-top-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .checkout-form-grid {
+    grid-template-columns: 1fr;
   }
 }
 

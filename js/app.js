@@ -99,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProducts();
     updateCartUI();
     updateWishlistBadge();
+    initHeroCarousel();
     setupEventListeners();
 
     // Sincronizar catálogo desde Supabase si está disponible
@@ -113,6 +114,133 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('Catálogo local activo');
       }
     }
+  }
+
+  // ==========================================================================
+  // CARRUSEL HERO INTERACTIVO DE 3 PARTES (PUBLICIDAD Y PROMOS)
+  // ==========================================================================
+  function initHeroCarousel() {
+    const track = document.getElementById('heroCarouselTrack');
+    const container = document.getElementById('heroCarousel');
+    const prevBtn = document.getElementById('heroPrevBtn');
+    const nextBtn = document.getElementById('heroNextBtn');
+    const dots = document.querySelectorAll('.hero-dot');
+    const slides = document.querySelectorAll('.hero-slide');
+
+    if (!track || slides.length === 0) return;
+
+    let currentIndex = 0;
+    const totalSlides = slides.length;
+    let autoPlayTimer = null;
+
+    function goToSlide(index) {
+      if (index < 0) {
+        currentIndex = totalSlides - 1;
+      } else if (index >= totalSlides) {
+        currentIndex = 0;
+      } else {
+        currentIndex = index;
+      }
+
+      track.style.transform = `translateX(-${currentIndex * 100}%)`;
+
+      slides.forEach((slide, idx) => {
+        slide.classList.toggle('active', idx === currentIndex);
+      });
+
+      dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === currentIndex);
+      });
+    }
+
+    function startAutoPlay() {
+      stopAutoPlay();
+      autoPlayTimer = setInterval(() => {
+        goToSlide(currentIndex + 1);
+      }, 5000);
+    }
+
+    function stopAutoPlay() {
+      if (autoPlayTimer) {
+        clearInterval(autoPlayTimer);
+        autoPlayTimer = null;
+      }
+    }
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        goToSlide(currentIndex - 1);
+        startAutoPlay();
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        goToSlide(currentIndex + 1);
+        startAutoPlay();
+      });
+    }
+
+    dots.forEach(dot => {
+      dot.addEventListener('click', () => {
+        const target = parseInt(dot.getAttribute('data-slide-to'), 10);
+        if (!isNaN(target)) {
+          goToSlide(target);
+          startAutoPlay();
+        }
+      });
+    });
+
+    if (container) {
+      container.addEventListener('mouseenter', stopAutoPlay);
+      container.addEventListener('mouseleave', startAutoPlay);
+
+      // Soporte táctil / Swipe para teléfonos móviles
+      let touchStartX = 0;
+      let touchEndX = 0;
+
+      container.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        stopAutoPlay();
+      }, { passive: true });
+
+      container.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 40) {
+          if (diff > 0) {
+            goToSlide(currentIndex + 1);
+          } else {
+            goToSlide(currentIndex - 1);
+          }
+        }
+        startAutoPlay();
+      }, { passive: true });
+    }
+
+    // Botones de copiar cupones en los slides
+    document.querySelectorAll('.hero-copy-coupon-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const code = btn.getAttribute('data-coupon');
+        if (code) {
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(code).catch(() => {});
+          }
+          if (couponInputEl) couponInputEl.value = code;
+          showToast(`📋 Cupón ${code} copiado`, 'success');
+        }
+      });
+    });
+
+    // Filtro rápido de categoría charcutería en slide 3
+    document.querySelectorAll('.hero-filter-charcuteria-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setActiveCategory('charcuteria');
+      });
+    });
+
+    startAutoPlay();
   }
 
   // ==========================================================================

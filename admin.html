@@ -9,7 +9,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   
   <link rel="stylesheet" href="css/styles.css">
   
@@ -184,6 +184,168 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.4px;
+    }
+
+    /* Cuadro de Ventas Totales con Deslizante de Porcentaje */
+    .dash-stat-card.dash-stat-card-sales {
+      grid-column: span 2;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+      background: linear-gradient(to bottom, #FFFFFF 0%, #F9FCF9 100%);
+      border: 1.5px solid #BBF7D0;
+      box-shadow: 0 4px 14px rgba(16, 137, 16, 0.08);
+    }
+
+    @media (max-width: 768px) {
+      .dash-stat-card.dash-stat-card-sales {
+        grid-column: span 1;
+      }
+    }
+
+    .sales-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sales-percentage-badge {
+      background: #F0FDF4;
+      border: 1.5px solid #86EFAC;
+      border-radius: var(--radius-md);
+      padding: 6px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      text-align: right;
+    }
+
+    .sales-percentage-badge .pct-label {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #166534;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .sales-percentage-badge .pct-amount {
+      font-size: 1.35rem;
+      font-weight: 900;
+      color: #15803D;
+      line-height: 1.1;
+    }
+
+    .sales-percentage-slider-box {
+      background: white;
+      border: 1px solid #E2E8F0;
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .slider-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .slider-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .slider-input-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+    }
+
+    .pct-number-input {
+      width: 48px;
+      border: none;
+      background: transparent;
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-align: right;
+      outline: none;
+    }
+
+    .pct-symbol {
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: var(--color-brand-green);
+    }
+
+    .sales-range-slider {
+      width: 100%;
+      height: 6px;
+      border-radius: var(--radius-pill);
+      background: #E2E8F0;
+      outline: none;
+      accent-color: #108910;
+      cursor: pointer;
+    }
+
+    .slider-footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .slider-chips-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .pct-chip-btn {
+      background: #F8FAFC;
+      border: 1px solid #CBD5E1;
+      color: #334155;
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .pct-chip-btn:hover {
+      background: #E2E8F0;
+      color: #0F172A;
+    }
+
+    .pct-chip-btn.active {
+      background: #108910;
+      border-color: #108910;
+      color: white;
+      box-shadow: 0 1px 4px rgba(16, 137, 16, 0.3);
+    }
+
+    .sales-pct-equiv-bs {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #047857;
+      background: #ECFDF5;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
     }
 
     /* Tarjetas de Pedidos en Móvil y PC */
@@ -752,11 +914,52 @@
           </div>
         </div>
 
-        <div class="dash-stat-card">
-          <div class="dash-stat-icon" style="background: #DCFCE7; color: #166534;">💰</div>
-          <div>
-            <div class="dash-stat-value" id="statTotalSalesAmount">$0.00</div>
-            <div class="dash-stat-title">Ventas Totales</div>
+        <!-- Tarjeta de Ventas Totales con Deslizante de Porcentaje Personalizable -->
+        <div class="dash-stat-card dash-stat-card-sales">
+          <div class="sales-top-row">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div class="dash-stat-icon" style="background: #DCFCE7; color: #166534;">💰</div>
+              <div>
+                <div class="dash-stat-value" id="statTotalSalesAmount">$0.00</div>
+                <div class="dash-stat-title">Ventas Totales</div>
+              </div>
+            </div>
+
+            <!-- Resultado del Porcentaje Calculado -->
+            <div class="sales-percentage-badge">
+              <span class="pct-label">Resultado (<span id="salesPercentageValueDisplay">20</span>%):</span>
+              <strong class="pct-amount" id="salesPercentageResultAmount">$0.00</strong>
+            </div>
+          </div>
+
+          <!-- Controles del Deslizante de Porcentaje -->
+          <div class="sales-percentage-slider-box">
+            <div class="slider-header-row">
+              <label for="salesPercentageSlider" class="slider-label">
+                <span>🎚️ Seleccionar Porcentaje (%):</span>
+              </label>
+              <div class="slider-input-group">
+                <input type="number" id="salesPercentageNumberInput" min="0" max="100" step="1" value="20" class="pct-number-input">
+                <span class="pct-symbol">%</span>
+              </div>
+            </div>
+
+            <input type="range" id="salesPercentageSlider" min="0" max="100" step="1" value="20" class="sales-range-slider">
+
+            <div class="slider-footer-row">
+              <div class="slider-chips-group" id="salesPctChipsGroup">
+                <button type="button" class="pct-chip-btn" data-pct="5">5%</button>
+                <button type="button" class="pct-chip-btn" data-pct="10">10%</button>
+                <button type="button" class="pct-chip-btn" data-pct="15">15%</button>
+                <button type="button" class="pct-chip-btn active" data-pct="20">20%</button>
+                <button type="button" class="pct-chip-btn" data-pct="30">30%</button>
+                <button type="button" class="pct-chip-btn" data-pct="50">50%</button>
+              </div>
+
+              <div class="sales-pct-equiv-bs" id="salesPercentageBsEquiv" title="Equivalente en Bolívares según tasa oficial">
+                ~ 0.00 Bs
+              </div>
+            </div>
           </div>
         </div>
       </div>
