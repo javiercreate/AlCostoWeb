@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Robots manifest XML format for search engine directives and discovery.
+  Standard robots rules are also served at /robots.txt.
+-->
+<robots xmlns="http://www.google.com/schemas/sitemap-robots/0.1">
+  <site url="https://alcosto.vercel.app/">
+    <agent name="*">
+      <rule type="allow" path="/" />
+      <rule type="allow" path="/index.html" />
+      <rule type="allow" path="/privacidad.html" />
+      <rule type="disallow" path="/admin.html" />
+      <rule type="disallow" path="/js/" />
+    </agent>
+    <sitemap location="https://alcosto.vercel.app/sitemap.xml" />
+  </site>
+</robots>

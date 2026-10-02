@@ -11,6 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   
+  <!-- Font Awesome 6.5.1 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
   <link rel="stylesheet" href="css/styles.css">
   
   <style>
@@ -818,6 +821,10 @@
         <span>📦 Catálogo de Productos</span>
       </button>
 
+      <button class="tab-btn" data-tab="tab-payments">
+        <span>💳 Métodos de Pago (Pago Móvil / Zelle / Binance)</span>
+      </button>
+
       <button class="tab-btn" data-tab="tab-supabase">
         <span>⚡ Servidor Supabase</span>
         <span id="supabaseNavStatus" style="font-size: 0.75rem;">🔴</span>
@@ -1011,6 +1018,9 @@
           <button class="btn-checkout-primary" id="publishToSupabaseBtn" style="padding: 8px 16px; font-size: 0.88rem; height: auto;">
             🚀 Publicar en Supabase
           </button>
+          <button class="btn-hero-cta" id="resetDefaultProductsBtn" style="padding: 8px 16px; font-size: 0.88rem; background: #EBF8FF; border: 1px solid #90CDF4; color: #2B6CB0;" title="Recargar los 24 productos base de products.js">
+            🔄 Cargar Catálogo (products.js)
+          </button>
           <button class="btn-hero-cta" id="exportBackupJsonBtn" style="padding: 8px 16px; font-size: 0.88rem; background: #F8F9FA; border: 1px solid var(--color-border); color: #333;">
             📥 Descargar Copia JSON
           </button>
@@ -1159,6 +1169,102 @@
     </div>
 
     <!-- ========================================================================
+         PESTAÑA NUEVA: MÉTODOS DE PAGO (EDITABLE EN SUPABASE Y LOCAL)
+         ======================================================================== -->
+    <div class="tab-pane" id="tab-payments">
+      <div class="admin-card" style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 class="admin-card-title">
+              <i class="fa-solid fa-credit-card" style="color: #108910;"></i>
+              Configuración de Métodos de Pago
+            </h3>
+            <p class="admin-card-subtitle" style="margin: 0;">
+              Edita las cuentas de Pago Móvil, Zelle y Binance Pay. Se sincronizan en la tabla <code>configuracion_pagos</code> de Supabase para que tus clientes vean los datos actualizados de inmediato sin tocar el código.
+            </p>
+          </div>
+          <span id="paymentConfigSyncBadge" style="font-size: 0.8rem; font-weight: 700; background: #DCFCE7; color: #166534; padding: 4px 12px; border-radius: 9999px;">
+            ☁️ Listo para sincronizar
+          </span>
+        </div>
+
+        <form id="paymentConfigForm">
+          <!-- SECCIÓN 1: PAGO MÓVIL (BS) -->
+          <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 14px; padding: 18px; margin-bottom: 20px;">
+            <h4 style="font-size: 1.05rem; font-weight: 800; color: #166534; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-mobile-screen-button"></i> 1. Pago Móvil (Venezuela - Bolívares BCV)
+            </h4>
+            <div class="admin-form-grid">
+              <div class="form-group">
+                <label for="pmBanco">Banco Receptor *</label>
+                <input type="text" id="pmBanco" class="form-input" required placeholder="Ej: Banco de Venezuela (0102)">
+              </div>
+              <div class="form-group">
+                <label for="pmTelefono">Teléfono Pago Móvil *</label>
+                <input type="text" id="pmTelefono" class="form-input" required placeholder="Ej: 0412-1234567">
+              </div>
+              <div class="form-group">
+                <label for="pmCedula">Cédula / RIF *</label>
+                <input type="text" id="pmCedula" class="form-input" required placeholder="Ej: V-26.123.456 o J-12345678-9">
+              </div>
+              <div class="form-group">
+                <label for="pmTitular">Nombre del Titular *</label>
+                <input type="text" id="pmTitular" class="form-input" required placeholder="Ej: Al Costo Supermercado C.A.">
+              </div>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 2: ZELLE (USD) -->
+          <div style="background: #FAF5FF; border: 1.5px solid #E9D5FF; border-radius: 14px; padding: 18px; margin-bottom: 20px;">
+            <h4 style="font-size: 1.05rem; font-weight: 800; color: #6B21A8; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-dollar-sign"></i> 2. Zelle (Estados Unidos - USD)
+            </h4>
+            <div class="admin-form-grid">
+              <div class="form-group">
+                <label for="zelleCorreo">Correo Electrónico Registrado en Zelle *</label>
+                <input type="email" id="zelleCorreo" class="form-input" required placeholder="Ej: pagos@alcostosuper.com">
+              </div>
+              <div class="form-group">
+                <label for="zelleTitular">Nombre del Titular de la Cuenta *</label>
+                <input type="text" id="zelleTitular" class="form-input" required placeholder="Ej: Al Costo Supermarket LLC">
+              </div>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 3: BINANCE PAY (USDT) -->
+          <div style="background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 14px; padding: 18px; margin-bottom: 20px;">
+            <h4 style="font-size: 1.05rem; font-weight: 800; color: #B45309; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-brands fa-bitcoin"></i> 3. Binance Pay (Cripto - USDT)
+            </h4>
+            <div class="admin-form-grid">
+              <div class="form-group">
+                <label for="binancePayId">Binance Pay ID (Opcional)</label>
+                <input type="text" id="binancePayId" class="form-input" placeholder="Ej: 284910283">
+              </div>
+              <div class="form-group">
+                <label for="binanceCorreo">Correo de la Cuenta Binance *</label>
+                <input type="email" id="binanceCorreo" class="form-input" required placeholder="Ej: binance@alcostosuper.com">
+              </div>
+              <div class="form-group span-full">
+                <label for="binanceRed">Redes Soportadas / Instrucción de Transferencia</label>
+                <input type="text" id="binanceRed" class="form-input" placeholder="Ej: USDT (Red TRC20 / BEP20 - Binance Pay)">
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button type="submit" class="btn-checkout-primary" id="btnSavePaymentConfig" style="flex: 1; max-width: 380px;">
+              💾 Guardar Datos de Pago en Supabase y Local
+            </button>
+            <button type="button" class="btn-hero-cta" id="btnResetPaymentDefaults" style="background: white; border: 1.5px solid var(--color-border); color: #444;">
+              🔄 Restaurar Valores por Defecto
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ========================================================================
          PESTAÑA 3: CONEXIÓN CON SERVIDOR SUPABASE
          ======================================================================== -->
     <div class="tab-pane" id="tab-supabase">
@@ -1261,9 +1367,31 @@ CREATE TABLE IF NOT EXISTS pedidos (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Habilitar políticas públicas para lectura y creación (anon)
+-- 3. Tabla de Configuración de Métodos de Pago
+CREATE TABLE IF NOT EXISTS configuracion_pagos (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  datos JSONB NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 4. Tabla de Usuarios / Clientes (Inicio de Sesión y Registro)
+CREATE TABLE IF NOT EXISTS usuarios (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre TEXT NOT NULL,
+  email TEXT UNIQUE,
+  telefono TEXT UNIQUE,
+  password_hash TEXT NOT NULL,
+  direccion_predeterminada TEXT,
+  rol TEXT DEFAULT 'cliente',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. Habilitar políticas públicas y de seguridad (RLS)
 ALTER TABLE productos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pedidos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE configuracion_pagos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Lectura pública de productos" ON productos FOR SELECT USING (true);
 CREATE POLICY "Gestión pública de productos" ON productos FOR ALL USING (true);
@@ -1271,6 +1399,13 @@ CREATE POLICY "Gestión pública de productos" ON productos FOR ALL USING (true)
 CREATE POLICY "Lectura pública de pedidos" ON pedidos FOR SELECT USING (true);
 CREATE POLICY "Creación pública de pedidos" ON pedidos FOR INSERT WITH CHECK (true);
 CREATE POLICY "Actualización de pedidos" ON pedidos FOR UPDATE USING (true);
+
+CREATE POLICY "Lectura de pagos" ON configuracion_pagos FOR SELECT USING (true);
+CREATE POLICY "Gestión de pagos" ON configuracion_pagos FOR ALL USING (true);
+
+CREATE POLICY "Lectura de usuarios" ON usuarios FOR SELECT USING (true);
+CREATE POLICY "Registro de usuarios" ON usuarios FOR INSERT WITH CHECK (true);
+CREATE POLICY "Actualización de usuarios" ON usuarios FOR UPDATE USING (true);
         </pre>
 
         <button class="btn-hero-cta" id="copySqlBtn" style="margin-top: 10px; background: white; border: 1.5px solid var(--color-border); color: #111;">
@@ -1295,6 +1430,11 @@ CREATE POLICY "Actualización de pedidos" ON pedidos FOR UPDATE USING (true);
       <button class="mobile-nav-btn" data-tab="tab-catalog">
         <span class="icon">📦</span>
         <span>Catálogo</span>
+      </button>
+
+      <button class="mobile-nav-btn" data-tab="tab-payments">
+        <span class="icon">💳</span>
+        <span>Pagos</span>
       </button>
 
       <button class="mobile-nav-btn" data-tab="tab-supabase">
