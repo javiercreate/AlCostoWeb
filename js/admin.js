@@ -416,6 +416,13 @@ document.addEventListener('DOMContentLoaded', () => {
         <div><strong>Cliente:</strong> ${order.customerName}</div>
         <div><strong>Teléfono:</strong> ${order.customerPhone}</div>
         <div><strong>Dirección:</strong> ${order.deliveryAddress}</div>
+        ${order.gpsCoordinates ? `
+          <div style="margin-top: 8px;">
+            <a href="${order.gpsCoordinates.mapsUrl || `https://www.google.com/maps?q=${order.gpsCoordinates.lat},${order.gpsCoordinates.lng}`}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: #DCFCE7; color: #166534; font-weight: 800; font-size: 0.8rem; padding: 6px 12px; border-radius: 9999px; text-decoration: none; border: 1px solid #86EFAC;">
+              🗺️ Abrir Ubicación GPS del Cliente en Google Maps ↗
+            </a>
+          </div>
+        ` : ''}
         <div><strong>Horario:</strong> ${order.deliverySlot}</div>
         <div><strong>Método de Pago:</strong> ${order.paymentMethod}</div>
         ${order.instructions ? `<div style="color: #b45309; margin-top: 4px;"><strong>Instrucciones:</strong> ${order.instructions}</div>` : ''}
@@ -447,10 +454,19 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const saved = localStorage.getItem('alcosto_custom_products');
       if (saved) {
-        products = JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          products = parsed;
+        } else if (typeof getActiveProducts === 'function') {
+          products = getActiveProducts();
+        }
       } else {
-        // Si no hay productos en localStorage, consultar catálogo en Supabase si está disponible
-        if (typeof SupabaseService !== 'undefined') {
+        // Si no hay productos en localStorage, consultar catálogo en products.js o Supabase
+        if (typeof getActiveProducts === 'function') {
+          products = getActiveProducts();
+        } else if (typeof DEFAULT_PRODUCTS !== 'undefined' && Array.isArray(DEFAULT_PRODUCTS)) {
+          products = [...DEFAULT_PRODUCTS];
+        } else if (typeof SupabaseService !== 'undefined') {
           const cloud = await SupabaseService.fetchProductsFromSupabase();
           if (cloud && Array.isArray(cloud) && cloud.length > 0) {
             products = cloud;
@@ -464,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (e) {
       console.error('Error cargando catálogo:', e);
-      products = [];
+      products = (typeof DEFAULT_PRODUCTS !== 'undefined') ? [...DEFAULT_PRODUCTS] : [];
     }
     renderProductsTable();
   }
@@ -795,6 +811,30 @@ document.addEventListener('DOMContentLoaded', () => {
       a.click();
       URL.revokeObjectURL(url);
       showToast('📥 Copia "productos.json" descargada', 'success');
+    });
+  }
+
+  const resetDefaultProductsBtn = document.getElementById('resetDefaultProductsBtn');
+  if (resetDefaultProductsBtn) {
+    resetDefaultProductsBtn.addEventListener('click', () => {
+      const source = (typeof DEFAULT_PRODUCTS !== 'undefined' && Array.isArray(DEFAULT_PRODUCTS))
+        ? DEFAULT_PRODUCTS
+        : (typeof getActiveProducts === 'function' ? getActiveProducts() : []);
+
+      if (source.length > 0) {
+        if (confirm(`¿Deseas recargar los ${source.length} productos base de products.js? Esto actualizará el catálogo local.`)) {
+          products = JSON.parse(JSON.stringify(source));
+          if (typeof saveActiveProducts === 'function') {
+            saveActiveProducts(products);
+          } else {
+            localStorage.setItem('alcosto_custom_products', JSON.stringify(products));
+          }
+          renderProductsTable();
+          showToast(`✅ Se cargaron ${products.length} productos de products.js`, 'success');
+        }
+      } else {
+        showToast('⚠️ No se encontraron productos en products.js', 'warning');
+      }
     });
   }
 

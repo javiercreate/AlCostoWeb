@@ -270,20 +270,34 @@ const SupabaseService = {
     return null;
   },
 
-  // Generador de Enlace WhatsApp para el dueño (+34 602 07 08 46)
+  // Generador de Enlace WhatsApp para el dueño (+34 602 07 08 46) con Ubicación GPS Real
   createOwnerWhatsAppLink(order) {
     const itemsList = order.items.map(i => `• ${i.quantity}x ${i.product.name} ($${(i.product.price * i.quantity).toFixed(2)})`).join('%0A');
     
+    let gpsText = '';
+    if (order.gpsCoordinates && order.gpsCoordinates.lat && order.gpsCoordinates.lng) {
+      const mapsUrl = `https://www.google.com/maps?q=${order.gpsCoordinates.lat},${order.gpsCoordinates.lng}`;
+      gpsText = `%0A📍 *UBICACIÓN REAL DEL CLIENTE (GPS):*%0A` +
+        `🗺️ Google Maps: ${mapsUrl}%0A` +
+        `🎯 Coordenadas: ${order.gpsCoordinates.lat.toFixed(6)}, ${order.gpsCoordinates.lng.toFixed(6)} (Precisión: ±${order.gpsCoordinates.accuracy || 10}m)%0A`;
+    }
+
+    const routeLabel = order.deliveryType === 'pickup' 
+      ? '🏪 Recogida en Tienda Al Costo (Gratis)' 
+      : '🛵 Delivery a Domicilio Express (Con GPS)';
+
     const message = 
       `🛒 *¡NUEVO PEDIDO AL COSTO!* 🛒%0A%0A` +
       `*Orden:* %23${order.id}%0A` +
+      `*Modalidad:* ${routeLabel}%0A` +
       `*Cliente:* ${order.customerName}%0A` +
       `*Teléfono:* ${order.customerPhone}%0A` +
       `*Dirección:* ${order.deliveryAddress}%0A` +
+      gpsText +
       `*Horario:* ${order.deliverySlot}%0A` +
-      `*Pago:* ${order.paymentMethod}%0A` +
+      `*Método de Pago:* ${order.paymentMethod}%0A` +
       (order.instructions ? `*Nota:* ${order.instructions}%0A` : '') +
-      `%0A*--- PRODUCTOS ---*%0A` +
+      `%0A*--- PRODUCTOS SOLICITADOS ---*%0A` +
       `${itemsList}%0A%0A` +
       `*Total a Pagar:* $${order.total.toFixed(2)}`;
 

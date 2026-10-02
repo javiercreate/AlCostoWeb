@@ -13,7 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
     sortBy: 'relevance',
     appliedCoupon: null,
     shopperTipPercent: 10,
-    deliveryType: 'delivery', // 'delivery' | 'pickup'
+    deliveryType: localStorage.getItem('alcosto_delivery_type') || 'delivery', // 'delivery' | 'pickup'
+    routeConfirmed: localStorage.getItem('alcosto_route_confirmed') === 'true',
+    realGpsLocation: (function() {
+      try { return JSON.parse(localStorage.getItem('alcosto_user_gps')); } catch(e) { return null; }
+    })(),
     currentAddress: JSON.parse(localStorage.getItem('alcosto_address')) || PRESET_ADDRESSES[0],
     customerProfile: JSON.parse(localStorage.getItem('alcosto_customer_profile')) || {
       name: '',
@@ -233,10 +237,17 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Filtro rápido de categoría charcutería en slide 3
-    document.querySelectorAll('.hero-filter-charcuteria-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        setActiveCategory('charcuteria');
+    // Filtros rápidos de categoría desde cualquier banner o tarjeta
+    document.querySelectorAll('[data-filter-category], .hero-filter-charcuteria-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const cat = btn.getAttribute('data-filter-category') || 'charcuteria';
+        if (cat) {
+          setActiveCategory(cat);
+          const target = document.getElementById('catalogo');
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+          }
+        }
       });
     });
 
@@ -327,8 +338,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function renderProducts() {
-    if (typeof getActiveProducts === 'function') {
+  function renderProducts(reloadFromActive = false) {
+    if ((reloadFromActive || !PRODUCTS_DATA || PRODUCTS_DATA.length === 0) && typeof getActiveProducts === 'function') {
       PRODUCTS_DATA = getActiveProducts();
     }
     const filtered = getFilteredProducts();
@@ -367,23 +378,31 @@ document.addEventListener('DOMContentLoaded', () => {
       const inCartQty = state.cart[product.id] ? state.cart[product.id].quantity : 0;
       const isWishlisted = state.wishlist.includes(product.id);
 
-      // Badge de oferta o etiqueta
+      // Icono y Categoría
+      const catObj = (typeof CATEGORIES !== 'undefined') ? CATEGORIES.find(c => c.id === product.category) : null;
+      const catIcon = catObj ? catObj.icon : '🏷️';
+
+      // Badge flotante moderno
       let badgeHtml = '';
       if (product.originalPrice) {
         const discountPct = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
-        badgeHtml = `<span class="product-badge-pill offer">-${discountPct}% Oferta</span>`;
-      } else if (product.isOrganic) {
-        badgeHtml = `<span class="product-badge-pill organic">🌱 Orgánico</span>`;
+        badgeHtml = `<span class="product-badge-pill badge-offer">🔥 -${discountPct}% OFF</span>`;
+      } else if (product.wholesalePrice || product.category === 'al-mayor') {
+        badgeHtml = `<span class="product-badge-pill badge-wholesale">📦 Al Mayor</span>`;
       } else if (product.badge) {
-        badgeHtml = `<span class="product-badge-pill">${product.badge}</span>`;
+        badgeHtml = `<span class="product-badge-pill badge-custom">${product.badge}</span>`;
+      } else if (product.category === 'charcuteria' || product.category === 'frutas-verduras') {
+        badgeHtml = `<span class="product-badge-pill badge-fresh">🌿 Fresco</span>`;
       }
+
+      const reviewsCount = product.reviewsCount || product.reviews || 64;
 
       // Botón estilo Instacart (+ o Stepper verde)
       let actionControlHtml = '';
       if (inCartQty === 0) {
         actionControlHtml = `
           <button class="btn-add-instacart" data-id="${product.id}" aria-label="Agregar ${product.name} al carrito">
-            <span style="font-size: 1.2rem; font-weight: 800; line-height: 1;">+</span>
+            <span class="btn-plus-icon">+</span>
             <span>Agregar</span>
           </button>
         `;
@@ -391,7 +410,10 @@ document.addEventListener('DOMContentLoaded', () => {
         actionControlHtml = `
           <div class="quantity-stepper" data-id="${product.id}">
             <button class="stepper-btn btn-stepper-minus" data-id="${product.id}" title="Disminuir">−</button>
-            <span class="stepper-count">${inCartQty}</span>
+            <div class="stepper-center">
+              <span class="stepper-qty-label">En Carrito</span>
+              <span class="stepper-count">${inCartQty}</span>
+            </div>
             <button class="stepper-btn btn-stepper-plus" data-id="${product.id}" title="Aumentar">+</button>
           </div>
         `;
@@ -400,38 +422,47 @@ document.addEventListener('DOMContentLoaded', () => {
       return `
         <article class="product-card" data-product-id="${product.id}">
           ${badgeHtml}
-          <button class="btn-wishlist ${isWishlisted ? 'active' : ''}" data-id="${product.id}" title="Favorito">
+          <button class="btn-wishlist ${isWishlisted ? 'active' : ''}" data-id="${product.id}" title="${isWishlisted ? 'Quitar de favoritos' : 'Guardar en favoritos'}">
             ${isWishlisted ? '❤️' : '🤍'}
           </button>
           
           <div class="product-image-wrap open-detail-trigger" data-id="${product.id}">
             <img src="${product.image}" alt="${product.name}" class="product-image" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80'">
+            <span class="quick-view-hint">🔍 Vista rápida</span>
           </div>
 
           <div class="product-info open-detail-trigger" data-id="${product.id}">
+            <div class="product-meta-header">
+              <span class="product-meta-unit">${catIcon} ${product.unit}</span>
+              <span class="product-meta-origin">${product.origin || 'Al Costo 🛒'}</span>
+            </div>
+
+            <h3 class="product-title" title="${product.name}">${product.name}</h3>
+
             <div class="product-price-row">
               <div class="price-primary-row">
                 <span class="product-current-price">$${product.price.toFixed(2)}</span>
                 ${product.originalPrice ? `<span class="product-original-price">$${product.originalPrice.toFixed(2)}</span>` : ''}
               </div>
               <div class="product-currency-badges">
-                <span class="badge-currency-bs">🇻🇪 ${(product.price * CURRENCY_RATES.BS).toFixed(2)} Bs</span>
-                <span class="badge-currency-cop">🇨🇴 ${(Math.round(product.price * CURRENCY_RATES.COP)).toLocaleString('es-CO')} COP</span>
+                <span class="badge-currency-bs" title="Tasa oficial Banco Central">🇻🇪 ${(product.price * CURRENCY_RATES.BS).toFixed(2)} Bs</span>
+                <span class="badge-currency-cop" title="Pesos Colombianos">🇨🇴 ${(Math.round(product.price * CURRENCY_RATES.COP)).toLocaleString('es-CO')} COP</span>
               </div>
             </div>
-            <div class="product-unit">${product.unit}</div>
+
             ${product.wholesalePrice ? `
               <div class="product-wholesale-tag">
-                <span>📦 Mayor:</span>
-                <strong>$${product.wholesalePrice.toFixed(2)}</strong>
-                <span style="font-size:0.7rem; color:#555;">(${(product.wholesalePrice * CURRENCY_RATES.BS).toFixed(0)} Bs | ${(Math.round(product.wholesalePrice * CURRENCY_RATES.COP)).toLocaleString('es-CO')} COP)</span>
+                <div class="wholesale-info">
+                  <span>📦 Mayor: <strong>$${product.wholesalePrice.toFixed(2)}</strong> (mín ${product.wholesaleMin || 1}u)</span>
+                  <span class="wholesale-sub">${(product.wholesalePrice * CURRENCY_RATES.BS).toFixed(0)} Bs • ${(Math.round(product.wholesalePrice * CURRENCY_RATES.COP)).toLocaleString('es-CO')} COP</span>
+                </div>
               </div>
             ` : ''}
-            <h3 class="product-title">${product.name}</h3>
+
             <div class="product-rating-row">
               <span class="product-stars">★★★★★</span>
-              <span>${product.rating}</span>
-              <span>(${product.reviews})</span>
+              <span class="rating-val">${product.rating || 4.9}</span>
+              <span class="reviews-count">(${reviewsCount})</span>
             </div>
           </div>
 
@@ -588,10 +619,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateCartUI() {
     const { subtotal, itemCount, freeShippingThreshold, deliveryFee, discount, tip, total } = calculateCartTotals();
 
-    // Actualizar badges en Header
+    // Actualizar badges en Header y Barra Móvil
     if (cartBadgeCountEl) cartBadgeCountEl.textContent = itemCount;
     if (cartDrawerCountBadgeEl) cartDrawerCountBadgeEl.textContent = `${itemCount} items`;
     if (cartTotalPreviewEl) cartTotalPreviewEl.textContent = `$${subtotal.toFixed(2)}`;
+
+    const mobileNavCartBadge = document.getElementById('mobileNavCartBadge');
+    if (mobileNavCartBadge) {
+      mobileNavCartBadge.textContent = itemCount;
+      mobileNavCartBadge.style.display = itemCount > 0 ? 'inline-flex' : 'none';
+    }
 
     // Barra de envío gratis
     if (freeShippingFillEl && freeShippingLabelEl) {
@@ -884,44 +921,196 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function openAddressModal() {
-    if (!addressModalEl || !addressOptionsContainerEl) return;
+  // ==========================================================================
+  // DETECCIÓN SATELITAL DE UBICACIÓN REAL (GEOLOCATION API)
+  // ==========================================================================
+  function detectLiveGpsLocation(btnEl, statusBoxEl, coordsEl, mapLinkEl, inputAddressEl) {
+    if (!navigator.geolocation) {
+      showToast('⚠️ Tu navegador no soporta geolocalización satelital GPS', 'warning');
+      return;
+    }
 
-    addressOptionsContainerEl.innerHTML = PRESET_ADDRESSES.map(addr => {
-      let displayAddress = addr.address;
-      if (addr.id === 'addr-delivery' && state.customerProfile && state.customerProfile.address) {
-        displayAddress = state.customerProfile.address + (state.customerProfile.reference ? ` (Ref: ${state.customerProfile.reference})` : '');
-      }
+    if (btnEl) {
+      btnEl.disabled = true;
+      btnEl.innerHTML = `<span>🛰️</span> <span>Conectando con satélites GPS en tiempo real...</span>`;
+    }
 
-      return `
-        <div class="payment-method-card addr-card-option ${addr.id === state.currentAddress.id ? 'active' : ''}" data-addr-id="${addr.id}" style="text-align: left; padding: 14px; margin-bottom: 10px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <strong style="font-size: 0.95rem; color: var(--color-primary);">${addr.label}</strong>
-            <span style="font-size: 0.78rem; background: var(--color-brand-soft); color: var(--color-brand-green); padding: 2px 8px; border-radius: 12px; font-weight: 700;">
-              ⏱️ ${addr.timeEst}
-            </span>
-          </div>
-          <div style="font-size: 0.85rem; color: #555;">${displayAddress}</div>
-          ${addr.coords ? `<div style="font-size: 0.75rem; color: #108910; font-family: monospace; margin-top: 3px;">📍 ${addr.coords}</div>` : ''}
-        </div>
-      `;
-    }).join('');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const accuracy = Math.round(position.coords.accuracy || 10);
+        const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
 
-    addressOptionsContainerEl.querySelectorAll('.addr-card-option').forEach(card => {
-      card.addEventListener('click', () => {
-        const id = card.getAttribute('data-addr-id');
-        const selected = PRESET_ADDRESSES.find(a => a.id === id);
-        if (selected) {
-          state.currentAddress = { ...selected };
-          state.deliveryType = selected.id === 'addr-pickup' ? 'pickup' : 'delivery';
-          localStorage.setItem('alcosto_address', JSON.stringify(state.currentAddress));
-          updateAddressUI();
-          updateCartUI();
-          closeAddressModal();
-          showToast(`📍 Modalidad: ${selected.label}`, 'success');
+        state.realGpsLocation = {
+          lat,
+          lng,
+          accuracy,
+          mapsUrl,
+          timestamp: new Date().toISOString()
+        };
+
+        try {
+          localStorage.setItem('alcosto_user_gps', JSON.stringify(state.realGpsLocation));
+        } catch (e) {}
+
+        if (statusBoxEl) statusBoxEl.style.display = 'block';
+        if (coordsEl) coordsEl.textContent = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)} (Precisión: ±${accuracy}m)`;
+        if (mapLinkEl) mapLinkEl.href = mapsUrl;
+
+        if (inputAddressEl && (!inputAddressEl.value || inputAddressEl.value.includes('GPS') || inputAddressEl.value.includes('Lat:'))) {
+          inputAddressEl.value = `📍 Ubicación GPS (${lat.toFixed(5)}, ${lng.toFixed(5)}) ±${accuracy}m`;
         }
-      });
-    });
+
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.innerHTML = `<span>🔄</span> <span>Actualizar Ubicación GPS en Vivo</span>`;
+        }
+
+        showToast(`🟢 ¡Ubicación GPS real capturada con éxito (±${accuracy}m)!`, 'success');
+      },
+      (error) => {
+        console.warn('Error capturando GPS:', error);
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.innerHTML = `<span>🛰️</span> <span>Reintentar Detección GPS</span>`;
+        }
+        let msg = 'No se pudo obtener tu ubicación por GPS satelital. Por favor escribe tu dirección en el campo de texto.';
+        if (error.code === 1) {
+          msg = 'Permiso de ubicación denegado en tu navegador. Por favor permite la ubicación o ingresa tu dirección manualmente.';
+        }
+        showToast(`⚠️ ${msg}`, 'warning');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 0
+      }
+    );
+  }
+
+  // ==========================================================================
+  // MODAL DE SELECCIÓN OBLIGATORIA DE RUTA Y UBICACIÓN GPS
+  // ==========================================================================
+  let pendingCheckoutAfterRoute = false;
+
+  function openAddressModal(forCheckout = false) {
+    if (!addressModalEl) return;
+    pendingCheckoutAfterRoute = Boolean(forCheckout);
+
+    const routeCardDelivery = document.getElementById('routeCardDelivery');
+    const routeCardPickup = document.getElementById('routeCardPickup');
+    const radioDelivery = document.getElementById('radioRouteDelivery');
+    const radioPickup = document.getElementById('radioRoutePickup');
+    const routeInputAddress = document.getElementById('routeInputAddress');
+    const routeInputReference = document.getElementById('routeInputReference');
+    const btnDetectGps = document.getElementById('btnDetectGpsLocation');
+    const gpsResultBox = document.getElementById('gpsResultBox');
+    const gpsCoordsDisplay = document.getElementById('gpsCoordsDisplay');
+    const gpsMapLink = document.getElementById('gpsMapLink');
+    const btnConfirmRoute = document.getElementById('btnConfirmRouteSelection');
+
+    // Prellenar campos
+    if (routeInputAddress) {
+      routeInputAddress.value = state.customerProfile.address || '';
+    }
+    if (routeInputReference) {
+      routeInputReference.value = state.customerProfile.reference || '';
+    }
+
+    // Si ya existe ubicación GPS guardada, mostrarla
+    if (state.realGpsLocation && gpsResultBox && gpsCoordsDisplay && gpsMapLink) {
+      gpsResultBox.style.display = 'block';
+      gpsCoordsDisplay.textContent = `Lat: ${state.realGpsLocation.lat.toFixed(6)}, Lng: ${state.realGpsLocation.lng.toFixed(6)} (Precisión: ±${state.realGpsLocation.accuracy || 10}m)`;
+      gpsMapLink.href = state.realGpsLocation.mapsUrl || `https://www.google.com/maps?q=${state.realGpsLocation.lat},${state.realGpsLocation.lng}`;
+    }
+
+    // Sincronizar selección actual
+    const currentType = state.deliveryType || 'delivery';
+    if (currentType === 'pickup') {
+      if (routeCardPickup) routeCardPickup.classList.add('active');
+      if (routeCardDelivery) routeCardDelivery.classList.remove('active');
+      if (radioPickup) radioPickup.checked = true;
+    } else {
+      if (routeCardDelivery) routeCardDelivery.classList.add('active');
+      if (routeCardPickup) routeCardPickup.classList.remove('active');
+      if (radioDelivery) radioDelivery.checked = true;
+    }
+
+    // Toggle interactivo de rutas
+    if (routeCardDelivery) {
+      routeCardDelivery.onclick = () => {
+        routeCardDelivery.classList.add('active');
+        if (routeCardPickup) routeCardPickup.classList.remove('active');
+        if (radioDelivery) radioDelivery.checked = true;
+      };
+    }
+    if (routeCardPickup) {
+      routeCardPickup.onclick = () => {
+        routeCardPickup.classList.add('active');
+        if (routeCardDelivery) routeCardDelivery.classList.remove('active');
+        if (radioPickup) radioPickup.checked = true;
+      };
+    }
+
+    // Botón GPS
+    if (btnDetectGps) {
+      btnDetectGps.onclick = (e) => {
+        e.stopPropagation();
+        detectLiveGpsLocation(btnDetectGps, gpsResultBox, gpsCoordsDisplay, gpsMapLink, routeInputAddress);
+      };
+    }
+
+    // Confirmar ruta y ubicación (Obligatorio)
+    if (btnConfirmRoute) {
+      btnConfirmRoute.onclick = () => {
+        const isDelivery = radioDelivery ? radioDelivery.checked : true;
+        if (isDelivery) {
+          const addrVal = routeInputAddress ? routeInputAddress.value.trim() : '';
+          const hasGps = Boolean(state.realGpsLocation && state.realGpsLocation.lat);
+          if (!addrVal && !hasGps) {
+            showToast('⚠️ Por favor detecta tu ubicación GPS o escribe tu dirección para el despacho', 'warning');
+            if (routeInputAddress) routeInputAddress.focus();
+            return;
+          }
+          state.deliveryType = 'delivery';
+          state.customerProfile.address = addrVal || `Ubicación GPS (${state.realGpsLocation.lat.toFixed(5)}, ${state.realGpsLocation.lng.toFixed(5)})`;
+          if (routeInputReference) state.customerProfile.reference = routeInputReference.value.trim();
+          localStorage.setItem('alcosto_customer_profile', JSON.stringify(state.customerProfile));
+          state.currentAddress = {
+            id: 'addr-delivery',
+            label: 'Entrega a Domicilio con GPS',
+            address: state.customerProfile.address + (state.customerProfile.reference ? ` (${state.customerProfile.reference})` : ''),
+            zip: '5101',
+            timeEst: '25-45 min'
+          };
+        } else {
+          state.deliveryType = 'pickup';
+          state.currentAddress = PRESET_ADDRESSES[1] || {
+            id: 'addr-pickup',
+            label: 'Recoger en Tienda Al Costo (Gratis)',
+            address: `Sede Al Costo (Coords: ${STORE_COORDINATES})`,
+            zip: '5101',
+            timeEst: 'Listo en 15 min'
+          };
+        }
+
+        state.routeConfirmed = true;
+        localStorage.setItem('alcosto_route_confirmed', 'true');
+        localStorage.setItem('alcosto_delivery_type', state.deliveryType);
+        localStorage.setItem('alcosto_address', JSON.stringify(state.currentAddress));
+
+        updateAddressUI();
+        updateCartUI();
+        closeAddressModal();
+        showToast(`✅ Ruta fijada: ${state.currentAddress.label}`, 'success');
+
+        if (pendingCheckoutAfterRoute) {
+          pendingCheckoutAfterRoute = false;
+          openCheckoutModal();
+        }
+      };
+    }
 
     addressModalEl.classList.add('active');
     document.body.style.overflow = 'hidden';
@@ -944,6 +1133,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // VALIDACIÓN OBLIGATORIA: El usuario DEBE haber seleccionado su ruta antes de pagar
+    if (!state.routeConfirmed) {
+      showToast('📍 Por favor selecciona tu ruta de entrega y confirma tu ubicación antes de pagar');
+      closeCartDrawer();
+      openAddressModal(true);
+      return;
+    }
+
     closeCartDrawer();
 
     const checkoutTotalSummaryEl = document.getElementById('checkoutTotalSummary');
@@ -955,6 +1152,49 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="badge-currency-cop">🇨🇴 ${(Math.round(total * CURRENCY_RATES.COP)).toLocaleString('es-CO')} COP</span>
         </div>
       `;
+    }
+
+    // Renderizar resumen de la ruta seleccionada en el Checkout
+    const checkoutRouteText = document.getElementById('checkoutRouteText');
+    const checkoutGpsBadge = document.getElementById('checkoutGpsBadge');
+    const checkoutGpsCoords = document.getElementById('checkoutGpsCoords');
+    const checkoutGpsMapLink = document.getElementById('checkoutGpsMapLink');
+    const btnRefreshCheckoutGps = document.getElementById('btnRefreshCheckoutGps');
+
+    if (checkoutRouteText) {
+      if (state.deliveryType === 'pickup') {
+        checkoutRouteText.innerHTML = `
+          <strong>🏪 Modalidad: Recoger en Tienda Al Costo (Gratis)</strong>
+          <span style="color: #475569;">Sede Principal (Coords: ${STORE_COORDINATES}) • Listo en 15 min</span>
+        `;
+        if (checkoutGpsBadge) checkoutGpsBadge.style.display = 'none';
+      } else {
+        checkoutRouteText.innerHTML = `
+          <strong>🛵 Modalidad: Delivery a Domicilio Express (25-45 min)</strong>
+          <span>📍 ${state.customerProfile.address || 'Ubicación confirmada'} ${state.customerProfile.reference ? `<br><small style="color:#64748B;">Ref: ${state.customerProfile.reference}</small>` : ''}</span>
+        `;
+        if (state.realGpsLocation && checkoutGpsBadge && checkoutGpsCoords && checkoutGpsMapLink) {
+          checkoutGpsCoords.textContent = `${state.realGpsLocation.lat.toFixed(5)}, ${state.realGpsLocation.lng.toFixed(5)} (±${state.realGpsLocation.accuracy || 10}m)`;
+          checkoutGpsMapLink.href = state.realGpsLocation.mapsUrl;
+          checkoutGpsBadge.style.display = 'block';
+        }
+      }
+    }
+
+    const btnChangeRoute = document.getElementById('btnChangeRouteInCheckout');
+    if (btnChangeRoute) {
+      btnChangeRoute.onclick = () => {
+        closeCheckoutModal();
+        openAddressModal(true);
+      };
+    }
+
+    if (btnRefreshCheckoutGps) {
+      btnRefreshCheckoutGps.onclick = () => {
+        const orderAddressInput = document.getElementById('orderAddress');
+        detectLiveGpsLocation(btnRefreshCheckoutGps, null, checkoutGpsCoords, checkoutGpsMapLink, orderAddressInput);
+        if (checkoutGpsBadge) checkoutGpsBadge.style.display = 'block';
+      };
     }
 
     // Prellenar con los datos guardados del cliente
@@ -1015,9 +1255,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const orderData = {
       id: 'AC-' + Math.floor(1000 + Math.random() * 9000),
-      customerName: nameInput ? nameInput.value.trim() : 'Cliente Al Costo',
-      customerPhone: phoneInput ? phoneInput.value.trim() : '',
-      deliveryAddress: addrInput ? addrInput.value.trim() : state.currentAddress.address,
+      customerName: nameInput ? nameInput.value.trim() : (state.customerProfile.name || 'Cliente Al Costo'),
+      customerPhone: phoneInput ? phoneInput.value.trim() : (state.customerProfile.phone || ''),
+      deliveryType: state.deliveryType || 'delivery',
+      gpsCoordinates: state.realGpsLocation || null,
+      deliveryAddress: (state.deliveryType === 'pickup') 
+        ? `Recogida en Sede Al Costo (${STORE_COORDINATES})` 
+        : (addrInput ? addrInput.value.trim() : (state.customerProfile.address || 'Dirección de Entrega')),
       deliverySlot: slotInput ? slotInput.options[slotInput.selectedIndex].text : 'Hoy en 30-45 min',
       instructions: instInput ? instInput.value.trim() : '',
       paymentMethod: activePayCard ? activePayCard.querySelector('.payment-method-name').textContent.trim() : 'Tarjeta',
@@ -1065,10 +1309,26 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProducts();
     updateCartUI();
 
-    // Simular avance de estado de preparación
+    // Simular avance visual fluido de la entrega con movimiento en vivo del vehículo y barra
     if (state.orderTrackerInterval) clearInterval(state.orderTrackerInterval);
     
+    const trackerRouteFill = document.getElementById('trackerRouteFill');
+    const trackerVehicle = document.getElementById('trackerVehicle');
+    const trackerEtaText = document.getElementById('trackerEtaText');
+    const trackerPercentBadge = document.getElementById('trackerPercentBadge');
+
+    // Estado inicial (Paso 1 completado, Paso 2 en curso)
+    if (trackerRouteFill) trackerRouteFill.style.width = '25%';
+    if (trackerVehicle) trackerVehicle.style.left = '25%';
+    if (trackerPercentBadge) {
+      trackerPercentBadge.textContent = 'En preparación (25%)';
+      trackerPercentBadge.style.background = '#FEF3C7';
+      trackerPercentBadge.style.color = '#92400E';
+    }
+    if (trackerEtaText) trackerEtaText.textContent = 'Tiempo estimado: 25 - 35 minutos';
+
     let currentStep = 1;
+    // Transición ágil y realista cada 3.5 segundos para brindar una experiencia interactiva inmediata
     state.orderTrackerInterval = setInterval(() => {
       currentStep++;
       if (currentStep >= stepItems.length) {
@@ -1076,6 +1336,14 @@ document.addEventListener('DOMContentLoaded', () => {
         stepItems.forEach(item => {
           item.className = 'tracker-step-item completed';
         });
+        if (trackerRouteFill) trackerRouteFill.style.width = '100%';
+        if (trackerVehicle) trackerVehicle.style.left = '76%';
+        if (trackerPercentBadge) {
+          trackerPercentBadge.textContent = '¡Entregado con Éxito! (100%)';
+          trackerPercentBadge.style.background = '#DCFCE7';
+          trackerPercentBadge.style.color = '#15803D';
+        }
+        if (trackerEtaText) trackerEtaText.textContent = '¡Pedido entregado en tu puerta!';
         showToast('🎉 ¡Tu pedido de Al Costo ha llegado a tu puerta!', 'success');
       } else {
         stepItems.forEach((item, idx) => {
@@ -1085,12 +1353,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (currentStep === 2) {
-          showToast('🛵 Carlos empacó tus productos y está saliendo hacia tu dirección');
+          if (trackerRouteFill) trackerRouteFill.style.width = '55%';
+          if (trackerVehicle) trackerVehicle.style.left = '45%';
+          if (trackerPercentBadge) {
+            trackerPercentBadge.textContent = 'Empacado & Saliendo (55%)';
+            trackerPercentBadge.style.background = '#DBEAFE';
+            trackerPercentBadge.style.color = '#1E40AF';
+          }
+          if (trackerEtaText) trackerEtaText.textContent = 'Tiempo estimado: 15 - 20 minutos';
+          showToast('🛵 Carlos empacó tus víveres y ha salido en ruta hacia tu dirección');
         } else if (currentStep === 3) {
-          showToast('📍 El repartidor está a 3 cuadras de tu dirección');
+          if (trackerRouteFill) trackerRouteFill.style.width = '85%';
+          if (trackerVehicle) trackerVehicle.style.left = '68%';
+          if (trackerPercentBadge) {
+            trackerPercentBadge.textContent = 'Repartidor muy cerca (85%)';
+            trackerPercentBadge.style.background = '#EDE9FE';
+            trackerPercentBadge.style.color = '#5B21B6';
+          }
+          if (trackerEtaText) trackerEtaText.textContent = 'Tiempo estimado: 3 - 5 minutos (Repartidor a 3 cuadras)';
+          showToast('📍 El repartidor está a 3 cuadras de tu dirección con GPS activo');
         }
       }
-    }, 6000);
+    }, 3800);
   }
 
   function closeOrderTracker() {
@@ -1463,6 +1747,62 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
 
     updateHeaderRatesDisplay();
+
+    // Interacciones de la Barra de Navegación Inferior para Teléfonos (Mobile App Bar)
+    const mobileNavHome = document.getElementById('mobileNavHome');
+    const mobileNavSearch = document.getElementById('mobileNavSearch');
+    const mobileNavDeals = document.getElementById('mobileNavDeals');
+    const mobileNavWishlist = document.getElementById('mobileNavWishlist');
+    const mobileNavCart = document.getElementById('mobileNavCart');
+
+    if (mobileNavHome) {
+      mobileNavHome.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
+        mobileNavHome.classList.add('active');
+      });
+    }
+
+    if (mobileNavSearch) {
+      mobileNavSearch.addEventListener('click', () => {
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
+        mobileNavSearch.classList.add('active');
+      });
+    }
+
+    if (mobileNavDeals) {
+      mobileNavDeals.addEventListener('click', () => {
+        const promoFilter = document.querySelector('.filter-tag-chip[data-filter="ofertas"]');
+        if (promoFilter) {
+          promoFilter.click();
+        }
+        const productsGridEl = document.getElementById('productsGrid');
+        if (productsGridEl) {
+          productsGridEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
+        mobileNavDeals.classList.add('active');
+      });
+    }
+
+    if (mobileNavWishlist) {
+      mobileNavWishlist.addEventListener('click', () => {
+        const wishlistBtn = document.getElementById('wishlistBtn');
+        if (wishlistBtn) wishlistBtn.click();
+        document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
+        mobileNavWishlist.classList.add('active');
+      });
+    }
+
+    if (mobileNavCart) {
+      mobileNavCart.addEventListener('click', () => {
+        openCartDrawer();
+      });
+    }
 
     // Tecla Escape para cerrar modales
     document.addEventListener('keydown', (e) => {
