@@ -164,16 +164,16 @@ function formatMultiPrice(priceInUSD) {
 }
 
 const CATEGORIES = [
-  { id: 'todos', name: 'Todos los productos', icon: '🏪', badge: 'Catálogo' },
-  { id: 'al-mayor', name: 'Ventas al Mayor 📦', icon: '📦', badge: 'Ahorro Bulto' },
-  { id: 'charcuteria', name: 'Charcutería y Embutidos', icon: '🥓', badge: 'Fresco' },
-  { id: 'viveres', name: 'Víveres y Granos', icon: '🥫', badge: 'Básicos' },
-  { id: 'lacteos', name: 'Lácteos y Quesos', icon: '🧀', badge: 'Frescura' },
-  { id: 'bebidas', name: 'Bebidas y Refrescos', icon: '🥤', badge: 'Frías' },
-  { id: 'confiteria', name: 'Confitería y Dulces', icon: '🍬', badge: 'Snacks' },
-  { id: 'limpieza', name: 'Limpieza y Hogar', icon: '🧼', badge: 'Aseo' },
-  { id: 'carnes-pescados', name: 'Carnicería y Aves', icon: '🥩', badge: 'Cortes' },
-  { id: 'frutas-verduras', name: 'Frutas y Verduras', icon: '🥑', badge: 'Del Campo' }
+  { id: 'todos', name: 'Todos', icon: 'fa-solid fa-border-all', badge: 'Catálogo' },
+  { id: 'al-mayor', name: 'Al Mayor', icon: 'fa-solid fa-boxes-stacked', badge: 'Ahorro Bulto' },
+  { id: 'charcuteria', name: 'Charcutería', icon: 'fa-solid fa-bacon', badge: 'Fresco' },
+  { id: 'viveres', name: 'Víveres', icon: 'fa-solid fa-wheat-awn', badge: 'Básicos' },
+  { id: 'lacteos', name: 'Lácteos', icon: 'fa-solid fa-cheese', badge: 'Frescura' },
+  { id: 'bebidas', name: 'Bebidas', icon: 'fa-solid fa-bottle-water', badge: 'Frías' },
+  { id: 'confiteria', name: 'Confitería', icon: 'fa-solid fa-candy-cane', badge: 'Snacks' },
+  { id: 'limpieza', name: 'Limpieza', icon: 'fa-solid fa-pump-soap', badge: 'Aseo' },
+  { id: 'carnes-pescados', name: 'Carnicería', icon: 'fa-solid fa-drumstick-bite', badge: 'Cortes' },
+  { id: 'frutas-verduras', name: 'Frescos', icon: 'fa-solid fa-apple-whole', badge: 'Del Campo' }
 ];
 
 const PROMOS = [

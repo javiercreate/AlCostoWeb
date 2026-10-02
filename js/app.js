@@ -25,12 +25,16 @@ document.addEventListener('DOMContentLoaded', () => {
       address: '',
       reference: ''
     },
+    authUser: (function() {
+      try { return JSON.parse(localStorage.getItem('alcosto_auth_user')); } catch(e) { return null; }
+    })(),
     selectedProductForModal: null,
     orderTrackerInterval: null
   };
 
   // --- ELEMENTOS DEL DOM ---
   const categoriesListEl = document.getElementById('categoriesPillsList');
+  const deptRailIconsListEl = document.getElementById('deptRailIconsList');
   const productsGridEl = document.getElementById('productsGrid');
   const sectionTitleEl = document.getElementById('catalogSectionTitle');
   const sectionCountEl = document.getElementById('catalogSectionCount');
@@ -40,10 +44,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const sortSelectEl = document.getElementById('sortSelect');
   const filterTagChips = document.querySelectorAll('.filter-tag-chip');
 
-  // Header & Profile Elements
+  // Header & Profile & Auth Elements
   const headerAddressLabelEl = document.getElementById('headerAddressLabel');
   const headerDeliveryTypeEl = document.getElementById('headerDeliveryType');
   const deliverySelectorBtn = document.getElementById('deliverySelectorBtn');
+  const userAccountDropdownWrapper = document.getElementById('userAccountDropdownWrapper');
+  const userAccountBtn = document.getElementById('userAccountBtn');
+  const userAccountBtnLabel = document.getElementById('userAccountBtnLabel');
+  const userAccountMenu = document.getElementById('userAccountMenu');
+  const userMenuName = document.getElementById('userMenuName');
+  const userMenuEmail = document.getElementById('userMenuEmail');
+  const userMenuGuestActions = document.getElementById('userMenuGuestActions');
+  const userMenuLoggedActions = document.getElementById('userMenuLoggedActions');
+  const btnOpenLoginModal = document.getElementById('btnOpenLoginModal');
+  const btnOpenRegisterModal = document.getElementById('btnOpenRegisterModal');
+  const btnOpenProfileFromMenu = document.getElementById('btnOpenProfileFromMenu');
+  const btnLogoutUser = document.getElementById('btnLogoutUser');
+
+  // Modal Auth
+  const authModalEl = document.getElementById('authModal');
+  const closeAuthModalBtn = document.getElementById('closeAuthModalBtn');
+  const tabAuthLogin = document.getElementById('tabAuthLogin');
+  const tabAuthRegister = document.getElementById('tabAuthRegister');
+  const formAuthLogin = document.getElementById('formAuthLogin');
+  const formAuthRegister = document.getElementById('formAuthRegister');
+
   const customerProfileBtn = document.getElementById('customerProfileBtn');
   const customerProfileBtnLabel = document.getElementById('customerProfileBtnLabel');
   const heroOpenProfileBtn = document.getElementById('heroOpenProfileBtn');
@@ -95,9 +120,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const toastContainerEl = document.getElementById('toastContainer');
 
   // ==========================================================================
+  // ESTADO Y UI DE AUTENTICACIÓN (LOGIN / REGISTRO / PERFIL)
+  // ==========================================================================
+  function updateAuthUI() {
+    if (state.authUser && state.authUser.name) {
+      if (userAccountBtnLabel) userAccountBtnLabel.textContent = state.authUser.name.split(' ')[0];
+      if (userMenuName) userMenuName.textContent = state.authUser.name;
+      if (userMenuEmail) userMenuEmail.textContent = state.authUser.email || state.authUser.phone || 'Usuario Registrado';
+      if (userMenuGuestActions) userMenuGuestActions.style.display = 'none';
+      if (userMenuLoggedActions) userMenuLoggedActions.style.display = 'block';
+    } else {
+      if (userAccountBtnLabel) userAccountBtnLabel.textContent = 'Mi Cuenta';
+      if (userMenuName) userMenuName.textContent = 'Invitado';
+      if (userMenuEmail) userMenuEmail.textContent = 'Inicia sesión para gestionar pedidos';
+      if (userMenuGuestActions) userMenuGuestActions.style.display = 'block';
+      if (userMenuLoggedActions) userMenuLoggedActions.style.display = 'none';
+    }
+  }
+
+  // ==========================================================================
   // INICIALIZACIÓN
   // ==========================================================================
   async function init() {
+    updateAuthUI();
     renderCategoryPills();
     updateAddressUI();
     renderProducts();
@@ -255,25 +300,111 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
-  // CATEGORÍAS Y NAVEGACIÓN
+  // CATEGORÍAS Y NAVEGACIÓN (BARRA VERTICAL SOLO ICONOS FONT AWESOME)
   // ==========================================================================
   function renderCategoryPills() {
-    if (!categoriesListEl) return;
-    categoriesListEl.innerHTML = CATEGORIES.map(cat => `
-      <li>
-        <button class="category-pill-btn ${cat.id === state.activeCategory ? 'active' : ''}" data-cat-id="${cat.id}">
-          <span class="category-pill-icon">${cat.icon}</span>
-          <span>${cat.name}</span>
-        </button>
-      </li>
-    `).join('');
+    renderVerticalDeptRail();
+    renderDepartmentsDropdown();
+  }
 
-    categoriesListEl.querySelectorAll('.category-pill-btn').forEach(btn => {
+  function renderVerticalDeptRail() {
+    if (!deptRailIconsListEl) return;
+    deptRailIconsListEl.innerHTML = CATEGORIES.map(cat => {
+      const iconClass = cat.icon.startsWith('fa-') ? cat.icon : `fa-solid ${cat.icon}`;
+      return `
+        <button type="button" 
+                class="dept-rail-icon-btn ${cat.id === state.activeCategory ? 'active' : ''}" 
+                data-cat-id="${cat.id}" 
+                data-dept-name="${cat.name}" 
+                title="${cat.name}">
+          <i class="${iconClass}"></i>
+        </button>
+      `;
+    }).join('');
+
+    deptRailIconsListEl.querySelectorAll('.dept-rail-icon-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const catId = btn.getAttribute('data-cat-id');
         setActiveCategory(catId);
+        const target = document.getElementById('catalogo');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
       });
     });
+  }
+
+  function renderDepartmentsDropdown() {
+    const gridMenuEl = document.getElementById('departmentsGridMenu');
+    const dropdownMenuEl = document.getElementById('departmentsDropdownMenu');
+    const btnMenu = document.getElementById('btnDepartmentsMenu');
+    const btnViewAll = document.getElementById('btnViewAllFromDropdown');
+
+    if (!gridMenuEl) return;
+
+    gridMenuEl.innerHTML = CATEGORIES.map(cat => {
+      const iconClass = cat.icon.startsWith('fa-') ? cat.icon : `fa-solid ${cat.icon}`;
+      return `
+        <div class="dept-menu-item ${cat.id === state.activeCategory ? 'active' : ''}" data-cat-id="${cat.id}" role="menuitem">
+          <span class="dept-item-icon"><i class="${iconClass}"></i></span>
+          <div class="dept-item-info">
+            <span class="dept-item-name">${cat.name}</span>
+            <span class="dept-item-badge">${cat.badge || 'Pasillo'}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    gridMenuEl.querySelectorAll('.dept-menu-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const catId = item.getAttribute('data-cat-id');
+        setActiveCategory(catId);
+        if (dropdownMenuEl) dropdownMenuEl.classList.remove('active');
+        if (btnMenu) {
+          btnMenu.classList.remove('active');
+          btnMenu.setAttribute('aria-expanded', 'false');
+        }
+        const target = document.getElementById('catalogo');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+
+    if (btnViewAll) {
+      btnViewAll.onclick = (e) => {
+        e.preventDefault();
+        setActiveCategory('todos');
+        if (dropdownMenuEl) dropdownMenuEl.classList.remove('active');
+        if (btnMenu) {
+          btnMenu.classList.remove('active');
+          btnMenu.setAttribute('aria-expanded', 'false');
+        }
+        const target = document.getElementById('catalogo');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      };
+    }
+
+    if (btnMenu && !btnMenu.dataset.listenerAttached) {
+      btnMenu.dataset.listenerAttached = 'true';
+      btnMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = dropdownMenuEl.classList.toggle('active');
+        btnMenu.classList.toggle('active', isOpen);
+        btnMenu.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      // Cerrar al hacer clic fuera
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#departmentsDropdownWrapper')) {
+          if (dropdownMenuEl) dropdownMenuEl.classList.remove('active');
+          btnMenu.classList.remove('active');
+          btnMenu.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
   }
 
   function setActiveCategory(catId) {
@@ -287,7 +418,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const categoryObj = CATEGORIES.find(c => c.id === catId);
     if (sectionTitleEl && categoryObj) {
-      sectionTitleEl.innerHTML = `${categoryObj.icon} ${categoryObj.name}`;
+      const iconClass = categoryObj.icon.startsWith('fa-') ? categoryObj.icon : `fa-solid ${categoryObj.icon}`;
+      sectionTitleEl.innerHTML = `<i class="${iconClass}" style="color: #108910; margin-right: 8px;"></i> ${categoryObj.name}`;
     }
   }
 
@@ -378,11 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const inCartQty = state.cart[product.id] ? state.cart[product.id].quantity : 0;
       const isWishlisted = state.wishlist.includes(product.id);
 
-      // Icono y Categoría
-      const catObj = (typeof CATEGORIES !== 'undefined') ? CATEGORIES.find(c => c.id === product.category) : null;
-      const catIcon = catObj ? catObj.icon : '🏷️';
-
-      // Badge flotante moderno
+      // Badge de oferta o etiqueta
       let badgeHtml = '';
       if (product.originalPrice) {
         const discountPct = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
@@ -432,13 +560,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
 
           <div class="product-info open-detail-trigger" data-id="${product.id}">
-            <div class="product-meta-header">
-              <span class="product-meta-unit">${catIcon} ${product.unit}</span>
-              <span class="product-meta-origin">${product.origin || 'Al Costo 🛒'}</span>
-            </div>
-
-            <h3 class="product-title" title="${product.name}">${product.name}</h3>
-
             <div class="product-price-row">
               <div class="price-primary-row">
                 <span class="product-current-price">$${product.price.toFixed(2)}</span>
@@ -476,7 +597,40 @@ document.addEventListener('DOMContentLoaded', () => {
     bindProductCardEvents();
   }
 
+  // Comprueba si una imagen tiene esquinas negras artificiales y le aplica blend-dark-bg o fondo oscuro
+  function checkImageDarkBg(imgEl) {
+    if (!imgEl || imgEl.dataset.checkedBg) return;
+    imgEl.dataset.checkedBg = 'true';
+    try {
+      const cvs = document.createElement('canvas');
+      cvs.width = 16;
+      cvs.height = 16;
+      const ctx = cvs.getContext('2d');
+      ctx.drawImage(imgEl, 0, 0, 16, 16);
+      const data = ctx.getImageData(0, 0, 2, 2).data;
+      // Comprobar pixel superior izquierdo
+      if (data[0] < 25 && data[1] < 25 && data[2] < 25 && data[3] > 200) {
+        imgEl.classList.add('blend-dark-bg');
+        const wrap = imgEl.closest('.product-image-wrap');
+        if (wrap && document.documentElement.getAttribute('data-theme') !== 'dark') {
+          wrap.style.backgroundColor = '#0F172A';
+        }
+      }
+    } catch(e) {
+      // Por si la imagen proviene de un dominio externo sin CORS
+    }
+  }
+
   function bindProductCardEvents() {
+    // Detectar si la imagen cargada tiene bordes negros para aplicar blend limpio
+    document.querySelectorAll('.product-image').forEach(img => {
+      if (img.complete) {
+        checkImageDarkBg(img);
+      } else {
+        img.addEventListener('load', () => checkImageDarkBg(img));
+      }
+    });
+
     // Abrir Modal de Detalles
     document.querySelectorAll('.open-detail-trigger').forEach(el => {
       el.addEventListener('click', (e) => {
@@ -884,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
-  // SELECTOR DE DIRECCIÓN Y ENTREGA
+  // GESTIÓN DE PERFIL Y DATOS DE ENTREGA
   // ==========================================================================
   function updateAddressUI() {
     if (state.customerProfile && state.customerProfile.address && state.deliveryType === 'delivery') {
@@ -1126,7 +1280,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   // CHECKOUT MODAL Y PROCESO DE PAGO
   // ==========================================================================
-  function openCheckoutModal() {
+  async function openCheckoutModal() {
     const { total, itemCount } = calculateCartTotals();
     if (itemCount === 0) {
       showToast('⚠️ Agrega productos a tu carrito antes de pagar');
@@ -1201,8 +1355,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const nameInput = document.getElementById('orderName');
     const phoneInput = document.getElementById('orderPhone');
     const addrInput = document.getElementById('orderAddress');
-    if (nameInput && state.customerProfile.name) nameInput.value = state.customerProfile.name;
-    if (phoneInput && state.customerProfile.phone) phoneInput.value = state.customerProfile.phone;
+    if (nameInput) {
+      nameInput.value = (state.authUser && state.authUser.name) ? state.authUser.name : (state.customerProfile.name || '');
+    }
+    if (phoneInput) {
+      phoneInput.value = (state.authUser && state.authUser.phone) ? state.authUser.phone : (state.customerProfile.phone || '');
+    }
     if (addrInput) {
       if (state.deliveryType === 'pickup') {
         addrInput.value = `Recogida en Tienda Al Costo (Coords: ${STORE_COORDINATES})`;
@@ -1211,9 +1369,153 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // Cargar y mostrar datos del método de pago activo (Pago Móvil / Zelle / Binance Pay / Efectivo)
+    await renderActivePaymentDetails();
+
     if (checkoutModalEl) {
       checkoutModalEl.classList.add('active');
       document.body.style.overflow = 'hidden';
+    }
+  }
+
+  // Renderizar detalles del método de pago activo
+  async function renderActivePaymentDetails() {
+    const box = document.getElementById('paymentDetailsBox');
+    if (!box) return;
+
+    const activeCard = document.querySelector('.payment-method-card.active');
+    const payType = activeCard ? activeCard.getAttribute('data-pay-type') : 'pagomovil';
+
+    let config = null;
+    if (typeof SupabaseService !== 'undefined') {
+      config = await SupabaseService.fetchPaymentConfig();
+    }
+    if (!config) {
+      config = {
+        pagoMovil: { banco: 'Banco de Venezuela (0102)', telefono: '0412-1234567', cedula: 'V-26.123.456', titular: 'Al Costo C.A.' },
+        zelle: { correo: 'pagos@alcostosuper.com', titular: 'Al Costo Supermarket LLC' },
+        binance: { payId: '284910283', correo: 'binance@alcostosuper.com', red: 'USDT (TRC20 / BEP20)' }
+      };
+    }
+
+    if (payType === 'pagomovil') {
+      const pm = config.pagoMovil || {};
+      box.innerHTML = `
+        <div class="payment-detail-card-inner">
+          <div class="payment-detail-header">
+            <i class="fa-solid fa-mobile-screen-button" style="color: #108910; font-size: 1.15rem;"></i>
+            <strong style="color: #1E293B; font-size: 0.92rem;">Datos para Pago Móvil (Tasa Oficial BCV)</strong>
+            <span class="payment-detail-badge">Inmediato</span>
+          </div>
+          <div class="payment-info-grid">
+            <div class="payment-info-item">
+              <span class="item-label">Banco Receptor:</span>
+              <span class="item-val">${pm.banco || 'Banco de Venezuela (0102)'}</span>
+            </div>
+            <div class="payment-info-item">
+              <span class="item-label">Teléfono:</span>
+              <span class="item-val">${pm.telefono || '0412-1234567'}</span>
+            </div>
+            <div class="payment-info-item">
+              <span class="item-label">Cédula / RIF:</span>
+              <span class="item-val">${pm.cedula || 'V-26.123.456'}</span>
+            </div>
+            <div class="payment-info-item">
+              <span class="item-label">Titular:</span>
+              <span class="item-val">${pm.titular || 'Al Costo Supermercado C.A.'}</span>
+            </div>
+          </div>
+          <button type="button" class="copy-payment-info-btn" id="btnCopyPagoMovil">
+            <i class="fa-regular fa-copy"></i> Copiar Datos de Pago Móvil
+          </button>
+        </div>
+      `;
+      const btnCopy = document.getElementById('btnCopyPagoMovil');
+      if (btnCopy) {
+        btnCopy.onclick = () => {
+          const text = `Pago Móvil Al Costo:\nBanco: ${pm.banco}\nTel: ${pm.telefono}\nCI: ${pm.cedula}\nTitular: ${pm.titular}`;
+          if (navigator.clipboard) navigator.clipboard.writeText(text);
+          showToast('📋 Datos de Pago Móvil copiados al portapapeles', 'success');
+        };
+      }
+    } else if (payType === 'zelle') {
+      const z = config.zelle || {};
+      box.innerHTML = `
+        <div class="payment-detail-card-inner">
+          <div class="payment-detail-header">
+            <i class="fa-solid fa-dollar-sign" style="color: #7C3AED; font-size: 1.15rem;"></i>
+            <strong style="color: #1E293B; font-size: 0.92rem;">Datos de Transferencia Zelle (USD)</strong>
+            <span class="payment-detail-badge" style="background:#EDE9FE; color:#6D28D9;">USD $</span>
+          </div>
+          <div class="payment-info-grid">
+            <div class="payment-info-item" style="grid-column: 1 / -1;">
+              <span class="item-label">Correo Electrónico Zelle:</span>
+              <span class="item-val" style="color: #6D28D9; font-size: 1.05rem;">${z.correo || 'pagos@alcostosuper.com'}</span>
+            </div>
+            <div class="payment-info-item" style="grid-column: 1 / -1;">
+              <span class="item-label">Nombre del Titular:</span>
+              <span class="item-val">${z.titular || 'Al Costo Supermarket LLC'}</span>
+            </div>
+          </div>
+          <button type="button" class="copy-payment-info-btn" style="background: #7C3AED;" id="btnCopyZelle">
+            <i class="fa-regular fa-copy"></i> Copiar Correo Zelle
+          </button>
+        </div>
+      `;
+      const btnCopy = document.getElementById('btnCopyZelle');
+      if (btnCopy) {
+        btnCopy.onclick = () => {
+          if (navigator.clipboard) navigator.clipboard.writeText(z.correo || '');
+          showToast('📋 Correo Zelle copiado', 'success');
+        };
+      }
+    } else if (payType === 'binance') {
+      const b = config.binance || {};
+      box.innerHTML = `
+        <div class="payment-detail-card-inner">
+          <div class="payment-detail-header">
+            <i class="fa-brands fa-bitcoin" style="color: #F59E0B; font-size: 1.15rem;"></i>
+            <strong style="color: #1E293B; font-size: 0.92rem;">Binance Pay / Cripto (USDT)</strong>
+            <span class="payment-detail-badge" style="background:#FEF3C7; color:#B45309;">0% Comisión</span>
+          </div>
+          <div class="payment-info-grid">
+            <div class="payment-info-item">
+              <span class="item-label">Binance Pay ID:</span>
+              <span class="item-val" style="color: #D97706; font-size: 1.05rem;">${b.payId || '284910283'}</span>
+            </div>
+            <div class="payment-info-item">
+              <span class="item-label">Correo Binance:</span>
+              <span class="item-val">${b.correo || 'binance@alcostosuper.com'}</span>
+            </div>
+            <div class="payment-info-item" style="grid-column: 1 / -1;">
+              <span class="item-label">Red Aceptada:</span>
+              <span class="item-val">${b.red || 'USDT (Red TRC20 / BEP20)'}</span>
+            </div>
+          </div>
+          <button type="button" class="copy-payment-info-btn" style="background: #F59E0B; color: #111;" id="btnCopyBinance">
+            <i class="fa-regular fa-copy"></i> Copiar Binance Pay ID
+          </button>
+        </div>
+      `;
+      const btnCopy = document.getElementById('btnCopyBinance');
+      if (btnCopy) {
+        btnCopy.onclick = () => {
+          if (navigator.clipboard) navigator.clipboard.writeText(b.payId || '');
+          showToast('📋 Binance Pay ID copiado', 'success');
+        };
+      }
+    } else {
+      box.innerHTML = `
+        <div class="payment-detail-card-inner">
+          <div class="payment-detail-header">
+            <i class="fa-solid fa-money-bill-wave" style="color: #059669; font-size: 1.15rem;"></i>
+            <strong style="color: #1E293B; font-size: 0.92rem;">Pago en Efectivo contra Entrega</strong>
+          </div>
+          <p style="font-size: 0.85rem; color: #475569; margin: 0;">
+            Pagas en efectivo al recibir tu pedido. Aceptamos Dólares en efectivo ($ USD), Bolívares en efectivo o Pesos Colombianos (COP) calculados a la tasa del día.
+          </p>
+        </div>
+      `;
     }
   }
 
@@ -1536,13 +1838,246 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Selector de métodos de pago
+    // Selector de métodos de pago con actualización dinámica de datos (Pago Móvil / Zelle / Binance / Efectivo)
     document.querySelectorAll('.payment-method-card[data-pay-type]').forEach(card => {
       card.addEventListener('click', () => {
         document.querySelectorAll('.payment-method-card[data-pay-type]').forEach(c => c.classList.remove('active'));
         card.classList.add('active');
+        renderActivePaymentDetails();
       });
     });
+
+    // Menú Desplegable de Cuenta de Usuario
+    if (userAccountBtn && userAccountMenu) {
+      userAccountBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = userAccountMenu.classList.toggle('active');
+        userAccountBtn.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#userAccountDropdownWrapper')) {
+          userAccountMenu.classList.remove('active');
+          userAccountBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    // Auth Modal (Login / Registro)
+    function openAuthModal(mode = 'login') {
+      if (userAccountMenu) userAccountMenu.classList.remove('active');
+      if (authModalEl) {
+        authModalEl.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+      switchAuthTab(mode);
+    }
+
+    function closeAuthModal() {
+      if (authModalEl) {
+        authModalEl.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    }
+
+    function switchAuthTab(tab) {
+      if (tab === 'login') {
+        tabAuthLogin?.classList.add('active');
+        tabAuthRegister?.classList.remove('active');
+        formAuthLogin.style.display = 'block';
+        formAuthRegister.style.display = 'none';
+      } else {
+        tabAuthRegister?.classList.add('active');
+        tabAuthLogin?.classList.remove('active');
+        formAuthRegister.style.display = 'block';
+        formAuthLogin.style.display = 'none';
+      }
+    }
+
+    if (btnOpenLoginModal) btnOpenLoginModal.onclick = () => openAuthModal('login');
+    if (btnOpenRegisterModal) btnOpenRegisterModal.onclick = () => openAuthModal('register');
+    if (closeAuthModalBtn) closeAuthModalBtn.onclick = closeAuthModal;
+    if (tabAuthLogin) tabAuthLogin.onclick = () => switchAuthTab('login');
+    if (tabAuthRegister) tabAuthRegister.onclick = () => switchAuthTab('register');
+
+    if (btnOpenProfileFromMenu) {
+      btnOpenProfileFromMenu.onclick = () => {
+        if (userAccountMenu) userAccountMenu.classList.remove('active');
+        openCustomerProfileModal();
+      };
+    }
+
+    // Submit Iniciar Sesión
+    if (formAuthLogin) {
+      formAuthLogin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const identifier = document.getElementById('loginIdentifier')?.value.trim();
+        const password = document.getElementById('loginPassword')?.value;
+        const submitBtn = formAuthLogin.querySelector('button[type="submit"]');
+
+        if (!identifier || !password) return;
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Verificando...';
+        }
+
+        try {
+          let loginSuccess = false;
+          let userObj = null;
+
+          if (typeof SupabaseService !== 'undefined') {
+            const res = await SupabaseService.loginUser(identifier, password);
+            if (res.success && res.user) {
+              loginSuccess = true;
+              userObj = res.user;
+            } else if (!res.localOnly) {
+              showToast(`❌ ${res.message || 'Error en autenticación'}`, 'error');
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Entrar a Mi Cuenta';
+              }
+              return;
+            }
+          }
+
+          if (!loginSuccess) {
+            // Fallback local si Supabase no está configurado
+            const namePart = identifier.split('@')[0] || identifier;
+            const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+            userObj = {
+              name: formattedName,
+              email: identifier.includes('@') ? identifier : '',
+              phone: !identifier.includes('@') ? identifier : ''
+            };
+          }
+
+          state.authUser = userObj;
+          localStorage.setItem('alcosto_auth_user', JSON.stringify(state.authUser));
+          updateAuthUI();
+          closeAuthModal();
+          showToast(`👋 ¡Bienvenido de nuevo, ${state.authUser.name}!`, 'success');
+        } catch (err) {
+          showToast('Error al procesar el inicio de sesión', 'error');
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Entrar a Mi Cuenta';
+          }
+        }
+      });
+    }
+
+    // Submit Crear Cuenta
+    if (formAuthRegister) {
+      formAuthRegister.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fullName = document.getElementById('regFullName')?.value.trim();
+        const email = document.getElementById('regEmail')?.value.trim();
+        const phone = document.getElementById('regPhone')?.value.trim();
+        const password = document.getElementById('regPassword')?.value;
+        const submitBtn = formAuthRegister.querySelector('button[type="submit"]');
+
+        if (!fullName || !password) return;
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Creando cuenta...';
+        }
+
+        try {
+          const payload = {
+            name: fullName,
+            email: email,
+            phone: phone,
+            password: password
+          };
+
+          if (typeof SupabaseService !== 'undefined') {
+            const res = await SupabaseService.registerUser(payload);
+            if (!res.success && !res.localOnly) {
+              showToast(`⚠️ ${res.message}`, 'error');
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Registrarme y Comenzar';
+              }
+              return;
+            }
+          }
+
+          state.authUser = {
+            name: fullName,
+            email: email,
+            phone: phone
+          };
+
+          // Actualizar datos del perfil de entrega
+          state.customerProfile.name = fullName;
+          if (phone) state.customerProfile.phone = phone;
+          localStorage.setItem('alcosto_customer_profile', JSON.stringify(state.customerProfile));
+          localStorage.setItem('alcosto_auth_user', JSON.stringify(state.authUser));
+          
+          updateAuthUI();
+          closeAuthModal();
+          showToast(`🎉 ¡Cuenta creada con éxito! Bienvenido, ${state.authUser.name}`, 'success');
+        } catch (err) {
+          showToast('Error al registrar usuario', 'error');
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Registrarme y Comenzar';
+          }
+        }
+      });
+    }
+
+    // Logout
+    if (btnLogoutUser) {
+      btnLogoutUser.addEventListener('click', () => {
+        state.authUser = null;
+        localStorage.removeItem('alcosto_auth_user');
+        updateAuthUI();
+        if (userAccountMenu) userAccountMenu.classList.remove('active');
+        showToast('🔒 Sesión cerrada correctamente');
+      });
+    }
+
+    // Alternador de Tema Claro / Oscuro (Dark Mode)
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeToggleIcon = document.getElementById('themeToggleIcon');
+
+    function applyTheme(theme) {
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        if (themeToggleIcon) {
+          themeToggleIcon.className = 'fa-solid fa-sun';
+          themeToggleIcon.style.color = '#F59E0B';
+        }
+        if (themeToggleBtn) themeToggleBtn.title = 'Cambiar a Tema Claro';
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        if (themeToggleIcon) {
+          themeToggleIcon.className = 'fa-solid fa-moon';
+          themeToggleIcon.style.color = '#4B5563';
+        }
+        if (themeToggleBtn) themeToggleBtn.title = 'Cambiar a Tema Oscuro';
+      }
+    }
+
+    // Inicializar tema guardado o preferencia del sistema
+    const savedTheme = localStorage.getItem('alcosto_theme') || 
+      (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(savedTheme);
+
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', () => {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const newTheme = isDark ? 'light' : 'dark';
+        localStorage.setItem('alcosto_theme', newTheme);
+        applyTheme(newTheme);
+        showToast(newTheme === 'dark' ? '🌙 Modo Oscuro activado' : '☀️ Modo Claro activado', 'normal');
+      });
+    }
 
     // Order Tracker Modal
     if (closeOrderTrackerBtn) closeOrderTrackerBtn.addEventListener('click', closeOrderTracker);
