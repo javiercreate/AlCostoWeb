@@ -79,127 +79,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function init() {
     setupTabSwitching();
     initSupabaseConfig();
-    initPaymentConfig();
     loadCatalogProducts();
     loadOrders();
     setupSalesPercentageEvents();
     setupEventListeners();
-  }
-
-  // ==========================================================================
-  // GESTIÓN DE CONFIGURACIÓN DE MÉTODOS DE PAGO (PAGO MÓVIL, ZELLE, BINANCE)
-  // ==========================================================================
-  async function initPaymentConfig() {
-    const paymentForm = document.getElementById('paymentConfigForm');
-    const badge = document.getElementById('paymentConfigSyncBadge');
-    const btnReset = document.getElementById('btnResetPaymentDefaults');
-
-    // Inputs
-    const pmBanco = document.getElementById('pmBanco');
-    const pmTelefono = document.getElementById('pmTelefono');
-    const pmCedula = document.getElementById('pmCedula');
-    const pmTitular = document.getElementById('pmTitular');
-    const zelleCorreo = document.getElementById('zelleCorreo');
-    const zelleTitular = document.getElementById('zelleTitular');
-    const binancePayId = document.getElementById('binancePayId');
-    const binanceCorreo = document.getElementById('binanceCorreo');
-    const binanceRed = document.getElementById('binanceRed');
-
-    // Cargar datos actuales
-    try {
-      let config = null;
-      if (typeof SupabaseService !== 'undefined') {
-        config = await SupabaseService.fetchPaymentConfig();
-      }
-      if (!config && typeof SupabaseService !== 'undefined') {
-        config = SupabaseService.getDefaultPaymentConfig();
-      }
-
-      if (config) {
-        if (config.pagoMovil) {
-          if (pmBanco) pmBanco.value = config.pagoMovil.banco || '';
-          if (pmTelefono) pmTelefono.value = config.pagoMovil.telefono || '';
-          if (pmCedula) pmCedula.value = config.pagoMovil.cedula || '';
-          if (pmTitular) pmTitular.value = config.pagoMovil.titular || '';
-        }
-        if (config.zelle) {
-          if (zelleCorreo) zelleCorreo.value = config.zelle.correo || '';
-          if (zelleTitular) zelleTitular.value = config.zelle.titular || '';
-        }
-        if (config.binance) {
-          if (binancePayId) binancePayId.value = config.binance.payId || '';
-          if (binanceCorreo) binanceCorreo.value = config.binance.correo || '';
-          if (binanceRed) binanceRed.value = config.binance.red || '';
-        }
-      }
-    } catch (e) {
-      console.warn('Error cargando configuración de pagos:', e);
-    }
-
-    // Guardar cambios
-    if (paymentForm) {
-      paymentForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const payload = {
-          pagoMovil: {
-            banco: pmBanco?.value.trim() || '',
-            telefono: pmTelefono?.value.trim() || '',
-            cedula: pmCedula?.value.trim() || '',
-            titular: pmTitular?.value.trim() || ''
-          },
-          zelle: {
-            correo: zelleCorreo?.value.trim() || '',
-            titular: zelleTitular?.value.trim() || ''
-          },
-          binance: {
-            payId: binancePayId?.value.trim() || '',
-            correo: binanceCorreo?.value.trim() || '',
-            red: binanceRed?.value.trim() || 'USDT'
-          }
-        };
-
-        if (badge) badge.textContent = '⏳ Guardando...';
-
-        try {
-          if (typeof SupabaseService !== 'undefined') {
-            const res = await SupabaseService.savePaymentConfig(payload);
-            if (badge) {
-              badge.textContent = res.localOnly ? '💾 Guardado localmente' : '🟢 Sincronizado en Supabase';
-              badge.style.background = '#DCFCE7';
-              badge.style.color = '#166534';
-            }
-            showToast('✅ ¡Datos de Pago Móvil, Zelle y Binance guardados exitosamente!', 'success');
-          }
-        } catch (err) {
-          if (badge) {
-            badge.textContent = '❌ Error al sincronizar';
-            badge.style.background = '#FEE2E2';
-            badge.style.color = '#991B1B';
-          }
-          showToast(`Error guardando datos: ${err.message}`, 'error');
-        }
-      });
-    }
-
-    // Restaurar valores por defecto
-    if (btnReset) {
-      btnReset.addEventListener('click', () => {
-        if (!confirm('¿Deseas restaurar los datos de pago a los valores sugeridos por defecto?')) return;
-        if (typeof SupabaseService !== 'undefined') {
-          const defaults = SupabaseService.getDefaultPaymentConfig();
-          if (pmBanco) pmBanco.value = defaults.pagoMovil.banco;
-          if (pmTelefono) pmTelefono.value = defaults.pagoMovil.telefono;
-          if (pmCedula) pmCedula.value = defaults.pagoMovil.cedula;
-          if (pmTitular) pmTitular.value = defaults.pagoMovil.titular;
-          if (zelleCorreo) zelleCorreo.value = defaults.zelle.correo;
-          if (zelleTitular) zelleTitular.value = defaults.zelle.titular;
-          if (binancePayId) binancePayId.value = defaults.binance.payId;
-          if (binanceCorreo) binanceCorreo.value = defaults.binance.correo;
-          if (binanceRed) binanceRed.value = defaults.binance.red;
-          showToast('Valores por defecto restablecidos. Pulsa "Guardar" para sincronizarlos.', 'normal');
-        }
-      });
-    }
   }
 
   // ==========================================================================
@@ -533,13 +416,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <div><strong>Cliente:</strong> ${order.customerName}</div>
         <div><strong>Teléfono:</strong> ${order.customerPhone}</div>
         <div><strong>Dirección:</strong> ${order.deliveryAddress}</div>
-        ${order.gpsCoordinates ? `
-          <div style="margin-top: 8px;">
-            <a href="${order.gpsCoordinates.mapsUrl || `https://www.google.com/maps?q=${order.gpsCoordinates.lat},${order.gpsCoordinates.lng}`}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: #DCFCE7; color: #166534; font-weight: 800; font-size: 0.8rem; padding: 6px 12px; border-radius: 9999px; text-decoration: none; border: 1px solid #86EFAC;">
-              🗺️ Abrir Ubicación GPS del Cliente en Google Maps ↗
-            </a>
-          </div>
-        ` : ''}
         <div><strong>Horario:</strong> ${order.deliverySlot}</div>
         <div><strong>Método de Pago:</strong> ${order.paymentMethod}</div>
         ${order.instructions ? `<div style="color: #b45309; margin-top: 4px;"><strong>Instrucciones:</strong> ${order.instructions}</div>` : ''}
@@ -571,19 +447,10 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const saved = localStorage.getItem('alcosto_custom_products');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          products = parsed;
-        } else if (typeof getActiveProducts === 'function') {
-          products = getActiveProducts();
-        }
+        products = JSON.parse(saved);
       } else {
-        // Si no hay productos en localStorage, consultar catálogo en products.js o Supabase
-        if (typeof getActiveProducts === 'function') {
-          products = getActiveProducts();
-        } else if (typeof DEFAULT_PRODUCTS !== 'undefined' && Array.isArray(DEFAULT_PRODUCTS)) {
-          products = [...DEFAULT_PRODUCTS];
-        } else if (typeof SupabaseService !== 'undefined') {
+        // Si no hay productos en localStorage, consultar catálogo en Supabase si está disponible
+        if (typeof SupabaseService !== 'undefined') {
           const cloud = await SupabaseService.fetchProductsFromSupabase();
           if (cloud && Array.isArray(cloud) && cloud.length > 0) {
             products = cloud;
@@ -597,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (e) {
       console.error('Error cargando catálogo:', e);
-      products = (typeof DEFAULT_PRODUCTS !== 'undefined') ? [...DEFAULT_PRODUCTS] : [];
+      products = [];
     }
     renderProductsTable();
   }
@@ -931,30 +798,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const resetDefaultProductsBtn = document.getElementById('resetDefaultProductsBtn');
-  if (resetDefaultProductsBtn) {
-    resetDefaultProductsBtn.addEventListener('click', () => {
-      const source = (typeof DEFAULT_PRODUCTS !== 'undefined' && Array.isArray(DEFAULT_PRODUCTS))
-        ? DEFAULT_PRODUCTS
-        : (typeof getActiveProducts === 'function' ? getActiveProducts() : []);
-
-      if (source.length > 0) {
-        if (confirm(`¿Deseas recargar los ${source.length} productos base de products.js? Esto actualizará el catálogo local.`)) {
-          products = JSON.parse(JSON.stringify(source));
-          if (typeof saveActiveProducts === 'function') {
-            saveActiveProducts(products);
-          } else {
-            localStorage.setItem('alcosto_custom_products', JSON.stringify(products));
-          }
-          renderProductsTable();
-          showToast(`✅ Se cargaron ${products.length} productos de products.js`, 'success');
-        }
-      } else {
-        showToast('⚠️ No se encontraron productos en products.js', 'warning');
-      }
-    });
-  }
-
   // ==========================================================================
   // EVENT LISTENERS ADICIONALES
   // ==========================================================================
@@ -1032,41 +875,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
 
-            const isPng = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png') || file.type === 'image/webp';
-            
-            // Si la imagen es PNG o subida, limpiar fondos oscuros/negros artificiales
-            if (isPng) {
-              try {
-                const imgData = ctx.getImageData(0, 0, width, height);
-                const data = imgData.data;
-                // Muestrear las esquinas para detectar si tiene fondo negro artificial (#000000 o muy oscuro)
-                const topLeftR = data[0], topLeftG = data[1], topLeftB = data[2];
-                const isBlackBg = (topLeftR < 18 && topLeftG < 18 && topLeftB < 18 && data[3] > 200);
-
-                if (isBlackBg) {
-                  // Reemplazar píxeles negros/muy oscuros de fondo por transparencia completa (alpha = 0)
-                  for (let i = 0; i < data.length; i += 4) {
-                    const r = data[i], g = data[i+1], b = data[i+2];
-                    if (r < 22 && g < 22 && b < 22) {
-                      data[i+3] = 0; // Transparente
-                    }
-                  }
-                  ctx.putImageData(imgData, 0, 0);
-                }
-              } catch(err) {
-                console.warn('Filtro de transparencia:', err);
-              }
-            }
-
-            const outputMime = isPng ? 'image/png' : 'image/jpeg';
-            const outputQuality = isPng ? undefined : 0.85;
-
-            const compressedDataUrl = canvas.toDataURL(outputMime, outputQuality);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
             prodImageInput.value = compressedDataUrl;
             if (imagePreview) imagePreview.src = compressedDataUrl;
             if (imagePreviewName) imagePreviewName.textContent = file.name;
             if (imagePreviewContainer) imagePreviewContainer.style.display = 'flex';
-            showToast('📸 Foto con fondo transparente y limpio cargada con éxito', 'success');
+            showToast('📸 Foto del producto cargada con éxito', 'success');
           };
           img.src = event.target.result;
         };

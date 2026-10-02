@@ -14,9 +14,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 
-  <!-- Font Awesome 6.5.1 Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
   <!-- Estilos CSS -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -57,98 +54,52 @@
           </div>
         </a>
 
-        <!-- Barra de Búsqueda Grande Central (Aprovecha todo el ancho disponible) -->
+        <!-- Selector de Entrega / Dirección -->
+        <button class="delivery-selector-btn" id="deliverySelectorBtn" title="Cambiar dirección de entrega">
+          <span class="delivery-icon">📍</span>
+          <div class="delivery-info">
+            <span class="delivery-type" id="headerDeliveryType">Entrega en</span>
+            <span class="delivery-address" id="headerAddressLabel">Av. Siempre Viva 742...</span>
+          </div>
+          <span class="delivery-chevron">▼</span>
+        </button>
+
+        <!-- Barra de Búsqueda Grande Central -->
         <div class="search-container">
           <div class="search-input-wrapper">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <span class="search-icon">🔍</span>
             <input 
               type="text" 
               class="search-input" 
               id="searchInput" 
-              placeholder="Buscar víveres, charcutería, frutas, lácteos, marcas o pasillos..." 
+              placeholder="Buscar frutas, carnes, leche, marcas o pasillos..." 
               autocomplete="off"
             >
-            <button class="search-clear-btn" id="searchClearBtn" aria-label="Limpiar búsqueda">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
+            <button class="search-clear-btn" id="searchClearBtn" aria-label="Limpiar búsqueda">✕</button>
           </div>
 
           <!-- Desplegable de Sugerencias de Búsqueda -->
           <div class="search-suggestions-dropdown" id="searchDropdown"></div>
         </div>
 
-        <!-- Botones de Acción de Cabecera Limpios y Modernos -->
+        <!-- Botones de Acción de Cabecera -->
         <div class="header-actions">
-          <!-- Menú Desplegable de Usuario / Mi Cuenta -->
-          <div class="user-account-dropdown-wrapper" id="userAccountDropdownWrapper">
-            <button class="header-btn" id="userAccountBtn" aria-expanded="false" aria-haspopup="true" title="Mi Cuenta y Acceso" style="border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.94); color: #111827;">
-              <i class="fa-solid fa-user" id="userAccountIcon" style="font-size: 1.05rem; color: #108910;"></i>
-              <span class="btn-account-text" id="userAccountBtnLabel">Mi Cuenta</span>
-              <i class="fa-solid fa-chevron-down" style="font-size: 0.72rem; color: #64748B; margin-left: 2px;"></i>
-            </button>
-
-            <!-- Menú Desplegable Flotante -->
-            <div class="user-account-menu" id="userAccountMenu">
-              <div class="user-menu-header" id="userMenuHeader">
-                <div class="user-menu-avatar" id="userMenuAvatar">
-                  <i class="fa-solid fa-user-circle"></i>
-                </div>
-                <div class="user-menu-details">
-                  <span class="user-menu-name" id="userMenuName">Invitado</span>
-                  <span class="user-menu-email" id="userMenuEmail">Inicia sesión para gestionar pedidos</span>
-                </div>
-              </div>
-
-              <div class="user-menu-links">
-                <!-- Enlace cuando NO ha iniciado sesión -->
-                <div id="userMenuGuestActions">
-                  <button type="button" class="user-menu-link-btn primary" id="btnOpenLoginModal">
-                    <i class="fa-solid fa-arrow-right-to-bracket"></i>
-                    <span>Iniciar Sesión</span>
-                  </button>
-                  <button type="button" class="user-menu-link-btn" id="btnOpenRegisterModal">
-                    <i class="fa-solid fa-user-plus"></i>
-                    <span>Crear Cuenta Nueva</span>
-                  </button>
-                </div>
-
-                <!-- Enlace de Mis Datos / Entrega -->
-                <button type="button" class="user-menu-link-btn" id="btnOpenProfileFromMenu">
-                  <i class="fa-solid fa-location-dot"></i>
-                  <span>Mis Datos de Entrega</span>
-                </button>
-
-                <a href="admin.html" class="user-menu-link-btn" style="text-decoration: none; color: inherit;">
-                  <i class="fa-solid fa-gauge-high" style="color: #D97706;"></i>
-                  <span>Panel Administrador</span>
-                </a>
-
-                <!-- Enlace cuando SÍ ha iniciado sesión -->
-                <div id="userMenuLoggedActions" style="display: none; border-top: 1px solid #F1F5F9; margin-top: 6px; padding-top: 6px;">
-                  <button type="button" class="user-menu-link-btn danger" id="btnLogoutUser">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    <span>Cerrar Sesión</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- Mis Datos de Entrega y Contacto -->
+          <button class="header-btn" id="customerProfileBtn" title="Configurar mis datos de entrega y contacto" style="border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.94); color: #111827;">
+            <span style="font-size: 1.15rem;">📍</span>
+            <span class="btn-account-text" id="customerProfileBtnLabel">Mis Datos</span>
+          </button>
 
           <!-- Favoritos -->
           <button class="header-btn btn-icon-only" id="wishlistHeaderBtn" title="Mis Favoritos" style="background: rgba(255,255,255,0.94); border: 1px solid rgba(255,255,255,0.3); color: #111827;">
-            <i class="fa-solid fa-heart" style="font-size: 1.15rem; color: #EF4444;"></i>
+            <span style="font-size: 1.25rem;">🤍</span>
             <span class="badge-counter" id="wishlistBadgeCount">0</span>
-          </button>
-
-          <!-- Alternador de Tema Claro / Oscuro -->
-          <button class="header-btn btn-icon-only" id="themeToggleBtn" title="Cambiar a Tema Oscuro / Claro" style="background: rgba(255,255,255,0.94); border: 1px solid rgba(255,255,255,0.3); color: #111827;">
-            <i class="fa-solid fa-moon" id="themeToggleIcon" style="font-size: 1.1rem; color: #4B5563;"></i>
           </button>
 
           <!-- Botón de Carrito Estilo Instacart -->
           <button class="cart-header-btn" id="cartHeaderBtn" aria-label="Ver carrito">
             <div class="cart-icon-wrapper">
-              <i class="fa-solid fa-cart-shopping"></i>
+              🛒
               <span class="cart-badge-count" id="cartBadgeCount">0</span>
             </div>
             <span class="cart-total-preview" id="cartTotalPreview">$0.00</span>
@@ -157,6 +108,15 @@
 
       </div>
     </div>
+
+    <!-- Barra de Navegación de Categorías (Pills) -->
+    <nav class="categories-nav-bar" aria-label="Categorías de productos">
+      <div class="container">
+        <ul class="categories-pills-list" id="categoriesPillsList">
+          <!-- Renderizado dinámicamente desde products.js -->
+        </ul>
+      </div>
+    </nav>
   </header>
 
   <!-- ==========================================================================
@@ -174,22 +134,6 @@
             <!-- Slide 1: Ventas al Mayor y Detal -->
             <div class="hero-slide active" data-slide="0">
               <div class="hero-banner slide-mayor">
-                <!-- Fondo de emojis repetidos estilo Emojipedia -->
-                <div class="banner-emoji-pattern" aria-hidden="true">
-                  <div class="emoji-pattern-row">
-                    <span>📦</span><span>🛒</span><span>🏷️</span><span>🚛</span><span>💰</span><span>🏪</span><span>🛍️</span><span>📦</span><span>🛒</span><span>🏷️</span><span>🚛</span><span>💰</span><span>🏪</span><span>🛍️</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🏪</span><span>💰</span><span>🚛</span><span>🏷️</span><span>🛒</span><span>📦</span><span>🛍️</span><span>🏪</span><span>💰</span><span>🚛</span><span>🏷️</span><span>🛒</span><span>📦</span><span>🛍️</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🛒</span><span>📦</span><span>🛍️</span><span>💰</span><span>🏪</span><span>🏷️</span><span>🚛</span><span>🛒</span><span>📦</span><span>🛍️</span><span>💰</span><span>🏪</span><span>🏷️</span><span>🚛</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🏷️</span><span>🚛</span><span>🏪</span><span>📦</span><span>💰</span><span>🛒</span><span>🛍️</span><span>🏷️</span><span>🚛</span><span>🏪</span><span>📦</span><span>💰</span><span>🛒</span><span>🛍️</span>
-                  </div>
-                </div>
-
                 <div class="hero-content">
                   <div class="hero-tag">⚡ Entrega en 45 Minutos</div>
                   <h1 class="hero-title">Charcutería, víveres y <span>ventas al mayor</span> al mejor costo.</h1>
@@ -197,7 +141,7 @@
                     Surtido completo en embutidos finos, confitería, abarrotes y bultos mayoristas con precios de distribuidor y entrega express en tu puerta.
                   </p>
                   <div class="hero-cta-group">
-                    <a href="#catalogo" class="btn-hero-cta" data-filter-category="al-mayor">Explorar Bultos y Mayor</a>
+                    <a href="#catalogo" class="btn-hero-cta">Explorar Catálogo</a>
                     <button class="btn-hero-cta btn-hero-secondary hero-copy-coupon-btn" data-coupon="MAYORISTA">
                       <span>Cupón Mayorista:</span> <strong>MAYORISTA</strong> 📋
                     </button>
@@ -226,22 +170,6 @@
             <!-- Slide 2: Envío Gratis y Primera Compra -->
             <div class="hero-slide" data-slide="1">
               <div class="hero-banner slide-envio">
-                <!-- Fondo de emojis repetidos estilo Emojipedia -->
-                <div class="banner-emoji-pattern" aria-hidden="true">
-                  <div class="emoji-pattern-row">
-                    <span>🛵</span><span>⚡</span><span>🎁</span><span>🚚</span><span>📦</span><span>⏱️</span><span>🏷️</span><span>💨</span><span>🛵</span><span>⚡</span><span>🎁</span><span>🚚</span><span>📦</span><span>⏱️</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🎁</span><span>🚚</span><span>🛵</span><span>⚡</span><span>⏱️</span><span>💨</span><span>📦</span><span>🏷️</span><span>🎁</span><span>🚚</span><span>🛵</span><span>⚡</span><span>⏱️</span><span>💨</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>⚡</span><span>🛵</span><span>💨</span><span>🎁</span><span>🚚</span><span>📦</span><span>🏷️</span><span>⏱️</span><span>⚡</span><span>🛵</span><span>💨</span><span>🎁</span><span>🚚</span><span>📦</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>📦</span><span>⏱️</span><span>🏷️</span><span>🛵</span><span>⚡</span><span>🎁</span><span>🚚</span><span>💨</span><span>📦</span><span>⏱️</span><span>🏷️</span><span>🛵</span><span>⚡</span><span>🎁</span>
-                  </div>
-                </div>
-
                 <div class="hero-content">
                   <div class="hero-tag">🎉 Oferta de Bienvenida</div>
                   <h1 class="hero-title">¡Tu primer pedido con <span>Envío GRATIS</span> y 10% OFF!</h1>
@@ -278,22 +206,6 @@
             <!-- Slide 3: Charcutería Selecta & Quesos Criollos -->
             <div class="hero-slide" data-slide="2">
               <div class="hero-banner slide-charcuteria">
-                <!-- Fondo de emojis repetidos estilo Emojipedia -->
-                <div class="banner-emoji-pattern" aria-hidden="true">
-                  <div class="emoji-pattern-row">
-                    <span>🥓</span><span>🧀</span><span>🥩</span><span>🥖</span><span>🍷</span><span>🥪</span><span>🧈</span><span>🥓</span><span>🧀</span><span>🥩</span><span>🥖</span><span>🍷</span><span>🥪</span><span>🧈</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🧀</span><span>🧈</span><span>🥓</span><span>🥪</span><span>🥩</span><span>🥖</span><span>🍷</span><span>🧀</span><span>🧈</span><span>🥓</span><span>🥪</span><span>🥩</span><span>🥖</span><span>🍷</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🥩</span><span>🥖</span><span>🍷</span><span>🥓</span><span>🧀</span><span>🧈</span><span>🥪</span><span>🥩</span><span>🥖</span><span>🍷</span><span>🥓</span><span>🧀</span><span>🧈</span><span>🥪</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🥪</span><span>🥓</span><span>🧀</span><span>🥩</span><span>🥖</span><span>🍷</span><span>🧈</span><span>🥪</span><span>🥓</span><span>🧀</span><span>🥩</span><span>🥖</span><span>🍷</span><span>🧈</span>
-                  </div>
-                </div>
-
                 <div class="hero-content">
                   <div class="hero-tag">🥩 Calidad y Frescura Garantizada</div>
                   <h1 class="hero-title">Quesos criollos, jamones y <span>cortes selectos</span>.</h1>
@@ -301,8 +213,8 @@
                     Rebanados al momento y seleccionados con los más estrictos estándares de higiene. Los mejores sabores para tu hogar o negocio.
                   </p>
                   <div class="hero-cta-group">
-                    <a href="#catalogo" class="btn-hero-cta" data-filter-category="charcuteria">Ver Charcutería y Quesos</a>
-                    <a href="https://wa.me/34602070846?text=Hola,%20quisiera%20consultar%20sobre%20pedidos%20de%20charcuteria" target="_blank" class="btn-hero-cta btn-hero-secondary">
+                    <a href="#catalogo" class="btn-hero-cta hero-filter-charcuteria-btn">Ver Charcutería y Quesos</a>
+                    <a href="https://wa.me/34602070846?text=Hola,%20quisiera%20consultar%20sobre%20pedidos%20especiales" target="_blank" class="btn-hero-cta btn-hero-secondary">
                       <span>💬 Pedir por WhatsApp</span>
                     </a>
                   </div>
@@ -327,117 +239,13 @@
               </div>
             </div>
 
-            <!-- Slide 4: Bebidas Frías, Refrescos y Confitería -->
-            <div class="hero-slide" data-slide="3">
-              <div class="hero-banner slide-bebidas">
-                <!-- Fondo de emojis repetidos estilo Emojipedia -->
-                <div class="banner-emoji-pattern" aria-hidden="true">
-                  <div class="emoji-pattern-row">
-                    <span>🥤</span><span>🍬</span><span>🍫</span><span>🍿</span><span>🧃</span><span>🍭</span><span>🥨</span><span>🍩</span><span>🍪</span><span>🥤</span><span>🍬</span><span>🍫</span><span>🍿</span><span>🧃</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🧃</span><span>🍿</span><span>🍩</span><span>🍪</span><span>🥤</span><span>🍬</span><span>🍫</span><span>🍭</span><span>🥨</span><span>🧃</span><span>🍿</span><span>🍩</span><span>🍪</span><span>🥤</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🍫</span><span>🍭</span><span>🥤</span><span>🍬</span><span>🧃</span><span>🍿</span><span>🥨</span><span>🍩</span><span>🍪</span><span>🍫</span><span>🍭</span><span>🥤</span><span>🍬</span><span>🧃</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🍬</span><span>🍩</span><span>🍪</span><span>🥨</span><span>🥤</span><span>🍫</span><span>🧃</span><span>🍿</span><span>🍭</span><span>🍬</span><span>🍩</span><span>🍪</span><span>🥨</span><span>🥤</span>
-                  </div>
-                </div>
-
-                <div class="hero-content">
-                  <div class="hero-tag">🥤 Bebidas, Fiesta y Dulces</div>
-                  <h1 class="hero-title">Refrescos fríos, <span>snacks y dulces</span> al mejor precio.</h1>
-                  <p class="hero-subtitle">
-                    Surtido en refrescos de 2L, maltas familiares, chocolates Savoy y golosinas al detal y al mayor para compartir en familia o surtir tu negocio.
-                  </p>
-                  <div class="hero-cta-group">
-                    <a href="#catalogo" class="btn-hero-cta" data-filter-category="bebidas">Ver Bebidas y Snacks</a>
-                    <button class="btn-hero-cta btn-hero-secondary hero-copy-coupon-btn" data-coupon="ALCOSTO10">
-                      <span>Cupón 10% OFF:</span> <strong>ALCOSTO10</strong> 📋
-                    </button>
-                  </div>
-                </div>
-
-                <div class="hero-graphic">
-                  <div class="hero-graphic-badge badge-purple">
-                    <div class="badge-row">
-                      <span class="icon">🥤</span>
-                      <span>Refrescos 2L y Maltas Frías</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">🍫</span>
-                      <span>Chocolates & Galletas Pack</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">🎉</span>
-                      <span>Precios Especiales para Eventos</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Slide 5: Frutas, Verduras y Campo Fresco -->
-            <div class="hero-slide" data-slide="4">
-              <div class="hero-banner slide-frescos">
-                <!-- Fondo de emojis repetidos estilo Emojipedia -->
-                <div class="banner-emoji-pattern" aria-hidden="true">
-                  <div class="emoji-pattern-row">
-                    <span>🥑</span><span>🍎</span><span>🍌</span><span>🥦</span><span>🥕</span><span>🍅</span><span>🌾</span><span>🍇</span><span>🍉</span><span>🥑</span><span>🍎</span><span>🍌</span><span>🥦</span><span>🥕</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🥦</span><span>🥕</span><span>🍅</span><span>🥑</span><span>🌾</span><span>🍎</span><span>🍌</span><span>🍇</span><span>🍉</span><span>🥦</span><span>🥕</span><span>🍅</span><span>🥑</span><span>🌾</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🍌</span><span>🍉</span><span>🥑</span><span>🍎</span><span>🥦</span><span>🥕</span><span>🍅</span><span>🌾</span><span>🍇</span><span>🍌</span><span>🍉</span><span>🥑</span><span>🍎</span><span>🥦</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🍅</span><span>🍇</span><span>🌾</span><span>🥦</span><span>🥑</span><span>🍎</span><span>🍌</span><span>🥕</span><span>🍉</span><span>🍅</span><span>🍇</span><span>🌾</span><span>🥦</span><span>🥑</span>
-                  </div>
-                </div>
-
-                <div class="hero-content">
-                  <div class="hero-tag">🥑 Directo del Productor</div>
-                  <h1 class="hero-title">Frutas de campo, <span>verduras y hortalizas</span> 100% frescas.</h1>
-                  <p class="hero-subtitle">
-                    Seleccionadas diariamente con estrictos controles de calidad. Aguacates mantecosos, plátanos maduros y vegetales crujientes para tu cocina.
-                  </p>
-                  <div class="hero-cta-group">
-                    <a href="#catalogo" class="btn-hero-cta" data-filter-category="frutas-verduras">Explorar Frutas y Verduras</a>
-                    <a href="https://wa.me/34602070846?text=Hola,%20quisiera%20consultar%20por%20frutas%20y%20verduras%20frescas" target="_blank" class="btn-hero-cta btn-hero-secondary">
-                      <span>💬 Pedir Frescos WhatsApp</span>
-                    </a>
-                  </div>
-                </div>
-
-                <div class="hero-graphic">
-                  <div class="hero-graphic-badge badge-farm">
-                    <div class="badge-row">
-                      <span class="icon">🥑</span>
-                      <span>Cosecha Fresca del Día</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">🍎</span>
-                      <span>Selección Manual de Calidad</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">🛵</span>
-                      <span>Empaque Cuidadoso al Frío</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
 
           <!-- Flechas de navegación interactiva del carrusel -->
           <button class="hero-carousel-arrow prev" id="heroPrevBtn" aria-label="Anterior slide">‹</button>
           <button class="hero-carousel-arrow next" id="heroNextBtn" aria-label="Siguiente slide">›</button>
 
-          <!-- Puntos / Dots de paginación interactivos (5 slides) -->
+          <!-- Puntos / Dots de paginación interactivos -->
           <div class="hero-carousel-dots" id="heroCarouselDots">
             <button class="hero-dot active" data-slide-to="0" aria-label="Ir a Slide 1"></button>
             <button class="hero-dot" data-slide-to="1" aria-label="Ir a Slide 2"></button>
@@ -447,16 +255,22 @@
         </div>
       </section>
 
-      <!-- Sección del Catálogo con Barra Vertical Icon-Only de Departamentos -->
-      <section id="catalogo" class="catalog-section">
-        
-        <div class="catalog-with-sidebar-layout">
-          <!-- Barra Vertical de Departamentos (Solo Iconos Font Awesome, sin texto) -->
-          <aside class="vertical-dept-rail" id="verticalDeptRail" aria-label="Departamentos">
-            <div class="dept-rail-header">
-              <span class="dept-rail-indicator" title="Pasillos Al Costo">
-                <i class="fa-solid fa-layer-group"></i>
-              </span>
+      <!-- Propuestas de Valor (Value Props) -->
+      <section class="value-props-section">
+        <div class="value-props-grid">
+          <div class="value-prop-card">
+            <div class="value-prop-icon">📦</div>
+            <div class="value-prop-text">
+              <h4>Ventas al Detal y al Mayor</h4>
+              <p>Compra por unidades o por bultos/cajas con descuento automático de distribuidor.</p>
+            </div>
+          </div>
+
+          <div class="value-prop-card">
+            <div class="value-prop-icon">🥓</div>
+            <div class="value-prop-text">
+              <h4>Charcutería & Lácteos</h4>
+              <p>Quesos, jamones y embutidos rebanados al momento con higiene certificada.</p>
             </div>
           </div>
 
@@ -482,100 +296,50 @@
             <button class="filter-tag-chip" data-tag="fresco">🥑 Frescos del Día</button>
           </div>
 
-              <!-- Selector de Ordenamiento -->
-              <div class="catalog-sort-group">
-                <label for="sortSelect">Ordenar por:</label>
-                <select class="sort-select" id="sortSelect">
-                  <option value="relevance">Destacados Al Costo</option>
-                  <option value="price-low">Precio: de menor a mayor</option>
-                  <option value="price-high">Precio: de mayor a menor</option>
-                  <option value="rating">Mejor Calificados</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Encabezado de Sección Dinámico -->
-            <div class="section-heading-row">
-              <h2 class="section-title" id="catalogSectionTitle">🏪 Todos los productos</h2>
-              <span class="section-count" id="catalogSectionCount">Cargando catálogo...</span>
-            </div>
-
-            <!-- Grid de Productos -->
-            <div class="products-grid" id="productsGrid">
-              <!-- Renderizado dinámico vía app.js -->
-            </div>
+          <!-- Selector de Ordenamiento -->
+          <div class="catalog-sort-group">
+            <label for="sortSelect">Ordenar por:</label>
+            <select class="sort-select" id="sortSelect">
+              <option value="relevance">Destacados Al Costo</option>
+              <option value="price-low">Precio: de menor a mayor</option>
+              <option value="price-high">Precio: de mayor a menor</option>
+              <option value="rating">Mejor Calificados</option>
+            </select>
           </div>
         </div>
 
+        <!-- Encabezado de Sección Dinámico -->
+        <div class="section-heading-row">
+          <h2 class="section-title" id="catalogSectionTitle">🏪 Todos los productos</h2>
+          <span class="section-count" id="catalogSectionCount">Cargando catálogo...</span>
+        </div>
+
+        <!-- Grid de Productos -->
+        <div class="products-grid" id="productsGrid">
+          <!-- Renderizado dinámico vía app.js -->
+        </div>
       </section>
 
     </div>
   </main>
 
   <!-- ==========================================================================
-       FOOTER COMPLETO Y MEJORADO (CON PRIVACIDAD, MÉTODOS Y CONFIANZA)
+       FOOTER COMPLETO
        ========================================================================== -->
   <footer class="site-footer">
-    <!-- Fila de Propuesta de Valor y Confianza en Footer -->
-    <div class="footer-trust-strip">
-      <div class="container">
-        <div class="footer-trust-grid">
-          <div class="trust-badge-item">
-            <span class="trust-icon">🛡️</span>
-            <div>
-              <strong>Compra 100% Protegida</strong>
-              <p>Datos encriptados y pedidos directos verificados.</p>
-            </div>
-          </div>
-          <div class="trust-badge-item">
-            <span class="trust-icon">🛰️</span>
-            <div>
-              <strong>Rastreo GPS en Tiempo Real</strong>
-              <p>Entrega milimétrica sin pérdidas ni retrasos.</p>
-            </div>
-          </div>
-          <div class="trust-badge-item">
-            <span class="trust-icon">🥦</span>
-            <div>
-              <strong>Frescura de Origen Garantizada</strong>
-              <p>Selección manual de cortes y víveres premium.</p>
-            </div>
-          </div>
-          <div class="trust-badge-item">
-            <span class="trust-icon">⚡</span>
-            <div>
-              <strong>Despacho Express Prioritario</strong>
-              <p>Hasta tu puerta en 30 a 45 minutos.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="container" style="padding-top: 40px;">
+    <div class="container">
       <div class="footer-top-grid">
-        <!-- Columna 1: Marca y WhatsApp Oficial -->
         <div class="footer-brand">
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-            <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #108910, #003D29); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; box-shadow: 0 4px 12px rgba(16, 137, 16, 0.4);">
-              🛒
-            </div>
-            <div>
-              <h3 style="margin: 0; font-size: 1.55rem; letter-spacing: -0.5px; line-height: 1;">al<span style="color: #108910;">costo</span></h3>
-              <span style="font-size: 0.72rem; color: #9CA3AF; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Supermercado Online</span>
-            </div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <span style="font-size: 1.6rem;">🛒</span>
+            <h3 style="margin: 0; font-size: 1.5rem; letter-spacing: -0.5px;">al<span style="color: #108910;">costo</span></h3>
           </div>
-          <p>La plataforma inteligente de compras de supermercado para tu hogar y negocio. Frescura garantizada, precios mayoristas y despacho con tecnología de punta.</p>
-          
-          <div class="footer-wa-card">
-            <div style="font-size: 0.75rem; text-transform: uppercase; color: #9CA3AF; font-weight: 700; margin-bottom: 4px;">Línea Directa del Dueño</div>
-            <a href="https://wa.me/34602070846" target="_blank" class="footer-wa-link">
-              <span>💬 WhatsApp:</span> <strong>+34 602 07 08 46</strong>
-            </a>
+          <p>La plataforma inteligente de compras de supermercado para tu hogar. Frescura garantizada, precios directos y entrega express.</p>
+          <div style="font-size: 0.85rem; color: #108910; font-weight: 700;">
+            📞 Dueño / Pedidos WhatsApp: <a href="https://wa.me/34602070846" target="_blank" style="color: #55FF88; text-decoration: none;">+34 602 07 08 46</a>
           </div>
         </div>
 
-        <!-- Columna 2: Departamentos -->
         <div class="footer-col">
           <h4>Departamentos</h4>
           <ul class="footer-links">
@@ -589,54 +353,32 @@
           </ul>
         </div>
 
-        <!-- Columna 3: Ubicación y Horarios -->
         <div class="footer-col">
-          <h4>Sede Física Al Costo</h4>
+          <h4>Ubicación del Local</h4>
           <ul class="footer-links">
-            <li style="color: white; font-weight: 700;">📍 Coordenadas Oficiales:</li>
-            <li style="font-family: monospace; color: #55FF88; font-size: 0.95rem; font-weight: 800; background: rgba(0, 61, 41, 0.4); padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(85, 255, 136, 0.2); width: fit-content;">7º48'25.6"N 71º11'12.3"W</li>
-            <li><a href="https://www.google.com/maps?q=7.807111,-71.186750" target="_blank" style="color: #38BDF8; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">🗺️ Abrir en Google Maps ↗</a></li>
-            <li><span style="color: #9CA3AF; font-size: 0.85rem;">🏪 Retiro Express en Sede: Gratis</span></li>
-            <li><span style="color: #9CA3AF; font-size: 0.85rem;">⏰ Lun a Sáb: 7:30am - 8:00pm</span></li>
-            <li><span style="color: #9CA3AF; font-size: 0.85rem;">⏰ Dom: 8:00am - 4:00pm</span></li>
+            <li style="color: white; font-weight: 700;">📍 Coordenadas del Local:</li>
+            <li style="font-family: monospace; color: #55FF88; font-size: 0.95rem; font-weight: 800;">7º48'25.6"N 71º11'12.3"W</li>
+            <li><a href="https://www.google.com/maps?q=7.807111,-71.186750" target="_blank" style="color: #38BDF8; font-weight: 700;">🗺️ Abrir en Google Maps</a></li>
+            <li><span style="color: #9CA3AF; font-size: 0.85rem;">Retiro gratuito en sede</span></li>
+            <li><span style="color: #9CA3AF; font-size: 0.85rem;">Horario: 7:30am - 8:00pm</span></li>
           </ul>
         </div>
 
-        <!-- Columna 4: Legal, Privacidad y Métodos de Pago -->
         <div class="footer-col">
-          <h4>Legal & Privacidad</h4>
+          <h4>Seguridad y Métodos</h4>
           <ul class="footer-links">
-            <li><a href="privacidad.html" style="color: #55FF88; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">🔒 Política de Privacidad ↗</a></li>
-            <li><a href="privacidad.html#gps" style="color: #38BDF8;">🛰️ Uso de Ubicación GPS</a></li>
-            <li><a href="privacidad.html#pagos">🛡️ Seguridad en Transacciones</a></li>
-            <li><a href="privacidad.html#cookies">🍪 Almacenamiento y Cookies</a></li>
-            <li><a href="admin.html" style="color: #FBBF24; font-weight: 700;">⚙️ Panel Administrativo</a></li>
+            <li><a href="#">Pago Seguro 256-bit SSL</a></li>
+            <li><a href="#">Tarjetas de Débito y Crédito</a></li>
+            <li><a href="#">Efectivo contra entrega</a></li>
+            <li><a href="#">Transferencias Móviles</a></li>
+            <li><a href="#">Privacidad y Cookies</a></li>
           </ul>
-
-          <h4 style="margin-top: 20px; margin-bottom: 10px;">Métodos de Pago</h4>
-          <div class="footer-payment-tags">
-            <span class="pay-tag">💵 Efectivo USD</span>
-            <span class="pay-tag">🇻🇪 Bolívares (BCV)</span>
-            <span class="pay-tag">🇨🇴 Pesos COP</span>
-            <span class="pay-tag">📱 Pago Móvil</span>
-            <span class="pay-tag">💳 Tarjetas</span>
-          </div>
         </div>
       </div>
 
-      <!-- Barra Inferior de Copyright y Enlaces Rápidos -->
       <div class="footer-bottom">
-        <div style="display: flex; flex-direction: column; gap: 4px;">
-          <span>© 2026 Al Costo Supermercado. Todos los derechos reservados.</span>
-          <span style="font-size: 0.76rem; color: #9CA3AF;">Hecho con dedicación para compras fáciles, frescas, con geolocalización en tiempo real y el mejor costo.</span>
-        </div>
-        <div class="footer-bottom-links">
-          <a href="privacidad.html">Privacidad</a>
-          <span>•</span>
-          <a href="privacidad.html#contacto">Términos</a>
-          <span>•</span>
-          <a href="https://wa.me/34602070846" target="_blank">Soporte</a>
-        </div>
+        <span>© 2026 Al Costo Supermercado. Todos los derechos reservados. Inspirado en el diseño y experiencia de usuario de Instacart.</span>
+        <span>Hecho con dedicación para compras fáciles, frescas y al mejor costo.</span>
       </div>
     </div>
   </footer>
@@ -735,102 +477,32 @@
   </div>
 
   <!-- ==========================================================================
-       MODAL 2: SELECCIÓN OBLIGATORIA DE RUTA Y UBICACIÓN GPS EN VIVO
+       MODAL 2: SELECCIÓN DE DIRECCIÓN / RECOGIDA
        ========================================================================== -->
   <div class="modal-overlay" id="addressModal">
-    <div class="modal-box route-modal-container" style="max-width: 560px; padding: 26px;">
+    <div class="modal-box" style="max-width: 520px; padding: 28px;">
       <button class="modal-close-btn" id="closeAddressModalBtn" aria-label="Cerrar">✕</button>
-      
-      <div class="route-modal-header">
-        <div class="route-badge-step">📍 PASO REQUERIDO ANTES DE PEDIR</div>
-        <h3 class="route-modal-title">¿Cómo deseas recibir tu compra?</h3>
-        <p class="route-modal-sub">
-          Selecciona tu ruta de despacho. Si eliges Delivery, detectaremos tu ubicación GPS en vivo para que el repartidor llegue con precisión exacta.
-        </p>
+      <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 6px; color: var(--color-primary);">
+        ¿Dónde quieres recibir tu compra?
+      </h3>
+      <p style="font-size: 0.88rem; color: #666; margin-bottom: 16px;">
+        Selecciona tu entrega a domicilio o escoge recogida gratuita en nuestra sede.
+      </p>
+
+      <div style="background: #E8F5E9; border: 1px solid #A7F3D0; border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.85rem;">
+        <strong style="color: #003D29;">📍 Ubicación Local Al Costo:</strong>
+        <div style="font-family: monospace; color: #108910; font-weight: 800; margin: 4px 0;">Coordenadas: 7º48'25.6"N 71º11'12.3"W</div>
+        <a href="https://www.google.com/maps?q=7.807111,-71.186750" target="_blank" style="color: #0284C7; font-weight: 700; text-decoration: none;">
+          🗺️ Abrir ubicación en Google Maps →
+        </a>
       </div>
 
-      <div class="route-options-grid">
-        <!-- Opción 1: Delivery con GPS -->
-        <div class="route-option-card active" id="routeCardDelivery" data-route="delivery">
-          <div class="route-card-header">
-            <span class="route-card-icon">🛵</span>
-            <div class="route-card-title-wrap">
-              <h4>Delivery a Domicilio con GPS</h4>
-              <span class="route-card-badge">Express 25-45 min</span>
-            </div>
-            <input type="radio" name="routeTypeSelection" id="radioRouteDelivery" value="delivery" checked class="route-radio">
-          </div>
-          <p class="route-card-desc">
-            Despacho directo hasta tu puerta o local comercial con geolocalización satelital.
-          </p>
-
-          <!-- Bloque de Ubicación GPS en Vivo -->
-          <div class="route-gps-box">
-            <div class="gps-box-header">
-              <span class="gps-pulse-dot"></span>
-              <strong>Geolocalización GPS en Tiempo Real:</strong>
-            </div>
-
-            <button type="button" class="btn-detect-gps" id="btnDetectGpsLocation">
-              <span class="gps-btn-icon">🛰️</span>
-              <span id="btnGpsText">Detectar Mi Ubicación GPS en Vivo</span>
-            </button>
-
-            <div class="gps-result-box" id="gpsResultBox" style="display: none;">
-              <div class="gps-result-status">
-                <span class="status-icon">🟢</span>
-                <span class="status-text" id="gpsStatusText">Ubicación GPS capturada con éxito</span>
-              </div>
-              <div class="gps-coords-display" id="gpsCoordsDisplay">
-                Coordenadas: Lat: --, Lng: -- (Precisión: ±--m)
-              </div>
-              <a href="#" id="gpsMapLink" target="_blank" class="gps-map-preview-btn">
-                🗺️ Ver mi ubicación exacta en Google Maps ↗
-              </a>
-            </div>
-
-            <!-- Campos de texto complementarios -->
-            <div style="margin-top: 12px;">
-              <label for="routeInputAddress" style="font-size: 0.8rem; font-weight: 700; color: #1e293b; display: block; margin-bottom: 4px;">
-                Dirección / Sector / Número de Casa o Apto *
-              </label>
-              <input type="text" id="routeInputAddress" class="form-input" placeholder="Ej: Calle 4 con Av. 2, Edif. Los Pinos, Apto 3B" style="margin-bottom: 8px;">
-              
-              <label for="routeInputReference" style="font-size: 0.8rem; font-weight: 700; color: #1e293b; display: block; margin-bottom: 4px;">
-                Punto de Referencia para el Chofer (Opcional)
-              </label>
-              <input type="text" id="routeInputReference" class="form-input" placeholder="Ej: Portón negro, frente al abasto o semáforo">
-            </div>
-          </div>
-        </div>
-
-        <!-- Opción 2: Recogida en Tienda (Gratis) -->
-        <div class="route-option-card" id="routeCardPickup" data-route="pickup">
-          <div class="route-card-header">
-            <span class="route-card-icon">🏪</span>
-            <div class="route-card-title-wrap">
-              <h4>Recoger en Tienda Al Costo</h4>
-              <span class="route-card-badge free">Gratis • $0.00 Envío</span>
-            </div>
-            <input type="radio" name="routeTypeSelection" id="radioRoutePickup" value="pickup" class="route-radio">
-          </div>
-          <p class="route-card-desc">
-            Empacamos tus productos y los retiras sin colas ni esperas en nuestra sede principal.
-          </p>
-          <div class="pickup-info-box">
-            <strong style="color: #1e3a8a;">📍 Sede Principal Al Costo:</strong>
-            <div style="font-size: 0.8rem; font-family: monospace; color: #1e40af; margin: 3px 0;">Coordenadas: 7º48'25.6"N 71º11'12.3"W</div>
-            <div style="font-size: 0.8rem; color: #475569; margin-bottom: 4px;">⏱️ Listo para recoger en 15 minutos</div>
-            <a href="https://www.google.com/maps?q=7.807111,-71.186750" target="_blank" style="color: #0284C7; font-weight: 700; text-decoration: none; font-size: 0.82rem;">
-              🗺️ Ver ubicación de la tienda en Google Maps →
-            </a>
-          </div>
-        </div>
+      <div id="addressOptionsContainer">
+        <!-- Opciones inyectadas vía JS -->
       </div>
 
-      <!-- Botón de Confirmación Obligatorio -->
-      <button type="button" class="btn-checkout-primary" id="btnConfirmRouteSelection" style="width: 100%; margin-top: 16px; padding: 13px; font-size: 1rem;">
-        ✅ Confirmar Ruta y Guardar Ubicación
+      <button class="btn-hero-cta" id="modalOpenProfileBtn" style="width: 100%; margin-top: 10px; background: white; border: 1.5px solid var(--color-brand-green); color: var(--color-brand-green); font-weight: 700;">
+        ✏️ Configurar / Cambiar Mi Dirección y Teléfono
       </button>
     </div>
   </div>
@@ -897,39 +569,20 @@
       </div>
 
       <form id="checkoutForm">
-        <!-- Resumen de la Ruta Seleccionada -->
-        <div class="checkout-route-summary-pill" id="checkoutRouteSummaryPill">
-          <div class="checkout-route-text" id="checkoutRouteText">
-            <strong>Ruta de Despacho:</strong>
-            <span>Cargando ruta seleccionada...</span>
-          </div>
-          <button type="button" class="btn-change-route" id="btnChangeRouteInCheckout">
-            🔄 Cambiar Ruta
-          </button>
-        </div>
-
         <div class="checkout-form-grid">
           <div class="form-group">
             <label for="orderName">Nombre Completo *</label>
-            <input type="text" id="orderName" class="form-input" required placeholder="Ej: Fernando Gómez">
+            <input type="text" id="orderName" class="form-input" required placeholder="Ej: Fernando Gómez" value="Fernando Gómez">
           </div>
 
           <div class="form-group">
             <label for="orderPhone">Teléfono de Contacto *</label>
-            <input type="tel" id="orderPhone" class="form-input" required placeholder="Ej: 0412-1234567 o +34 600 000 000">
+            <input type="tel" id="orderPhone" class="form-input" required placeholder="Ej: +1 555-019-283" value="+1 555-019-283">
           </div>
 
           <div class="form-group form-field-full">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <label for="orderAddress" style="margin: 0;">Dirección / Ubicación de Entrega *</label>
-              <button type="button" id="btnRefreshCheckoutGps" style="background: none; border: none; color: #166534; font-size: 0.78rem; font-weight: 700; cursor: pointer; text-decoration: underline;">
-                📍 Capturar / Actualizar GPS en Vivo
-              </button>
-            </div>
-            <input type="text" id="orderAddress" class="form-input" required placeholder="Calle, sector, referencia de llegada">
-            <div id="checkoutGpsBadge" style="display: none; font-size: 0.76rem; color: #15803D; font-weight: 600; margin-top: 4px;">
-              🛰️ Coordenadas GPS fijadas: <span id="checkoutGpsCoords"></span> (<a href="#" id="checkoutGpsMapLink" target="_blank" style="color: #0284C7; font-weight: 700;">Ver mapa</a>)
-            </div>
+            <label for="orderAddress">Dirección de Entrega</label>
+            <input type="text" id="orderAddress" class="form-input" required value="Av. Siempre Viva 742, Apt 4B (Código Postal: 10452)">
           </div>
 
           <div class="form-group">
@@ -953,27 +606,18 @@
         </div>
 
         <div class="payment-methods-selector">
-          <div class="payment-method-card active" data-pay-type="pagomovil">
-            <div class="payment-method-icon"><i class="fa-solid fa-mobile-screen-button" style="color: #108910;"></i></div>
-            <div class="payment-method-name">Pago Móvil (Bs)</div>
-          </div>
-          <div class="payment-method-card" data-pay-type="zelle">
-            <div class="payment-method-icon"><i class="fa-solid fa-dollar-sign" style="color: #7C3AED;"></i></div>
-            <div class="payment-method-name">Zelle (USD)</div>
-          </div>
-          <div class="payment-method-card" data-pay-type="binance">
-            <div class="payment-method-icon"><i class="fa-brands fa-bitcoin" style="color: #F59E0B;"></i></div>
-            <div class="payment-method-name">Binance Pay (USDT)</div>
+          <div class="payment-method-card active" data-pay-type="card">
+            <div class="payment-method-icon">💳</div>
+            <div class="payment-method-name">Tarjeta Crédito / Débito</div>
           </div>
           <div class="payment-method-card" data-pay-type="cash">
-            <div class="payment-method-icon"><i class="fa-solid fa-money-bill-wave" style="color: #059669;"></i></div>
+            <div class="payment-method-icon">💵</div>
             <div class="payment-method-name">Efectivo contra entrega</div>
           </div>
-        </div>
-
-        <!-- Caja de Información Dinámica del Pago Seleccionado (Sincronizada con Supabase) -->
-        <div class="payment-details-box" id="paymentDetailsBox">
-          <!-- Renderizado dinámico vía app.js -->
+          <div class="payment-method-card" data-pay-type="transfer">
+            <div class="payment-method-icon">📱</div>
+            <div class="payment-method-name">Transferencia / Móvil</div>
+          </div>
         </div>
 
         <div style="background: var(--color-bg-body); border-radius: 12px; padding: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
@@ -1018,24 +662,12 @@
           </button>
         </div>
 
-        <!-- Mapa Simulado de Ruta Dinámica -->
+        <!-- Mapa Simulado de Ruta -->
         <div class="simulated-map">
           <span class="map-pin store" title="Tienda Al Costo">🏪</span>
-          <div class="map-route-line">
-            <div class="map-route-line-fill" id="trackerRouteFill"></div>
-          </div>
-          <span class="map-vehicle" id="trackerVehicle">🛵💨</span>
+          <div class="map-route-line"></div>
+          <span class="map-vehicle">🛵💨</span>
           <span class="map-pin home" title="Tu Dirección">🏠</span>
-        </div>
-
-        <!-- Barra de Progreso y Tiempo Estimado -->
-        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 10px 14px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.84rem; font-weight: 700; color: #003D29; display: flex; align-items: center; gap: 6px;">
-            <span>⏱️</span> <span id="trackerEtaText">Tiempo estimado: 25 - 35 minutos</span>
-          </span>
-          <span id="trackerPercentBadge" style="background: #DCFCE7; color: #15803D; font-weight: 800; font-size: 0.76rem; padding: 3px 8px; border-radius: 9999px;">
-            En preparación (25%)
-          </span>
         </div>
 
         <!-- Pasos en tiempo real -->
@@ -1043,8 +675,8 @@
           <div class="tracker-step-item completed">
             <div class="tracker-step-bullet">✓</div>
             <div class="tracker-step-info">
-              <h5>Pedido Recibido y Aprobado</h5>
-              <p>Inventario reservado y orden enviada a la estación de selección.</p>
+              <h5>Pedido Recibido y Aceptado</h5>
+              <p>El sistema Al Costo procesó tu orden y reservó el inventario.</p>
             </div>
           </div>
 
@@ -1052,7 +684,7 @@
             <div class="tracker-step-bullet">2</div>
             <div class="tracker-step-info">
               <h5>Carlos está seleccionando tus víveres</h5>
-              <p>Revisando frescura de frutas, fechas de vencimiento y cortes frescos.</p>
+              <p>Revisando frescura de frutas, fechas de corte y empaque refrigerado.</p>
             </div>
           </div>
 
@@ -1068,7 +700,7 @@
             <div class="tracker-step-bullet">4</div>
             <div class="tracker-step-info">
               <h5>En camino hacia tu puerta</h5>
-              <p>El repartidor avanza con GPS activo hacia tu ubicación exacta.</p>
+              <p>Tiempo estimado de llegada: 25 a 35 minutos.</p>
             </div>
           </div>
         </div>
@@ -1085,82 +717,9 @@
     </div>
   </div>
 
-  <!-- ==========================================================================
-       MODAL 5: INICIAR SESIÓN / CREAR CUENTA (AUTH MODAL)
-       ========================================================================== -->
-  <div class="modal-overlay" id="authModal">
-    <div class="modal-box" style="max-width: 440px; padding: 28px;">
-      <button class="modal-close-btn" id="closeAuthModalBtn" aria-label="Cerrar">✕</button>
-
-      <!-- Selector de Pestañas Login / Registro -->
-      <div class="auth-tabs-toggle">
-        <button type="button" class="auth-toggle-btn active" id="tabAuthLogin">
-          <i class="fa-solid fa-arrow-right-to-bracket"></i> Iniciar Sesión
-        </button>
-        <button type="button" class="auth-toggle-btn" id="tabAuthRegister">
-          <i class="fa-solid fa-user-plus"></i> Crear Cuenta
-        </button>
-      </div>
-
-      <!-- Formulario 1: Iniciar Sesión -->
-      <form id="formAuthLogin" class="auth-form-pane active">
-        <div class="auth-pane-header">
-          <h3>¡Bienvenido de vuelta!</h3>
-          <p>Ingresa tu correo o teléfono para acceder a tus pedidos y beneficios.</p>
-        </div>
-
-        <div class="form-group" style="margin-bottom: 14px;">
-          <label for="loginIdentifier">Correo Electrónico o Teléfono *</label>
-          <input type="text" id="loginIdentifier" class="form-input" required placeholder="tu@correo.com o 0412-1234567">
-        </div>
-
-        <div class="form-group" style="margin-bottom: 18px;">
-          <label for="loginPassword">Contraseña *</label>
-          <input type="password" id="loginPassword" class="form-input" required placeholder="••••••••">
-        </div>
-
-        <button type="submit" class="btn-checkout-primary" style="width: 100%;">
-          Entrar a Mi Cuenta
-        </button>
-      </form>
-
-      <!-- Formulario 2: Crear Cuenta -->
-      <form id="formAuthRegister" class="auth-form-pane" style="display: none;">
-        <div class="auth-pane-header">
-          <h3>Crea tu cuenta Al Costo</h3>
-          <p>Disfruta de cupones exclusivos, seguimiento de pedidos y entrega rápida.</p>
-        </div>
-
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label for="regFullName">Nombre y Apellido *</label>
-          <input type="text" id="regFullName" class="form-input" required placeholder="Ej: Fernando Gómez">
-        </div>
-
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label for="regEmail">Correo Electrónico *</label>
-          <input type="email" id="regEmail" class="form-input" required placeholder="ejemplo@correo.com">
-        </div>
-
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label for="regPhone">Teléfono / WhatsApp *</label>
-          <input type="tel" id="regPhone" class="form-input" required placeholder="Ej: 0414-1234567 o +34 600...">
-        </div>
-
-        <div class="form-group" style="margin-bottom: 18px;">
-          <label for="regPassword">Contraseña *</label>
-          <input type="password" id="regPassword" class="form-input" required placeholder="Mínimo 6 caracteres" minlength="6">
-        </div>
-
-        <button type="submit" class="btn-checkout-primary" style="width: 100%;">
-          Registrarme y Comenzar
-        </button>
-      </form>
-    </div>
-  </div>
-
   <!-- Botón Flotante de WhatsApp hacia el dueño (+34 602 07 08 46) -->
   <a href="https://wa.me/34602070846?text=Hola%20Al%20Costo,%20quisiera%20hacer%20un%20pedido%20o%20consultar%20precios" target="_blank" class="floating-wa-btn" title="Escribir por WhatsApp al dueño (+34 602 07 08 46)">
-    <i class="fa-brands fa-whatsapp" style="font-size: 1.15rem;"></i> <span>WhatsApp (+34 602 07 08 46)</span>
+    💬 WhatsApp (+34 602 07 08 46)
   </a>
 
   <!-- ==========================================================================
