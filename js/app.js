@@ -510,18 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const inCartQty = state.cart[product.id] ? state.cart[product.id].quantity : 0;
       const isWishlisted = state.wishlist.includes(product.id);
 
-      // Icono y Categoría con soporte Font Awesome
-      const catObj = (typeof CATEGORIES !== 'undefined') ? CATEGORIES.find(c => c.id === product.category) : null;
-      let catIconHtml = '🏷️';
-      if (catObj && catObj.icon) {
-        if (catObj.icon.startsWith('fa-')) {
-          catIconHtml = `<i class="${catObj.icon}"></i>`;
-        } else {
-          catIconHtml = catObj.icon;
-        }
-      }
-
-      // Badge flotante moderno
+      // Badge de oferta o etiqueta
       let badgeHtml = '';
       if (product.originalPrice) {
         const discountPct = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
@@ -571,13 +560,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
 
           <div class="product-info open-detail-trigger" data-id="${product.id}">
-            <div class="product-meta-header">
-              <span class="product-meta-unit">${catIconHtml} ${product.unit}</span>
-              <span class="product-meta-origin">${product.origin || 'Al Costo 🛒'}</span>
-            </div>
-
-            <h3 class="product-title" title="${product.name}">${product.name}</h3>
-
             <div class="product-price-row">
               <div class="price-primary-row">
                 <span class="product-current-price">$${product.price.toFixed(2)}</span>
