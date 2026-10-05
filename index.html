@@ -442,6 +442,8 @@
             <button class="hero-dot active" data-slide-to="0" aria-label="Ir a Slide 1"></button>
             <button class="hero-dot" data-slide-to="1" aria-label="Ir a Slide 2"></button>
             <button class="hero-dot" data-slide-to="2" aria-label="Ir a Slide 3"></button>
+            <button class="hero-dot" data-slide-to="3" aria-label="Ir a Slide 4"></button>
+            <button class="hero-dot" data-slide-to="4" aria-label="Ir a Slide 5"></button>
           </div>
 
         </div>
@@ -458,29 +460,23 @@
                 <i class="fa-solid fa-layer-group"></i>
               </span>
             </div>
-          </div>
-
-          <div class="value-prop-card">
-            <div class="value-prop-icon">🛡️</div>
-            <div class="value-prop-text">
-              <h4>Garantía Al Costo</h4>
-              <p>Precios transparentes y frescura 100% garantizada en cada producto.</p>
+            <div class="dept-rail-icons-list" id="deptRailIconsList">
+              <!-- Inyectado dinámicamente con iconos puros de Font Awesome -->
             </div>
-          </div>
-        </div>
-      </section>
+          </aside>
 
-      <!-- Controles y Filtros del Catálogo -->
-      <section id="catalogo" class="catalog-section">
-        <div class="catalog-controls-bar">
-          <!-- Filtros Rápidos (Chips) -->
-          <div class="filter-tags-group">
-            <button class="filter-tag-chip active" data-tag="all">✨ Todos</button>
-            <button class="filter-tag-chip" data-tag="al-mayor">📦 Al Mayor</button>
-            <button class="filter-tag-chip" data-tag="oferta">🔥 En Oferta</button>
-            <button class="filter-tag-chip" data-tag="popular">⭐ Más Vendidos</button>
-            <button class="filter-tag-chip" data-tag="fresco">🥑 Frescos del Día</button>
-          </div>
+          <!-- Contenido Principal del Catálogo -->
+          <div class="catalog-main-content">
+            <!-- Controles y Filtros del Catálogo -->
+            <div class="catalog-controls-bar">
+              <!-- Filtros Rápidos (Chips) -->
+              <div class="filter-tags-group">
+                <button class="filter-tag-chip active" data-tag="all">✨ Todos</button>
+                <button class="filter-tag-chip" data-tag="al-mayor">📦 Al Mayor</button>
+                <button class="filter-tag-chip" data-tag="oferta">🔥 En Oferta</button>
+                <button class="filter-tag-chip" data-tag="popular">⭐ Más Vendidos</button>
+                <button class="filter-tag-chip" data-tag="fresco">🥑 Frescos del Día</button>
+              </div>
 
               <!-- Selector de Ordenamiento -->
               <div class="catalog-sort-group">
@@ -1162,6 +1158,33 @@
   <a href="https://wa.me/34602070846?text=Hola%20Al%20Costo,%20quisiera%20hacer%20un%20pedido%20o%20consultar%20precios" target="_blank" class="floating-wa-btn" title="Escribir por WhatsApp al dueño (+34 602 07 08 46)">
     <i class="fa-brands fa-whatsapp" style="font-size: 1.15rem;"></i> <span>WhatsApp (+34 602 07 08 46)</span>
   </a>
+
+  <!-- ==========================================================================
+       BARRA DE NAVEGACIÓN INFERIOR PARA TELÉFONOS (MOBILE APP BAR)
+       ========================================================================== -->
+  <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Navegación móvil">
+    <button type="button" class="mobile-nav-item active" id="mobileNavHome" title="Ir al Inicio">
+      <i class="fa-solid fa-house nav-icon"></i>
+      <span>Inicio</span>
+    </button>
+    <button type="button" class="mobile-nav-item" id="mobileNavSearch" title="Buscar Productos">
+      <i class="fa-solid fa-magnifying-glass nav-icon"></i>
+      <span>Buscar</span>
+    </button>
+    <button type="button" class="mobile-nav-item" id="mobileNavDeals" title="Ver Ofertas Especiales">
+      <i class="fa-solid fa-fire-flame-curved nav-icon" style="color: #F97316;"></i>
+      <span>Ofertas</span>
+    </button>
+    <button type="button" class="mobile-nav-item" id="mobileNavWishlist" title="Favoritos">
+      <i class="fa-solid fa-heart nav-icon" style="color: #EF4444;"></i>
+      <span>Deseos</span>
+    </button>
+    <button type="button" class="mobile-nav-item" id="mobileNavCart" title="Abrir Carrito de Compras">
+      <i class="fa-solid fa-cart-shopping nav-icon"></i>
+      <span class="mobile-nav-badge" id="mobileNavCartBadge" style="display: none;">0</span>
+      <span>Carrito</span>
+    </button>
+  </nav>
 
   <!-- ==========================================================================
        CONTENEDOR DE NOTIFICACIONES TOAST FLOTANTES

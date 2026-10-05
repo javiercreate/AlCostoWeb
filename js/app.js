@@ -118,6 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeOrderTrackerBtn = document.getElementById('closeOrderTrackerBtn');
   const chatWithShopperBtn = document.getElementById('chatWithShopperBtn');
   const toastContainerEl = document.getElementById('toastContainer');
+  let catalogLoadState = 'loading';
+  let catalogLoadRequest = 0;
 
   // ==========================================================================
   // ESTADO Y UI DE AUTENTICACIÓN (LOGIN / REGISTRO / PERFIL)
@@ -145,24 +147,42 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAuthUI();
     renderCategoryPills();
     updateAddressUI();
-    renderProducts();
+    PRODUCTS_DATA = [];
+    await loadCatalogProductsFromDatabase();
     updateCartUI();
     updateWishlistBadge();
     initHeroCarousel();
     setupEventListeners();
 
-    // Sincronizar catálogo desde Supabase si está disponible
-    if (typeof SupabaseService !== 'undefined') {
-      try {
-        const cloudProducts = await SupabaseService.fetchProductsFromSupabase();
-        if (cloudProducts && cloudProducts.length > 0) {
-          PRODUCTS_DATA = cloudProducts;
-          renderProducts();
-        }
-      } catch (e) {
-        console.warn('Catálogo local activo');
-      }
+  }
+
+  async function loadCatalogProductsFromDatabase() {
+    const requestId = ++catalogLoadRequest;
+    const config = typeof SupabaseService !== 'undefined' ? SupabaseService.getConfig() : null;
+    if (!config || !config.connected || !config.url || !config.anonKey) {
+      PRODUCTS_DATA = [];
+      catalogLoadState = 'missing-config';
+      renderProducts();
+      return;
     }
+
+    catalogLoadState = 'loading';
+    renderProducts();
+    try {
+      const databaseProducts = await SupabaseService.fetchProductsFromSupabase();
+      if (requestId !== catalogLoadRequest) return;
+      if (!Array.isArray(databaseProducts)) {
+        throw new Error('Supabase no devolvió una lista válida de productos.');
+      }
+      PRODUCTS_DATA = databaseProducts;
+      catalogLoadState = 'ready';
+    } catch (error) {
+      if (requestId !== catalogLoadRequest) return;
+      console.error('No se pudo cargar el catálogo desde Supabase:', error);
+      PRODUCTS_DATA = [];
+      catalogLoadState = 'error';
+    }
+    renderProducts();
   }
 
   // ==========================================================================
@@ -470,10 +490,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function renderProducts(reloadFromActive = false) {
-    if ((reloadFromActive || !PRODUCTS_DATA || PRODUCTS_DATA.length === 0) && typeof getActiveProducts === 'function') {
-      PRODUCTS_DATA = getActiveProducts();
-    }
+  function renderProducts() {
     const filtered = getFilteredProducts();
     
     if (sectionCountEl) {
@@ -483,14 +500,60 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!productsGridEl) return;
 
     if (filtered.length === 0) {
+      const hasNoFilterMatches = PRODUCTS_DATA.length > 0 && catalogLoadState === 'ready';
+      const emptyState = hasNoFilterMatches
+        ? {
+            icon: '🔍',
+            heading: 'No encontramos productos que coincidan',
+            message: 'Prueba buscando con otros términos o seleccionando otra categoría.',
+            retry: false,
+            resetFilters: true
+          }
+        : catalogLoadState === 'loading'
+        ? {
+            icon: '⏳',
+            heading: 'Cargando catálogo',
+            message: 'Estamos consultando los productos disponibles en la base de datos.',
+            retry: false
+          }
+        : catalogLoadState === 'missing-config'
+          ? {
+              icon: '🔌',
+              heading: 'Catálogo no disponible',
+              message: 'Configura la URL y el token de Supabase para consultar los productos.',
+              retry: false
+            }
+          : catalogLoadState === 'error'
+            ? {
+                icon: '⚠️',
+                heading: 'No se pudo cargar el catálogo',
+                message: 'Revisa la conexión y las credenciales de Supabase e inténtalo de nuevo.',
+                retry: true
+              }
+            : {
+                icon: '📦',
+                heading: 'No hay productos publicados',
+                message: 'La base de datos no tiene productos disponibles en este momento.',
+                retry: false
+              };
       productsGridEl.innerHTML = `
         <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: white; border-radius: 16px; border: 1px dashed #ccc;">
-          <div style="font-size: 3rem; margin-bottom: 12px;">🔍</div>
-          <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 6px;">No encontramos productos que coincidan</h3>
-          <p style="color: #666; font-size: 0.9rem; margin-bottom: 16px;">Prueba buscando con otros términos o seleccionando otra categoría.</p>
-          <button class="btn-hero-cta" style="background: var(--color-primary); color: white;" id="resetFilterBtn">Ver todos los productos</button>
+          <div style="font-size: 3rem; margin-bottom: 12px;">${emptyState.icon}</div>
+          <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 6px;">${emptyState.heading}</h3>
+          <p style="color: #666; font-size: 0.9rem; margin-bottom: 16px;">${emptyState.message}</p>
+          ${emptyState.retry
+            ? '<button class="btn-hero-cta" style="background: var(--color-primary); color: white;" id="retryCatalogLoadBtn">Reintentar</button>'
+            : ''}
+          ${emptyState.resetFilters
+            ? '<button class="btn-hero-cta" style="background: var(--color-primary); color: white;" id="resetFilterBtn">Ver todos los productos</button>'
+            : ''}
         </div>
       `;
+      if (sectionCountEl) {
+        sectionCountEl.textContent = catalogLoadState === 'loading' ? 'Cargando catálogo...' : '0 productos';
+      }
+      const retryBtn = document.getElementById('retryCatalogLoadBtn');
+      if (retryBtn) retryBtn.addEventListener('click', loadCatalogProductsFromDatabase);
       const resetBtn = document.getElementById('resetFilterBtn');
       if (resetBtn) {
         resetBtn.addEventListener('click', () => {
@@ -510,7 +573,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const inCartQty = state.cart[product.id] ? state.cart[product.id].quantity : 0;
       const isWishlisted = state.wishlist.includes(product.id);
 
-      // Badge de oferta o etiqueta
+      // Icono y Categoría con soporte Font Awesome
+      const catObj = (typeof CATEGORIES !== 'undefined') ? CATEGORIES.find(c => c.id === product.category) : null;
+      let catIconHtml = '🏷️';
+      if (catObj && catObj.icon) {
+        if (catObj.icon.startsWith('fa-')) {
+          catIconHtml = `<i class="${catObj.icon}"></i>`;
+        } else {
+          catIconHtml = catObj.icon;
+        }
+      }
+
+      // Badge flotante moderno
       let badgeHtml = '';
       if (product.originalPrice) {
         const discountPct = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
@@ -560,6 +634,13 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
 
           <div class="product-info open-detail-trigger" data-id="${product.id}">
+            <div class="product-meta-header">
+              <span class="product-meta-unit">${catIconHtml} ${product.unit}</span>
+              <span class="product-meta-origin">${product.origin || 'Al Costo 🛒'}</span>
+            </div>
+
+            <h3 class="product-title" title="${product.name}">${product.name}</h3>
+
             <div class="product-price-row">
               <div class="price-primary-row">
                 <span class="product-current-price">$${product.price.toFixed(2)}</span>
@@ -2255,15 +2336,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Escuchar cambios en productos en tiempo real (creados, editados o eliminados desde admin.html)
     function onProductsUpdated() {
-      if (typeof getActiveProducts === 'function') {
-        PRODUCTS_DATA = getActiveProducts();
-      }
-      renderProducts();
-      renderCart();
+      loadCatalogProductsFromDatabase().then(() => updateCartUI());
     }
 
     window.addEventListener('storage', (e) => {
-      if (e.key === 'alcosto_custom_products') {
+      if (e.key === 'alcosto_supabase_config') {
         onProductsUpdated();
       }
     });

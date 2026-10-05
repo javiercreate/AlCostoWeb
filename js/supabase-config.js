@@ -18,10 +18,12 @@ const SupabaseService = {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.url && parsed.anonKey) {
+        const url = (parsed.url || '').trim().replace(/\/+$/, '');
+        const anonKey = (parsed.anonKey || '').trim();
+        if (url && anonKey) {
           return {
-            url: parsed.url.trim().replace(/\/+$/, ''),
-            anonKey: parsed.anonKey.trim(),
+            url,
+            anonKey,
             connected: true
           };
         }
@@ -30,10 +32,12 @@ const SupabaseService = {
       }
     }
     // Usuario general: carga los productos directamente con la nube oficial
+    const url = (PUBLIC_SUPABASE_CONFIG.url || '').trim().replace(/\/+$/, '');
+    const anonKey = (PUBLIC_SUPABASE_CONFIG.anonKey || '').trim();
     return {
-      url: PUBLIC_SUPABASE_CONFIG.url,
-      anonKey: PUBLIC_SUPABASE_CONFIG.anonKey,
-      connected: true
+      url,
+      anonKey,
+      connected: Boolean(url && anonKey)
     };
   },
 
@@ -122,6 +126,7 @@ const SupabaseService = {
     // Formatear productos para Supabase
     const payload = productsList.map(p => ({
       id: p.id,
+      ...(p.barcode ? { barcode: p.barcode } : {}),
       name: p.name,
       category: p.category,
       price: p.price,
@@ -138,21 +143,34 @@ const SupabaseService = {
       updated_at: new Date().toISOString()
     }));
 
-    const res = await fetch(`${config.url}/rest/v1/productos`, {
-      method: 'POST',
-      headers: {
-        ...this.getHeaders(),
-        'Prefer': 'resolution=merge-duplicates,return=representation'
-      },
-      body: JSON.stringify(payload)
-    });
+    const sendProducts = async (productsPayload) => {
+      const res = await fetch(`${config.url}/rest/v1/productos`, {
+        method: 'POST',
+        headers: {
+          ...this.getHeaders(),
+          'Prefer': 'resolution=merge-duplicates,return=representation'
+        },
+        body: JSON.stringify(productsPayload)
+      });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Error de Supabase (${res.status}): ${errText}`);
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Error de Supabase (${res.status}): ${errText}`);
+      }
+      return res.json();
+    };
+
+    try {
+      return await sendProducts(payload);
+    } catch (err) {
+      const isMissingBarcodeColumn = payload.some(product => product.barcode) &&
+        err.message.includes('barcode') && err.message.includes('schema cache');
+      if (!isMissingBarcodeColumn) throw err;
+
+      const legacyPayload = payload.map(({ barcode, ...product }) => product);
+      const data = await sendProducts(legacyPayload);
+      return { data, barcodeNotSynced: true };
     }
-
-    return await res.json();
   },
 
   // Obtener productos desde Supabase
@@ -172,6 +190,7 @@ const SupabaseService = {
       // Adaptar formato a la app
       return data.map(item => ({
         id: item.id,
+        barcode: item.barcode || '',
         name: item.name,
         category: item.category,
         price: parseFloat(item.price),

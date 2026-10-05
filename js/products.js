@@ -664,7 +664,7 @@ if (typeof window !== 'undefined') {
   window.DEFAULT_PRODUCTS = DEFAULT_PRODUCTS;
 }
 
-var PRODUCTS_DATA = [...DEFAULT_PRODUCTS];
+var PRODUCTS_DATA = [];
 
 // Función para obtener productos activos (carga de localStorage si tiene datos válidos, y si no, carga products.js)
 function getActiveProducts() {
@@ -721,8 +721,8 @@ function saveActiveProducts(productsList) {
   }
 }
 
-// Inicializar catálogo activo (vacío o con lo guardado en localStorage)
-PRODUCTS_DATA = getActiveProducts();
+// La tienda carga su catálogo desde Supabase; los productos locales quedan para el admin.
+PRODUCTS_DATA = [];
 
 // Ubicación y Coordenadas del Local Al Costo
 const STORE_COORDINATES = '7º48\'25.6"N 71º11\'12.3"W';
