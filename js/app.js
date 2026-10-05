@@ -466,10 +466,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (state.activeFilterTag === 'organico' && !prod.isOrganic) {
         return false;
       }
-      if (state.activeFilterTag === 'fresco' && prod.tag !== 'fresco' && prod.category !== 'frutas-verduras') {
-        return false;
-      }
-
       // Filtro por búsqueda
       if (state.searchQuery.trim() !== '') {
         const query = state.searchQuery.toLowerCase();
@@ -593,7 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
         badgeHtml = `<span class="product-badge-pill badge-wholesale">📦 Al Mayor</span>`;
       } else if (product.badge) {
         badgeHtml = `<span class="product-badge-pill badge-custom">${product.badge}</span>`;
-      } else if (product.category === 'charcuteria' || product.category === 'frutas-verduras') {
+      } else if (product.category === 'charcuteria') {
         badgeHtml = `<span class="product-badge-pill badge-fresh">🌿 Fresco</span>`;
       }
 

@@ -171,9 +171,7 @@ const CATEGORIES = [
   { id: 'lacteos', name: 'Lácteos', icon: 'fa-solid fa-cheese', badge: 'Frescura' },
   { id: 'bebidas', name: 'Bebidas', icon: 'fa-solid fa-bottle-water', badge: 'Frías' },
   { id: 'confiteria', name: 'Confitería', icon: 'fa-solid fa-candy-cane', badge: 'Snacks' },
-  { id: 'limpieza', name: 'Limpieza', icon: 'fa-solid fa-pump-soap', badge: 'Aseo' },
-  { id: 'carnes-pescados', name: 'Carnicería', icon: 'fa-solid fa-drumstick-bite', badge: 'Cortes' },
-  { id: 'frutas-verduras', name: 'Frescos', icon: 'fa-solid fa-apple-whole', badge: 'Del Campo' }
+  { id: 'limpieza', name: 'Limpieza', icon: 'fa-solid fa-pump-soap', badge: 'Aseo' }
 ];
 
 const PROMOS = [

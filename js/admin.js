@@ -817,6 +817,13 @@ document.addEventListener('DOMContentLoaded', () => {
     prodIdInput.disabled = true;
     if (prodBarcodeInput) prodBarcodeInput.value = prod.barcode || '';
     prodNameInput.value = prod.name;
+    if (!Array.from(prodCategoryInput.options).some(option => option.value === prod.category)) {
+      const legacyCategoryOption = document.createElement('option');
+      legacyCategoryOption.value = prod.category;
+      legacyCategoryOption.textContent = `Categoría anterior (${prod.category})`;
+      legacyCategoryOption.dataset.legacyCategory = 'true';
+      prodCategoryInput.appendChild(legacyCategoryOption);
+    }
     prodCategoryInput.value = prod.category;
     prodPriceInput.value = prod.price;
     prodOriginalPriceInput.value = prod.originalPrice || '';
@@ -848,6 +855,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (formTitle) formTitle.textContent = '➕ Agregar o Editar Producto';
     if (cancelEditBtn) cancelEditBtn.style.display = 'none';
     prodIdInput.disabled = false;
+    prodCategoryInput.querySelectorAll('[data-legacy-category="true"]').forEach(option => option.remove());
     productForm.reset();
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
     const prodImageUpload = document.getElementById('prodImageUpload');
