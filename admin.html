@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Al Costo | Panel de Control de Pedidos y Catálogo</title>
   <meta name="description" content="Panel de administración para gestionar compras, pedidos de clientes en tiempo real, publicar en Supabase y administrar inventario desde PC o móvil.">
   
@@ -11,6 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   
+  <!-- Font Awesome 6.5.1 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
   <link rel="stylesheet" href="css/styles.css">
   
   <style>
@@ -560,6 +563,38 @@
       align-items: center;
     }
 
+    .catalog-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .catalog-actions-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .barcode-scanner {
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid #BFDBFE;
+      border-radius: 12px;
+      background: #EFF6FF;
+    }
+
+    .barcode-scanner video {
+      display: block;
+      width: 100%;
+      max-height: 300px;
+      margin-top: 10px;
+      border-radius: 8px;
+      background: #0F172A;
+      object-fit: cover;
+    }
+
     .mobile-nav-btn {
       display: flex;
       flex-direction: column;
@@ -602,6 +637,55 @@
       }
       .admin-form-grid {
         grid-template-columns: 1fr;
+      }
+      body {
+        padding-bottom: calc(72px + env(safe-area-inset-bottom));
+      }
+      .admin-top-nav {
+        padding: 10px 12px;
+      }
+      .mobile-bottom-bar {
+        padding-bottom: calc(8px + env(safe-area-inset-bottom));
+      }
+      .mobile-bottom-bar-content {
+        justify-content: flex-start;
+        gap: 8px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .mobile-bottom-bar-content::-webkit-scrollbar {
+        display: none;
+      }
+      .mobile-nav-btn {
+        flex: 0 0 auto;
+        min-width: 54px;
+        padding: 4px 6px;
+      }
+      .catalog-actions {
+        align-items: stretch !important;
+      }
+      .catalog-actions > div:first-child {
+        width: 100%;
+      }
+      .catalog-actions-buttons {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+      }
+      .catalog-actions-buttons > button {
+        width: 100% !important;
+        min-height: 44px;
+        padding: 8px 10px !important;
+        font-size: 0.78rem !important;
+        white-space: normal;
+      }
+      .admin-card {
+        padding: 16px;
+      }
+      .admin-form-grid .form-input,
+      .admin-form-grid .form-select {
+        min-height: 44px;
+        font-size: 16px;
       }
     }
 
@@ -704,8 +788,6 @@
     .badge-dept-al-mayor { background: #DCFCE7; color: #166534; font-weight: 800; border: 1px solid #86EFAC; }
     .badge-dept-bebidas { background: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD; }
     .badge-dept-lacteos { background: #FEF9C3; color: #854D0E; border: 1px solid #FEF08A; }
-    .badge-dept-carnes-pescados { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
-    .badge-dept-frutas-verduras { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
 
     /* Botones de acción */
     .btn-action {
@@ -816,6 +898,10 @@
 
       <button class="tab-btn" data-tab="tab-catalog">
         <span>📦 Catálogo de Productos</span>
+      </button>
+
+      <button class="tab-btn" data-tab="tab-payments">
+        <span>💳 Métodos de Pago (Pago Móvil / Zelle / Binance)</span>
       </button>
 
       <button class="tab-btn" data-tab="tab-supabase">
@@ -997,7 +1083,7 @@
     <div class="tab-pane" id="tab-catalog">
       
       <!-- Barra de Acciones del Catálogo -->
-      <div style="background: white; border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <div class="catalog-actions" style="background: white; border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
         <div>
           <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--color-primary); margin-bottom: 2px;">
             Inventario de Productos Al Costo
@@ -1007,15 +1093,69 @@
           </p>
         </div>
 
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <div class="catalog-actions-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;">
           <button class="btn-checkout-primary" id="publishToSupabaseBtn" style="padding: 8px 16px; font-size: 0.88rem; height: auto;">
             🚀 Publicar en Supabase
+          </button>
+          <button class="btn-hero-cta" id="resetDefaultProductsBtn" style="padding: 8px 16px; font-size: 0.88rem; background: #EBF8FF; border: 1px solid #90CDF4; color: #2B6CB0;" title="Recargar los 24 productos base de products.js">
+            🔄 Cargar Catálogo (products.js)
           </button>
           <button class="btn-hero-cta" id="exportBackupJsonBtn" style="padding: 8px 16px; font-size: 0.88rem; background: #F8F9FA; border: 1px solid var(--color-border); color: #333;">
             📥 Descargar Copia JSON
           </button>
+          <button type="button" class="btn-hero-cta" id="importBackupJsonBtn" style="padding: 8px 16px; font-size: 0.88rem; background: #EFF6FF; border: 1px solid #BFDBFE; color: #1D4ED8;">
+            📤 Importar JSON
+          </button>
+          <input type="file" id="importBackupJsonInput" accept=".json,application/json" hidden>
         </div>
       </div>
+
+      <section class="admin-card" style="margin-bottom: 24px; border-color: #BFDBFE;">
+        <h3 class="admin-card-title">🧮 Calculadora de precios</h3>
+        <p class="admin-card-subtitle">
+          Sube o baja los precios por porcentaje o monto fijo. Puedes aplicarlo a todo el catálogo o a un solo producto.
+          Se actualizarán los precios detal, mayorista y tachado que tenga cada producto.
+        </p>
+        <div class="admin-form-grid">
+          <div class="form-group">
+            <label for="priceAdjustmentScope">Aplicar a</label>
+            <select id="priceAdjustmentScope" class="form-select">
+              <option value="all">Todo el catálogo</option>
+              <option value="product">Un solo producto</option>
+            </select>
+          </div>
+          <div class="form-group" id="priceAdjustmentProductGroup" style="display: none;">
+            <label for="priceAdjustmentProduct">Producto</label>
+            <select id="priceAdjustmentProduct" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label for="priceAdjustmentAction">Operación</label>
+            <select id="priceAdjustmentAction" class="form-select">
+              <option value="increase">Aumentar</option>
+              <option value="decrease">Disminuir</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="priceAdjustmentType">Tipo de ajuste</label>
+            <select id="priceAdjustmentType" class="form-select">
+              <option value="percent">Porcentaje (%)</option>
+              <option value="amount">Monto fijo ($)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="priceAdjustmentValue">Valor</label>
+            <input type="number" id="priceAdjustmentValue" class="form-input" min="0.01" step="0.01" placeholder="Ej: 10">
+          </div>
+          <div class="form-group span-full" style="margin-bottom: 0;">
+            <p id="priceAdjustmentPreview" role="status" aria-live="polite" style="margin: 0; padding: 12px; border-radius: 8px; background: #EFF6FF; color: #1E3A8A;">
+              Configura el ajuste para ver la vista previa.
+            </p>
+          </div>
+        </div>
+        <button type="button" class="btn-checkout-primary" id="applyPriceAdjustmentBtn" style="margin-top: 14px; height: 42px;" disabled>
+          Aplicar cambio de precios
+        </button>
+      </section>
 
       <!-- Formulario para Añadir o Modificar Producto -->
       <section class="admin-card" style="margin-bottom: 24px;">
@@ -1033,6 +1173,23 @@
             </div>
 
             <div class="form-group">
+              <label for="prodBarcode">Código de barras</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="prodBarcode" class="form-input" autocomplete="off" placeholder="Escanea o escribe el código" style="min-width: 0;">
+                <button type="button" class="btn-hero-cta" id="startBarcodeScannerBtn" style="min-height: 42px; padding: 0 12px; white-space: nowrap;" aria-label="Escanear código de barras">
+                  📷 Escanear
+                </button>
+              </div>
+              <div class="barcode-scanner" id="barcodeScannerPanel" hidden>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                  <span id="barcodeScannerStatus" role="status" aria-live="polite">Apunta la cámara al código de barras.</span>
+                  <button type="button" class="btn-action" id="stopBarcodeScannerBtn">Cerrar</button>
+                </div>
+                <video id="barcodeScannerVideo" autoplay muted playsinline></video>
+              </div>
+            </div>
+
+            <div class="form-group">
               <label for="prodCategory">Departamento *</label>
               <select id="prodCategory" class="form-select" required>
                 <option value="charcuteria">🥓 Charcutería y Embutidos</option>
@@ -1042,8 +1199,6 @@
                 <option value="confiteria">🍬 Confitería y Dulces</option>
                 <option value="bebidas">🥤 Bebidas y Refrescos</option>
                 <option value="lacteos">🧀 Lácteos y Quesos</option>
-                <option value="carnes-pescados">🥩 Carnicería y Aves</option>
-                <option value="frutas-verduras">🥑 Frutas y Verduras</option>
               </select>
             </div>
 
@@ -1087,7 +1242,7 @@
               <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <input type="text" id="prodImage" class="form-input" placeholder="https://... o sube una imagen de tu dispositivo" style="flex: 1; min-width: 200px;">
                 <label class="btn-checkout-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; height: 42px; font-size: 0.85rem; cursor: pointer; margin: 0; background: #2563EB; border-radius: var(--radius-md);">
-                  <span>📁</span> Subir Imagen
+                  <span>📸</span> Galería / tomar foto
                   <input type="file" id="prodImageUpload" accept="image/*" style="display: none;">
                 </label>
               </div>
@@ -1134,8 +1289,6 @@
             <option value="confiteria">🍬 Confitería</option>
             <option value="bebidas">🥤 Bebidas</option>
             <option value="lacteos">🧀 Lácteos</option>
-            <option value="carnes-pescados">🥩 Carnes</option>
-            <option value="frutas-verduras">🥑 Frutas</option>
           </select>
         </div>
 
@@ -1156,6 +1309,102 @@
         </table>
       </section>
 
+    </div>
+
+    <!-- ========================================================================
+         PESTAÑA NUEVA: MÉTODOS DE PAGO (EDITABLE EN SUPABASE Y LOCAL)
+         ======================================================================== -->
+    <div class="tab-pane" id="tab-payments">
+      <div class="admin-card" style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 class="admin-card-title">
+              <i class="fa-solid fa-credit-card" style="color: #108910;"></i>
+              Configuración de Métodos de Pago
+            </h3>
+            <p class="admin-card-subtitle" style="margin: 0;">
+              Edita las cuentas de Pago Móvil, Zelle y Binance Pay. Se sincronizan en la tabla <code>configuracion_pagos</code> de Supabase para que tus clientes vean los datos actualizados de inmediato sin tocar el código.
+            </p>
+          </div>
+          <span id="paymentConfigSyncBadge" style="font-size: 0.8rem; font-weight: 700; background: #DCFCE7; color: #166534; padding: 4px 12px; border-radius: 9999px;">
+            ☁️ Listo para sincronizar
+          </span>
+        </div>
+
+        <form id="paymentConfigForm">
+          <!-- SECCIÓN 1: PAGO MÓVIL (BS) -->
+          <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 14px; padding: 18px; margin-bottom: 20px;">
+            <h4 style="font-size: 1.05rem; font-weight: 800; color: #166534; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-mobile-screen-button"></i> 1. Pago Móvil (Venezuela - Bolívares BCV)
+            </h4>
+            <div class="admin-form-grid">
+              <div class="form-group">
+                <label for="pmBanco">Banco Receptor *</label>
+                <input type="text" id="pmBanco" class="form-input" required placeholder="Ej: Banco de Venezuela (0102)">
+              </div>
+              <div class="form-group">
+                <label for="pmTelefono">Teléfono Pago Móvil *</label>
+                <input type="text" id="pmTelefono" class="form-input" required placeholder="Ej: 0412-1234567">
+              </div>
+              <div class="form-group">
+                <label for="pmCedula">Cédula / RIF *</label>
+                <input type="text" id="pmCedula" class="form-input" required placeholder="Ej: V-26.123.456 o J-12345678-9">
+              </div>
+              <div class="form-group">
+                <label for="pmTitular">Nombre del Titular *</label>
+                <input type="text" id="pmTitular" class="form-input" required placeholder="Ej: Al Costo Supermercado C.A.">
+              </div>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 2: ZELLE (USD) -->
+          <div style="background: #FAF5FF; border: 1.5px solid #E9D5FF; border-radius: 14px; padding: 18px; margin-bottom: 20px;">
+            <h4 style="font-size: 1.05rem; font-weight: 800; color: #6B21A8; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-dollar-sign"></i> 2. Zelle (Estados Unidos - USD)
+            </h4>
+            <div class="admin-form-grid">
+              <div class="form-group">
+                <label for="zelleCorreo">Correo Electrónico Registrado en Zelle *</label>
+                <input type="email" id="zelleCorreo" class="form-input" required placeholder="Ej: pagos@alcostosuper.com">
+              </div>
+              <div class="form-group">
+                <label for="zelleTitular">Nombre del Titular de la Cuenta *</label>
+                <input type="text" id="zelleTitular" class="form-input" required placeholder="Ej: Al Costo Supermarket LLC">
+              </div>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 3: BINANCE PAY (USDT) -->
+          <div style="background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 14px; padding: 18px; margin-bottom: 20px;">
+            <h4 style="font-size: 1.05rem; font-weight: 800; color: #B45309; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-brands fa-bitcoin"></i> 3. Binance Pay (Cripto - USDT)
+            </h4>
+            <div class="admin-form-grid">
+              <div class="form-group">
+                <label for="binancePayId">Binance Pay ID (Opcional)</label>
+                <input type="text" id="binancePayId" class="form-input" placeholder="Ej: 284910283">
+              </div>
+              <div class="form-group">
+                <label for="binanceCorreo">Correo de la Cuenta Binance *</label>
+                <input type="email" id="binanceCorreo" class="form-input" required placeholder="Ej: binance@alcostosuper.com">
+              </div>
+              <div class="form-group span-full">
+                <label for="binanceRed">Redes Soportadas / Instrucción de Transferencia</label>
+                <input type="text" id="binanceRed" class="form-input" placeholder="Ej: USDT (Red TRC20 / BEP20 - Binance Pay)">
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button type="submit" class="btn-checkout-primary" id="btnSavePaymentConfig" style="flex: 1; max-width: 380px;">
+              💾 Guardar Datos de Pago en Supabase y Local
+            </button>
+            <button type="button" class="btn-hero-cta" id="btnResetPaymentDefaults" style="background: white; border: 1.5px solid var(--color-border); color: #444;">
+              🔄 Restaurar Valores por Defecto
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <!-- ========================================================================
@@ -1226,6 +1475,7 @@
 -- 1. Tabla de Productos
 CREATE TABLE IF NOT EXISTS productos (
   id TEXT PRIMARY KEY,
+  barcode TEXT,
   name TEXT NOT NULL,
   category TEXT NOT NULL,
   price NUMERIC NOT NULL,
@@ -1241,6 +1491,8 @@ CREATE TABLE IF NOT EXISTS productos (
   in_stock BOOLEAN DEFAULT TRUE,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS barcode TEXT;
 
 -- 2. Tabla de Pedidos / Compras
 CREATE TABLE IF NOT EXISTS pedidos (
@@ -1261,9 +1513,31 @@ CREATE TABLE IF NOT EXISTS pedidos (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Habilitar políticas públicas para lectura y creación (anon)
+-- 3. Tabla de Configuración de Métodos de Pago
+CREATE TABLE IF NOT EXISTS configuracion_pagos (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  datos JSONB NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 4. Tabla de Usuarios / Clientes (Inicio de Sesión y Registro)
+CREATE TABLE IF NOT EXISTS usuarios (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre TEXT NOT NULL,
+  email TEXT UNIQUE,
+  telefono TEXT UNIQUE,
+  password_hash TEXT NOT NULL,
+  direccion_predeterminada TEXT,
+  rol TEXT DEFAULT 'cliente',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. Habilitar políticas públicas y de seguridad (RLS)
 ALTER TABLE productos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pedidos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE configuracion_pagos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Lectura pública de productos" ON productos FOR SELECT USING (true);
 CREATE POLICY "Gestión pública de productos" ON productos FOR ALL USING (true);
@@ -1271,6 +1545,13 @@ CREATE POLICY "Gestión pública de productos" ON productos FOR ALL USING (true)
 CREATE POLICY "Lectura pública de pedidos" ON pedidos FOR SELECT USING (true);
 CREATE POLICY "Creación pública de pedidos" ON pedidos FOR INSERT WITH CHECK (true);
 CREATE POLICY "Actualización de pedidos" ON pedidos FOR UPDATE USING (true);
+
+CREATE POLICY "Lectura de pagos" ON configuracion_pagos FOR SELECT USING (true);
+CREATE POLICY "Gestión de pagos" ON configuracion_pagos FOR ALL USING (true);
+
+CREATE POLICY "Lectura de usuarios" ON usuarios FOR SELECT USING (true);
+CREATE POLICY "Registro de usuarios" ON usuarios FOR INSERT WITH CHECK (true);
+CREATE POLICY "Actualización de usuarios" ON usuarios FOR UPDATE USING (true);
         </pre>
 
         <button class="btn-hero-cta" id="copySqlBtn" style="margin-top: 10px; background: white; border: 1.5px solid var(--color-border); color: #111;">
@@ -1295,6 +1576,11 @@ CREATE POLICY "Actualización de pedidos" ON pedidos FOR UPDATE USING (true);
       <button class="mobile-nav-btn" data-tab="tab-catalog">
         <span class="icon">📦</span>
         <span>Catálogo</span>
+      </button>
+
+      <button class="mobile-nav-btn" data-tab="tab-payments">
+        <span class="icon">💳</span>
+        <span>Pagos</span>
       </button>
 
       <button class="mobile-nav-btn" data-tab="tab-supabase">
@@ -1329,7 +1615,7 @@ CREATE POLICY "Actualización de pedidos" ON pedidos FOR UPDATE USING (true);
 
   <!-- Scripts -->
   <script src="js/supabase-config.js"></script>
-  <script src="js/products.js"></script>
+  <script src="js/products.js?v=20261005-departments"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

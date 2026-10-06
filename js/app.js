@@ -13,7 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
     sortBy: 'relevance',
     appliedCoupon: null,
     shopperTipPercent: 10,
-    deliveryType: 'delivery', // 'delivery' | 'pickup'
+    deliveryType: localStorage.getItem('alcosto_delivery_type') || 'delivery', // 'delivery' | 'pickup'
+    routeConfirmed: localStorage.getItem('alcosto_route_confirmed') === 'true',
+    realGpsLocation: (function() {
+      try { return JSON.parse(localStorage.getItem('alcosto_user_gps')); } catch(e) { return null; }
+    })(),
     currentAddress: JSON.parse(localStorage.getItem('alcosto_address')) || PRESET_ADDRESSES[0],
     customerProfile: JSON.parse(localStorage.getItem('alcosto_customer_profile')) || {
       name: '',
@@ -21,12 +25,16 @@ document.addEventListener('DOMContentLoaded', () => {
       address: '',
       reference: ''
     },
+    authUser: (function() {
+      try { return JSON.parse(localStorage.getItem('alcosto_auth_user')); } catch(e) { return null; }
+    })(),
     selectedProductForModal: null,
     orderTrackerInterval: null
   };
 
   // --- ELEMENTOS DEL DOM ---
   const categoriesListEl = document.getElementById('categoriesPillsList');
+  const deptRailIconsListEl = document.getElementById('deptRailIconsList');
   const productsGridEl = document.getElementById('productsGrid');
   const sectionTitleEl = document.getElementById('catalogSectionTitle');
   const sectionCountEl = document.getElementById('catalogSectionCount');
@@ -36,10 +44,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const sortSelectEl = document.getElementById('sortSelect');
   const filterTagChips = document.querySelectorAll('.filter-tag-chip');
 
-  // Header & Profile Elements
+  // Header & Profile & Auth Elements
   const headerAddressLabelEl = document.getElementById('headerAddressLabel');
   const headerDeliveryTypeEl = document.getElementById('headerDeliveryType');
   const deliverySelectorBtn = document.getElementById('deliverySelectorBtn');
+  const userAccountDropdownWrapper = document.getElementById('userAccountDropdownWrapper');
+  const userAccountBtn = document.getElementById('userAccountBtn');
+  const userAccountBtnLabel = document.getElementById('userAccountBtnLabel');
+  const userAccountMenu = document.getElementById('userAccountMenu');
+  const userMenuName = document.getElementById('userMenuName');
+  const userMenuEmail = document.getElementById('userMenuEmail');
+  const userMenuGuestActions = document.getElementById('userMenuGuestActions');
+  const userMenuLoggedActions = document.getElementById('userMenuLoggedActions');
+  const btnOpenLoginModal = document.getElementById('btnOpenLoginModal');
+  const btnOpenRegisterModal = document.getElementById('btnOpenRegisterModal');
+  const btnOpenProfileFromMenu = document.getElementById('btnOpenProfileFromMenu');
+  const btnLogoutUser = document.getElementById('btnLogoutUser');
+
+  // Modal Auth
+  const authModalEl = document.getElementById('authModal');
+  const closeAuthModalBtn = document.getElementById('closeAuthModalBtn');
+  const tabAuthLogin = document.getElementById('tabAuthLogin');
+  const tabAuthRegister = document.getElementById('tabAuthRegister');
+  const formAuthLogin = document.getElementById('formAuthLogin');
+  const formAuthRegister = document.getElementById('formAuthRegister');
+
   const customerProfileBtn = document.getElementById('customerProfileBtn');
   const customerProfileBtnLabel = document.getElementById('customerProfileBtnLabel');
   const heroOpenProfileBtn = document.getElementById('heroOpenProfileBtn');
@@ -89,31 +118,71 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeOrderTrackerBtn = document.getElementById('closeOrderTrackerBtn');
   const chatWithShopperBtn = document.getElementById('chatWithShopperBtn');
   const toastContainerEl = document.getElementById('toastContainer');
+  let catalogLoadState = 'loading';
+  let catalogLoadRequest = 0;
+
+  // ==========================================================================
+  // ESTADO Y UI DE AUTENTICACIÓN (LOGIN / REGISTRO / PERFIL)
+  // ==========================================================================
+  function updateAuthUI() {
+    if (state.authUser && state.authUser.name) {
+      if (userAccountBtnLabel) userAccountBtnLabel.textContent = state.authUser.name.split(' ')[0];
+      if (userMenuName) userMenuName.textContent = state.authUser.name;
+      if (userMenuEmail) userMenuEmail.textContent = state.authUser.email || state.authUser.phone || 'Usuario Registrado';
+      if (userMenuGuestActions) userMenuGuestActions.style.display = 'none';
+      if (userMenuLoggedActions) userMenuLoggedActions.style.display = 'block';
+    } else {
+      if (userAccountBtnLabel) userAccountBtnLabel.textContent = 'Mi Cuenta';
+      if (userMenuName) userMenuName.textContent = 'Invitado';
+      if (userMenuEmail) userMenuEmail.textContent = 'Inicia sesión para gestionar pedidos';
+      if (userMenuGuestActions) userMenuGuestActions.style.display = 'block';
+      if (userMenuLoggedActions) userMenuLoggedActions.style.display = 'none';
+    }
+  }
 
   // ==========================================================================
   // INICIALIZACIÓN
   // ==========================================================================
   async function init() {
+    updateAuthUI();
     renderCategoryPills();
     updateAddressUI();
-    renderProducts();
+    PRODUCTS_DATA = [];
+    await loadCatalogProductsFromDatabase();
     updateCartUI();
     updateWishlistBadge();
     initHeroCarousel();
     setupEventListeners();
 
-    // Sincronizar catálogo desde Supabase si está disponible
-    if (typeof SupabaseService !== 'undefined') {
-      try {
-        const cloudProducts = await SupabaseService.fetchProductsFromSupabase();
-        if (cloudProducts && cloudProducts.length > 0) {
-          PRODUCTS_DATA = cloudProducts;
-          renderProducts();
-        }
-      } catch (e) {
-        console.warn('Catálogo local activo');
-      }
+  }
+
+  async function loadCatalogProductsFromDatabase() {
+    const requestId = ++catalogLoadRequest;
+    const config = typeof SupabaseService !== 'undefined' ? SupabaseService.getConfig() : null;
+    if (!config || !config.connected || !config.url || !config.anonKey) {
+      PRODUCTS_DATA = [];
+      catalogLoadState = 'missing-config';
+      renderProducts();
+      return;
     }
+
+    catalogLoadState = 'loading';
+    renderProducts();
+    try {
+      const databaseProducts = await SupabaseService.fetchProductsFromSupabase();
+      if (requestId !== catalogLoadRequest) return;
+      if (!Array.isArray(databaseProducts)) {
+        throw new Error('Supabase no devolvió una lista válida de productos.');
+      }
+      PRODUCTS_DATA = databaseProducts;
+      catalogLoadState = 'ready';
+    } catch (error) {
+      if (requestId !== catalogLoadRequest) return;
+      console.error('No se pudo cargar el catálogo desde Supabase:', error);
+      PRODUCTS_DATA = [];
+      catalogLoadState = 'error';
+    }
+    renderProducts();
   }
 
   // ==========================================================================
@@ -233,10 +302,17 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Filtro rápido de categoría charcutería en slide 3
-    document.querySelectorAll('.hero-filter-charcuteria-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        setActiveCategory('charcuteria');
+    // Filtros rápidos de categoría desde cualquier banner o tarjeta
+    document.querySelectorAll('[data-filter-category], .hero-filter-charcuteria-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const cat = btn.getAttribute('data-filter-category') || 'charcuteria';
+        if (cat) {
+          setActiveCategory(cat);
+          const target = document.getElementById('catalogo');
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+          }
+        }
       });
     });
 
@@ -244,25 +320,111 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
-  // CATEGORÍAS Y NAVEGACIÓN
+  // CATEGORÍAS Y NAVEGACIÓN (BARRA VERTICAL SOLO ICONOS FONT AWESOME)
   // ==========================================================================
   function renderCategoryPills() {
-    if (!categoriesListEl) return;
-    categoriesListEl.innerHTML = CATEGORIES.map(cat => `
-      <li>
-        <button class="category-pill-btn ${cat.id === state.activeCategory ? 'active' : ''}" data-cat-id="${cat.id}">
-          <span class="category-pill-icon">${cat.icon}</span>
-          <span>${cat.name}</span>
-        </button>
-      </li>
-    `).join('');
+    renderVerticalDeptRail();
+    renderDepartmentsDropdown();
+  }
 
-    categoriesListEl.querySelectorAll('.category-pill-btn').forEach(btn => {
+  function renderVerticalDeptRail() {
+    if (!deptRailIconsListEl) return;
+    deptRailIconsListEl.innerHTML = CATEGORIES.map(cat => {
+      const iconClass = cat.icon.startsWith('fa-') ? cat.icon : `fa-solid ${cat.icon}`;
+      return `
+        <button type="button" 
+                class="dept-rail-icon-btn ${cat.id === state.activeCategory ? 'active' : ''}" 
+                data-cat-id="${cat.id}" 
+                data-dept-name="${cat.name}" 
+                title="${cat.name}">
+          <i class="${iconClass}"></i>
+        </button>
+      `;
+    }).join('');
+
+    deptRailIconsListEl.querySelectorAll('.dept-rail-icon-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const catId = btn.getAttribute('data-cat-id');
         setActiveCategory(catId);
+        const target = document.getElementById('catalogo');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
       });
     });
+  }
+
+  function renderDepartmentsDropdown() {
+    const gridMenuEl = document.getElementById('departmentsGridMenu');
+    const dropdownMenuEl = document.getElementById('departmentsDropdownMenu');
+    const btnMenu = document.getElementById('btnDepartmentsMenu');
+    const btnViewAll = document.getElementById('btnViewAllFromDropdown');
+
+    if (!gridMenuEl) return;
+
+    gridMenuEl.innerHTML = CATEGORIES.map(cat => {
+      const iconClass = cat.icon.startsWith('fa-') ? cat.icon : `fa-solid ${cat.icon}`;
+      return `
+        <div class="dept-menu-item ${cat.id === state.activeCategory ? 'active' : ''}" data-cat-id="${cat.id}" role="menuitem">
+          <span class="dept-item-icon"><i class="${iconClass}"></i></span>
+          <div class="dept-item-info">
+            <span class="dept-item-name">${cat.name}</span>
+            <span class="dept-item-badge">${cat.badge || 'Pasillo'}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    gridMenuEl.querySelectorAll('.dept-menu-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const catId = item.getAttribute('data-cat-id');
+        setActiveCategory(catId);
+        if (dropdownMenuEl) dropdownMenuEl.classList.remove('active');
+        if (btnMenu) {
+          btnMenu.classList.remove('active');
+          btnMenu.setAttribute('aria-expanded', 'false');
+        }
+        const target = document.getElementById('catalogo');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+
+    if (btnViewAll) {
+      btnViewAll.onclick = (e) => {
+        e.preventDefault();
+        setActiveCategory('todos');
+        if (dropdownMenuEl) dropdownMenuEl.classList.remove('active');
+        if (btnMenu) {
+          btnMenu.classList.remove('active');
+          btnMenu.setAttribute('aria-expanded', 'false');
+        }
+        const target = document.getElementById('catalogo');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      };
+    }
+
+    if (btnMenu && !btnMenu.dataset.listenerAttached) {
+      btnMenu.dataset.listenerAttached = 'true';
+      btnMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = dropdownMenuEl.classList.toggle('active');
+        btnMenu.classList.toggle('active', isOpen);
+        btnMenu.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      // Cerrar al hacer clic fuera
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#departmentsDropdownWrapper')) {
+          if (dropdownMenuEl) dropdownMenuEl.classList.remove('active');
+          btnMenu.classList.remove('active');
+          btnMenu.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
   }
 
   function setActiveCategory(catId) {
@@ -276,7 +438,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const categoryObj = CATEGORIES.find(c => c.id === catId);
     if (sectionTitleEl && categoryObj) {
-      sectionTitleEl.innerHTML = `${categoryObj.icon} ${categoryObj.name}`;
+      const iconClass = categoryObj.icon.startsWith('fa-') ? categoryObj.icon : `fa-solid ${categoryObj.icon}`;
+      sectionTitleEl.innerHTML = `<i class="${iconClass}" style="color: #108910; margin-right: 8px;"></i> ${categoryObj.name}`;
     }
   }
 
@@ -303,10 +466,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (state.activeFilterTag === 'organico' && !prod.isOrganic) {
         return false;
       }
-      if (state.activeFilterTag === 'fresco' && prod.tag !== 'fresco' && prod.category !== 'frutas-verduras') {
-        return false;
-      }
-
       // Filtro por búsqueda
       if (state.searchQuery.trim() !== '') {
         const query = state.searchQuery.toLowerCase();
@@ -328,9 +487,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderProducts() {
-    if (typeof getActiveProducts === 'function') {
-      PRODUCTS_DATA = getActiveProducts();
-    }
     const filtered = getFilteredProducts();
     
     if (sectionCountEl) {
@@ -340,14 +496,60 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!productsGridEl) return;
 
     if (filtered.length === 0) {
+      const hasNoFilterMatches = PRODUCTS_DATA.length > 0 && catalogLoadState === 'ready';
+      const emptyState = hasNoFilterMatches
+        ? {
+            icon: '🔍',
+            heading: 'No encontramos productos que coincidan',
+            message: 'Prueba buscando con otros términos o seleccionando otra categoría.',
+            retry: false,
+            resetFilters: true
+          }
+        : catalogLoadState === 'loading'
+        ? {
+            icon: '⏳',
+            heading: 'Cargando catálogo',
+            message: 'Estamos consultando los productos disponibles en la base de datos.',
+            retry: false
+          }
+        : catalogLoadState === 'missing-config'
+          ? {
+              icon: '🔌',
+              heading: 'Catálogo no disponible',
+              message: 'Configura la URL y el token de Supabase para consultar los productos.',
+              retry: false
+            }
+          : catalogLoadState === 'error'
+            ? {
+                icon: '⚠️',
+                heading: 'No se pudo cargar el catálogo',
+                message: 'Revisa la conexión y las credenciales de Supabase e inténtalo de nuevo.',
+                retry: true
+              }
+            : {
+                icon: '📦',
+                heading: 'No hay productos publicados',
+                message: 'La base de datos no tiene productos disponibles en este momento.',
+                retry: false
+              };
       productsGridEl.innerHTML = `
         <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: white; border-radius: 16px; border: 1px dashed #ccc;">
-          <div style="font-size: 3rem; margin-bottom: 12px;">🔍</div>
-          <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 6px;">No encontramos productos que coincidan</h3>
-          <p style="color: #666; font-size: 0.9rem; margin-bottom: 16px;">Prueba buscando con otros términos o seleccionando otra categoría.</p>
-          <button class="btn-hero-cta" style="background: var(--color-primary); color: white;" id="resetFilterBtn">Ver todos los productos</button>
+          <div style="font-size: 3rem; margin-bottom: 12px;">${emptyState.icon}</div>
+          <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 6px;">${emptyState.heading}</h3>
+          <p style="color: #666; font-size: 0.9rem; margin-bottom: 16px;">${emptyState.message}</p>
+          ${emptyState.retry
+            ? '<button class="btn-hero-cta" style="background: var(--color-primary); color: white;" id="retryCatalogLoadBtn">Reintentar</button>'
+            : ''}
+          ${emptyState.resetFilters
+            ? '<button class="btn-hero-cta" style="background: var(--color-primary); color: white;" id="resetFilterBtn">Ver todos los productos</button>'
+            : ''}
         </div>
       `;
+      if (sectionCountEl) {
+        sectionCountEl.textContent = catalogLoadState === 'loading' ? 'Cargando catálogo...' : '0 productos';
+      }
+      const retryBtn = document.getElementById('retryCatalogLoadBtn');
+      if (retryBtn) retryBtn.addEventListener('click', loadCatalogProductsFromDatabase);
       const resetBtn = document.getElementById('resetFilterBtn');
       if (resetBtn) {
         resetBtn.addEventListener('click', () => {
@@ -367,23 +569,38 @@ document.addEventListener('DOMContentLoaded', () => {
       const inCartQty = state.cart[product.id] ? state.cart[product.id].quantity : 0;
       const isWishlisted = state.wishlist.includes(product.id);
 
-      // Badge de oferta o etiqueta
+      // Icono y Categoría con soporte Font Awesome
+      const catObj = (typeof CATEGORIES !== 'undefined') ? CATEGORIES.find(c => c.id === product.category) : null;
+      let catIconHtml = '🏷️';
+      if (catObj && catObj.icon) {
+        if (catObj.icon.startsWith('fa-')) {
+          catIconHtml = `<i class="${catObj.icon}"></i>`;
+        } else {
+          catIconHtml = catObj.icon;
+        }
+      }
+
+      // Badge flotante moderno
       let badgeHtml = '';
       if (product.originalPrice) {
         const discountPct = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
-        badgeHtml = `<span class="product-badge-pill offer">-${discountPct}% Oferta</span>`;
-      } else if (product.isOrganic) {
-        badgeHtml = `<span class="product-badge-pill organic">🌱 Orgánico</span>`;
+        badgeHtml = `<span class="product-badge-pill badge-offer">🔥 -${discountPct}% OFF</span>`;
+      } else if (product.wholesalePrice || product.category === 'al-mayor') {
+        badgeHtml = `<span class="product-badge-pill badge-wholesale">📦 Al Mayor</span>`;
       } else if (product.badge) {
-        badgeHtml = `<span class="product-badge-pill">${product.badge}</span>`;
+        badgeHtml = `<span class="product-badge-pill badge-custom">${product.badge}</span>`;
+      } else if (product.category === 'charcuteria') {
+        badgeHtml = `<span class="product-badge-pill badge-fresh">🌿 Fresco</span>`;
       }
+
+      const reviewsCount = product.reviewsCount || product.reviews || 64;
 
       // Botón estilo Instacart (+ o Stepper verde)
       let actionControlHtml = '';
       if (inCartQty === 0) {
         actionControlHtml = `
           <button class="btn-add-instacart" data-id="${product.id}" aria-label="Agregar ${product.name} al carrito">
-            <span style="font-size: 1.2rem; font-weight: 800; line-height: 1;">+</span>
+            <span class="btn-plus-icon">+</span>
             <span>Agregar</span>
           </button>
         `;
@@ -391,7 +608,10 @@ document.addEventListener('DOMContentLoaded', () => {
         actionControlHtml = `
           <div class="quantity-stepper" data-id="${product.id}">
             <button class="stepper-btn btn-stepper-minus" data-id="${product.id}" title="Disminuir">−</button>
-            <span class="stepper-count">${inCartQty}</span>
+            <div class="stepper-center">
+              <span class="stepper-qty-label">En Carrito</span>
+              <span class="stepper-count">${inCartQty}</span>
+            </div>
             <button class="stepper-btn btn-stepper-plus" data-id="${product.id}" title="Aumentar">+</button>
           </div>
         `;
@@ -400,38 +620,47 @@ document.addEventListener('DOMContentLoaded', () => {
       return `
         <article class="product-card" data-product-id="${product.id}">
           ${badgeHtml}
-          <button class="btn-wishlist ${isWishlisted ? 'active' : ''}" data-id="${product.id}" title="Favorito">
+          <button class="btn-wishlist ${isWishlisted ? 'active' : ''}" data-id="${product.id}" title="${isWishlisted ? 'Quitar de favoritos' : 'Guardar en favoritos'}">
             ${isWishlisted ? '❤️' : '🤍'}
           </button>
           
           <div class="product-image-wrap open-detail-trigger" data-id="${product.id}">
             <img src="${product.image}" alt="${product.name}" class="product-image" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80'">
+            <span class="quick-view-hint">🔍 Vista rápida</span>
           </div>
 
           <div class="product-info open-detail-trigger" data-id="${product.id}">
+            <div class="product-meta-header">
+              <span class="product-meta-unit">${catIconHtml} ${product.unit}</span>
+              <span class="product-meta-origin">${product.origin || 'Al Costo 🛒'}</span>
+            </div>
+
+            <h3 class="product-title" title="${product.name}">${product.name}</h3>
+
             <div class="product-price-row">
               <div class="price-primary-row">
                 <span class="product-current-price">$${product.price.toFixed(2)}</span>
                 ${product.originalPrice ? `<span class="product-original-price">$${product.originalPrice.toFixed(2)}</span>` : ''}
               </div>
               <div class="product-currency-badges">
-                <span class="badge-currency-bs">🇻🇪 ${(product.price * CURRENCY_RATES.BS).toFixed(2)} Bs</span>
-                <span class="badge-currency-cop">🇨🇴 ${(Math.round(product.price * CURRENCY_RATES.COP)).toLocaleString('es-CO')} COP</span>
+                <span class="badge-currency-bs" title="Tasa oficial Banco Central">🇻🇪 ${(product.price * CURRENCY_RATES.BS).toFixed(2)} Bs</span>
+                <span class="badge-currency-cop" title="Pesos Colombianos">🇨🇴 ${(Math.round(product.price * CURRENCY_RATES.COP)).toLocaleString('es-CO')} COP</span>
               </div>
             </div>
-            <div class="product-unit">${product.unit}</div>
+
             ${product.wholesalePrice ? `
               <div class="product-wholesale-tag">
-                <span>📦 Mayor:</span>
-                <strong>$${product.wholesalePrice.toFixed(2)}</strong>
-                <span style="font-size:0.7rem; color:#555;">(${(product.wholesalePrice * CURRENCY_RATES.BS).toFixed(0)} Bs | ${(Math.round(product.wholesalePrice * CURRENCY_RATES.COP)).toLocaleString('es-CO')} COP)</span>
+                <div class="wholesale-info">
+                  <span>📦 Mayor: <strong>$${product.wholesalePrice.toFixed(2)}</strong> (mín ${product.wholesaleMin || 1}u)</span>
+                  <span class="wholesale-sub">${(product.wholesalePrice * CURRENCY_RATES.BS).toFixed(0)} Bs • ${(Math.round(product.wholesalePrice * CURRENCY_RATES.COP)).toLocaleString('es-CO')} COP</span>
+                </div>
               </div>
             ` : ''}
-            <h3 class="product-title">${product.name}</h3>
+
             <div class="product-rating-row">
               <span class="product-stars">★★★★★</span>
-              <span>${product.rating}</span>
-              <span>(${product.reviews})</span>
+              <span class="rating-val">${product.rating || 4.9}</span>
+              <span class="reviews-count">(${reviewsCount})</span>
             </div>
           </div>
 
@@ -445,7 +674,40 @@ document.addEventListener('DOMContentLoaded', () => {
     bindProductCardEvents();
   }
 
+  // Comprueba si una imagen tiene esquinas negras artificiales y le aplica blend-dark-bg o fondo oscuro
+  function checkImageDarkBg(imgEl) {
+    if (!imgEl || imgEl.dataset.checkedBg) return;
+    imgEl.dataset.checkedBg = 'true';
+    try {
+      const cvs = document.createElement('canvas');
+      cvs.width = 16;
+      cvs.height = 16;
+      const ctx = cvs.getContext('2d');
+      ctx.drawImage(imgEl, 0, 0, 16, 16);
+      const data = ctx.getImageData(0, 0, 2, 2).data;
+      // Comprobar pixel superior izquierdo
+      if (data[0] < 25 && data[1] < 25 && data[2] < 25 && data[3] > 200) {
+        imgEl.classList.add('blend-dark-bg');
+        const wrap = imgEl.closest('.product-image-wrap');
+        if (wrap && document.documentElement.getAttribute('data-theme') !== 'dark') {
+          wrap.style.backgroundColor = '#0F172A';
+        }
+      }
+    } catch(e) {
+      // Por si la imagen proviene de un dominio externo sin CORS
+    }
+  }
+
   function bindProductCardEvents() {
+    // Detectar si la imagen cargada tiene bordes negros para aplicar blend limpio
+    document.querySelectorAll('.product-image').forEach(img => {
+      if (img.complete) {
+        checkImageDarkBg(img);
+      } else {
+        img.addEventListener('load', () => checkImageDarkBg(img));
+      }
+    });
+
     // Abrir Modal de Detalles
     document.querySelectorAll('.open-detail-trigger').forEach(el => {
       el.addEventListener('click', (e) => {
@@ -588,10 +850,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateCartUI() {
     const { subtotal, itemCount, freeShippingThreshold, deliveryFee, discount, tip, total } = calculateCartTotals();
 
-    // Actualizar badges en Header
+    // Actualizar badges en Header y Barra Móvil
     if (cartBadgeCountEl) cartBadgeCountEl.textContent = itemCount;
     if (cartDrawerCountBadgeEl) cartDrawerCountBadgeEl.textContent = `${itemCount} items`;
     if (cartTotalPreviewEl) cartTotalPreviewEl.textContent = `$${subtotal.toFixed(2)}`;
+
+    const mobileNavCartBadge = document.getElementById('mobileNavCartBadge');
+    if (mobileNavCartBadge) {
+      mobileNavCartBadge.textContent = itemCount;
+      mobileNavCartBadge.style.display = itemCount > 0 ? 'inline-flex' : 'none';
+    }
 
     // Barra de envío gratis
     if (freeShippingFillEl && freeShippingLabelEl) {
@@ -847,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
-  // SELECTOR DE DIRECCIÓN Y ENTREGA
+  // GESTIÓN DE PERFIL Y DATOS DE ENTREGA
   // ==========================================================================
   function updateAddressUI() {
     if (state.customerProfile && state.customerProfile.address && state.deliveryType === 'delivery') {
@@ -884,44 +1152,196 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function openAddressModal() {
-    if (!addressModalEl || !addressOptionsContainerEl) return;
+  // ==========================================================================
+  // DETECCIÓN SATELITAL DE UBICACIÓN REAL (GEOLOCATION API)
+  // ==========================================================================
+  function detectLiveGpsLocation(btnEl, statusBoxEl, coordsEl, mapLinkEl, inputAddressEl) {
+    if (!navigator.geolocation) {
+      showToast('⚠️ Tu navegador no soporta geolocalización satelital GPS', 'warning');
+      return;
+    }
 
-    addressOptionsContainerEl.innerHTML = PRESET_ADDRESSES.map(addr => {
-      let displayAddress = addr.address;
-      if (addr.id === 'addr-delivery' && state.customerProfile && state.customerProfile.address) {
-        displayAddress = state.customerProfile.address + (state.customerProfile.reference ? ` (Ref: ${state.customerProfile.reference})` : '');
-      }
+    if (btnEl) {
+      btnEl.disabled = true;
+      btnEl.innerHTML = `<span>🛰️</span> <span>Conectando con satélites GPS en tiempo real...</span>`;
+    }
 
-      return `
-        <div class="payment-method-card addr-card-option ${addr.id === state.currentAddress.id ? 'active' : ''}" data-addr-id="${addr.id}" style="text-align: left; padding: 14px; margin-bottom: 10px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <strong style="font-size: 0.95rem; color: var(--color-primary);">${addr.label}</strong>
-            <span style="font-size: 0.78rem; background: var(--color-brand-soft); color: var(--color-brand-green); padding: 2px 8px; border-radius: 12px; font-weight: 700;">
-              ⏱️ ${addr.timeEst}
-            </span>
-          </div>
-          <div style="font-size: 0.85rem; color: #555;">${displayAddress}</div>
-          ${addr.coords ? `<div style="font-size: 0.75rem; color: #108910; font-family: monospace; margin-top: 3px;">📍 ${addr.coords}</div>` : ''}
-        </div>
-      `;
-    }).join('');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const accuracy = Math.round(position.coords.accuracy || 10);
+        const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
 
-    addressOptionsContainerEl.querySelectorAll('.addr-card-option').forEach(card => {
-      card.addEventListener('click', () => {
-        const id = card.getAttribute('data-addr-id');
-        const selected = PRESET_ADDRESSES.find(a => a.id === id);
-        if (selected) {
-          state.currentAddress = { ...selected };
-          state.deliveryType = selected.id === 'addr-pickup' ? 'pickup' : 'delivery';
-          localStorage.setItem('alcosto_address', JSON.stringify(state.currentAddress));
-          updateAddressUI();
-          updateCartUI();
-          closeAddressModal();
-          showToast(`📍 Modalidad: ${selected.label}`, 'success');
+        state.realGpsLocation = {
+          lat,
+          lng,
+          accuracy,
+          mapsUrl,
+          timestamp: new Date().toISOString()
+        };
+
+        try {
+          localStorage.setItem('alcosto_user_gps', JSON.stringify(state.realGpsLocation));
+        } catch (e) {}
+
+        if (statusBoxEl) statusBoxEl.style.display = 'block';
+        if (coordsEl) coordsEl.textContent = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)} (Precisión: ±${accuracy}m)`;
+        if (mapLinkEl) mapLinkEl.href = mapsUrl;
+
+        if (inputAddressEl && (!inputAddressEl.value || inputAddressEl.value.includes('GPS') || inputAddressEl.value.includes('Lat:'))) {
+          inputAddressEl.value = `📍 Ubicación GPS (${lat.toFixed(5)}, ${lng.toFixed(5)}) ±${accuracy}m`;
         }
-      });
-    });
+
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.innerHTML = `<span>🔄</span> <span>Actualizar Ubicación GPS en Vivo</span>`;
+        }
+
+        showToast(`🟢 ¡Ubicación GPS real capturada con éxito (±${accuracy}m)!`, 'success');
+      },
+      (error) => {
+        console.warn('Error capturando GPS:', error);
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.innerHTML = `<span>🛰️</span> <span>Reintentar Detección GPS</span>`;
+        }
+        let msg = 'No se pudo obtener tu ubicación por GPS satelital. Por favor escribe tu dirección en el campo de texto.';
+        if (error.code === 1) {
+          msg = 'Permiso de ubicación denegado en tu navegador. Por favor permite la ubicación o ingresa tu dirección manualmente.';
+        }
+        showToast(`⚠️ ${msg}`, 'warning');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 0
+      }
+    );
+  }
+
+  // ==========================================================================
+  // MODAL DE SELECCIÓN OBLIGATORIA DE RUTA Y UBICACIÓN GPS
+  // ==========================================================================
+  let pendingCheckoutAfterRoute = false;
+
+  function openAddressModal(forCheckout = false) {
+    if (!addressModalEl) return;
+    pendingCheckoutAfterRoute = Boolean(forCheckout);
+
+    const routeCardDelivery = document.getElementById('routeCardDelivery');
+    const routeCardPickup = document.getElementById('routeCardPickup');
+    const radioDelivery = document.getElementById('radioRouteDelivery');
+    const radioPickup = document.getElementById('radioRoutePickup');
+    const routeInputAddress = document.getElementById('routeInputAddress');
+    const routeInputReference = document.getElementById('routeInputReference');
+    const btnDetectGps = document.getElementById('btnDetectGpsLocation');
+    const gpsResultBox = document.getElementById('gpsResultBox');
+    const gpsCoordsDisplay = document.getElementById('gpsCoordsDisplay');
+    const gpsMapLink = document.getElementById('gpsMapLink');
+    const btnConfirmRoute = document.getElementById('btnConfirmRouteSelection');
+
+    // Prellenar campos
+    if (routeInputAddress) {
+      routeInputAddress.value = state.customerProfile.address || '';
+    }
+    if (routeInputReference) {
+      routeInputReference.value = state.customerProfile.reference || '';
+    }
+
+    // Si ya existe ubicación GPS guardada, mostrarla
+    if (state.realGpsLocation && gpsResultBox && gpsCoordsDisplay && gpsMapLink) {
+      gpsResultBox.style.display = 'block';
+      gpsCoordsDisplay.textContent = `Lat: ${state.realGpsLocation.lat.toFixed(6)}, Lng: ${state.realGpsLocation.lng.toFixed(6)} (Precisión: ±${state.realGpsLocation.accuracy || 10}m)`;
+      gpsMapLink.href = state.realGpsLocation.mapsUrl || `https://www.google.com/maps?q=${state.realGpsLocation.lat},${state.realGpsLocation.lng}`;
+    }
+
+    // Sincronizar selección actual
+    const currentType = state.deliveryType || 'delivery';
+    if (currentType === 'pickup') {
+      if (routeCardPickup) routeCardPickup.classList.add('active');
+      if (routeCardDelivery) routeCardDelivery.classList.remove('active');
+      if (radioPickup) radioPickup.checked = true;
+    } else {
+      if (routeCardDelivery) routeCardDelivery.classList.add('active');
+      if (routeCardPickup) routeCardPickup.classList.remove('active');
+      if (radioDelivery) radioDelivery.checked = true;
+    }
+
+    // Toggle interactivo de rutas
+    if (routeCardDelivery) {
+      routeCardDelivery.onclick = () => {
+        routeCardDelivery.classList.add('active');
+        if (routeCardPickup) routeCardPickup.classList.remove('active');
+        if (radioDelivery) radioDelivery.checked = true;
+      };
+    }
+    if (routeCardPickup) {
+      routeCardPickup.onclick = () => {
+        routeCardPickup.classList.add('active');
+        if (routeCardDelivery) routeCardDelivery.classList.remove('active');
+        if (radioPickup) radioPickup.checked = true;
+      };
+    }
+
+    // Botón GPS
+    if (btnDetectGps) {
+      btnDetectGps.onclick = (e) => {
+        e.stopPropagation();
+        detectLiveGpsLocation(btnDetectGps, gpsResultBox, gpsCoordsDisplay, gpsMapLink, routeInputAddress);
+      };
+    }
+
+    // Confirmar ruta y ubicación (Obligatorio)
+    if (btnConfirmRoute) {
+      btnConfirmRoute.onclick = () => {
+        const isDelivery = radioDelivery ? radioDelivery.checked : true;
+        if (isDelivery) {
+          const addrVal = routeInputAddress ? routeInputAddress.value.trim() : '';
+          const hasGps = Boolean(state.realGpsLocation && state.realGpsLocation.lat);
+          if (!addrVal && !hasGps) {
+            showToast('⚠️ Por favor detecta tu ubicación GPS o escribe tu dirección para el despacho', 'warning');
+            if (routeInputAddress) routeInputAddress.focus();
+            return;
+          }
+          state.deliveryType = 'delivery';
+          state.customerProfile.address = addrVal || `Ubicación GPS (${state.realGpsLocation.lat.toFixed(5)}, ${state.realGpsLocation.lng.toFixed(5)})`;
+          if (routeInputReference) state.customerProfile.reference = routeInputReference.value.trim();
+          localStorage.setItem('alcosto_customer_profile', JSON.stringify(state.customerProfile));
+          state.currentAddress = {
+            id: 'addr-delivery',
+            label: 'Entrega a Domicilio con GPS',
+            address: state.customerProfile.address + (state.customerProfile.reference ? ` (${state.customerProfile.reference})` : ''),
+            zip: '5101',
+            timeEst: '25-45 min'
+          };
+        } else {
+          state.deliveryType = 'pickup';
+          state.currentAddress = PRESET_ADDRESSES[1] || {
+            id: 'addr-pickup',
+            label: 'Recoger en Tienda Al Costo (Gratis)',
+            address: `Sede Al Costo (Coords: ${STORE_COORDINATES})`,
+            zip: '5101',
+            timeEst: 'Listo en 15 min'
+          };
+        }
+
+        state.routeConfirmed = true;
+        localStorage.setItem('alcosto_route_confirmed', 'true');
+        localStorage.setItem('alcosto_delivery_type', state.deliveryType);
+        localStorage.setItem('alcosto_address', JSON.stringify(state.currentAddress));
+
+        updateAddressUI();
+        updateCartUI();
+        closeAddressModal();
+        showToast(`✅ Ruta fijada: ${state.currentAddress.label}`, 'success');
+
+        if (pendingCheckoutAfterRoute) {
+          pendingCheckoutAfterRoute = false;
+          openCheckoutModal();
+        }
+      };
+    }
 
     addressModalEl.classList.add('active');
     document.body.style.overflow = 'hidden';
@@ -937,10 +1357,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   // CHECKOUT MODAL Y PROCESO DE PAGO
   // ==========================================================================
-  function openCheckoutModal() {
+  async function openCheckoutModal() {
     const { total, itemCount } = calculateCartTotals();
     if (itemCount === 0) {
       showToast('⚠️ Agrega productos a tu carrito antes de pagar');
+      return;
+    }
+
+    // VALIDACIÓN OBLIGATORIA: El usuario DEBE haber seleccionado su ruta antes de pagar
+    if (!state.routeConfirmed) {
+      showToast('📍 Por favor selecciona tu ruta de entrega y confirma tu ubicación antes de pagar');
+      closeCartDrawer();
+      openAddressModal(true);
       return;
     }
 
@@ -957,12 +1385,59 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }
 
+    // Renderizar resumen de la ruta seleccionada en el Checkout
+    const checkoutRouteText = document.getElementById('checkoutRouteText');
+    const checkoutGpsBadge = document.getElementById('checkoutGpsBadge');
+    const checkoutGpsCoords = document.getElementById('checkoutGpsCoords');
+    const checkoutGpsMapLink = document.getElementById('checkoutGpsMapLink');
+    const btnRefreshCheckoutGps = document.getElementById('btnRefreshCheckoutGps');
+
+    if (checkoutRouteText) {
+      if (state.deliveryType === 'pickup') {
+        checkoutRouteText.innerHTML = `
+          <strong>🏪 Modalidad: Recoger en Tienda Al Costo (Gratis)</strong>
+          <span style="color: #475569;">Sede Principal (Coords: ${STORE_COORDINATES}) • Listo en 15 min</span>
+        `;
+        if (checkoutGpsBadge) checkoutGpsBadge.style.display = 'none';
+      } else {
+        checkoutRouteText.innerHTML = `
+          <strong>🛵 Modalidad: Delivery a Domicilio Express (25-45 min)</strong>
+          <span>📍 ${state.customerProfile.address || 'Ubicación confirmada'} ${state.customerProfile.reference ? `<br><small style="color:#64748B;">Ref: ${state.customerProfile.reference}</small>` : ''}</span>
+        `;
+        if (state.realGpsLocation && checkoutGpsBadge && checkoutGpsCoords && checkoutGpsMapLink) {
+          checkoutGpsCoords.textContent = `${state.realGpsLocation.lat.toFixed(5)}, ${state.realGpsLocation.lng.toFixed(5)} (±${state.realGpsLocation.accuracy || 10}m)`;
+          checkoutGpsMapLink.href = state.realGpsLocation.mapsUrl;
+          checkoutGpsBadge.style.display = 'block';
+        }
+      }
+    }
+
+    const btnChangeRoute = document.getElementById('btnChangeRouteInCheckout');
+    if (btnChangeRoute) {
+      btnChangeRoute.onclick = () => {
+        closeCheckoutModal();
+        openAddressModal(true);
+      };
+    }
+
+    if (btnRefreshCheckoutGps) {
+      btnRefreshCheckoutGps.onclick = () => {
+        const orderAddressInput = document.getElementById('orderAddress');
+        detectLiveGpsLocation(btnRefreshCheckoutGps, null, checkoutGpsCoords, checkoutGpsMapLink, orderAddressInput);
+        if (checkoutGpsBadge) checkoutGpsBadge.style.display = 'block';
+      };
+    }
+
     // Prellenar con los datos guardados del cliente
     const nameInput = document.getElementById('orderName');
     const phoneInput = document.getElementById('orderPhone');
     const addrInput = document.getElementById('orderAddress');
-    if (nameInput && state.customerProfile.name) nameInput.value = state.customerProfile.name;
-    if (phoneInput && state.customerProfile.phone) phoneInput.value = state.customerProfile.phone;
+    if (nameInput) {
+      nameInput.value = (state.authUser && state.authUser.name) ? state.authUser.name : (state.customerProfile.name || '');
+    }
+    if (phoneInput) {
+      phoneInput.value = (state.authUser && state.authUser.phone) ? state.authUser.phone : (state.customerProfile.phone || '');
+    }
     if (addrInput) {
       if (state.deliveryType === 'pickup') {
         addrInput.value = `Recogida en Tienda Al Costo (Coords: ${STORE_COORDINATES})`;
@@ -971,9 +1446,153 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // Cargar y mostrar datos del método de pago activo (Pago Móvil / Zelle / Binance Pay / Efectivo)
+    await renderActivePaymentDetails();
+
     if (checkoutModalEl) {
       checkoutModalEl.classList.add('active');
       document.body.style.overflow = 'hidden';
+    }
+  }
+
+  // Renderizar detalles del método de pago activo
+  async function renderActivePaymentDetails() {
+    const box = document.getElementById('paymentDetailsBox');
+    if (!box) return;
+
+    const activeCard = document.querySelector('.payment-method-card.active');
+    const payType = activeCard ? activeCard.getAttribute('data-pay-type') : 'pagomovil';
+
+    let config = null;
+    if (typeof SupabaseService !== 'undefined') {
+      config = await SupabaseService.fetchPaymentConfig();
+    }
+    if (!config) {
+      config = {
+        pagoMovil: { banco: 'Banco de Venezuela (0102)', telefono: '0412-1234567', cedula: 'V-26.123.456', titular: 'Al Costo C.A.' },
+        zelle: { correo: 'pagos@alcostosuper.com', titular: 'Al Costo Supermarket LLC' },
+        binance: { payId: '284910283', correo: 'binance@alcostosuper.com', red: 'USDT (TRC20 / BEP20)' }
+      };
+    }
+
+    if (payType === 'pagomovil') {
+      const pm = config.pagoMovil || {};
+      box.innerHTML = `
+        <div class="payment-detail-card-inner">
+          <div class="payment-detail-header">
+            <i class="fa-solid fa-mobile-screen-button" style="color: #108910; font-size: 1.15rem;"></i>
+            <strong style="color: #1E293B; font-size: 0.92rem;">Datos para Pago Móvil (Tasa Oficial BCV)</strong>
+            <span class="payment-detail-badge">Inmediato</span>
+          </div>
+          <div class="payment-info-grid">
+            <div class="payment-info-item">
+              <span class="item-label">Banco Receptor:</span>
+              <span class="item-val">${pm.banco || 'Banco de Venezuela (0102)'}</span>
+            </div>
+            <div class="payment-info-item">
+              <span class="item-label">Teléfono:</span>
+              <span class="item-val">${pm.telefono || '0412-1234567'}</span>
+            </div>
+            <div class="payment-info-item">
+              <span class="item-label">Cédula / RIF:</span>
+              <span class="item-val">${pm.cedula || 'V-26.123.456'}</span>
+            </div>
+            <div class="payment-info-item">
+              <span class="item-label">Titular:</span>
+              <span class="item-val">${pm.titular || 'Al Costo Supermercado C.A.'}</span>
+            </div>
+          </div>
+          <button type="button" class="copy-payment-info-btn" id="btnCopyPagoMovil">
+            <i class="fa-regular fa-copy"></i> Copiar Datos de Pago Móvil
+          </button>
+        </div>
+      `;
+      const btnCopy = document.getElementById('btnCopyPagoMovil');
+      if (btnCopy) {
+        btnCopy.onclick = () => {
+          const text = `Pago Móvil Al Costo:\nBanco: ${pm.banco}\nTel: ${pm.telefono}\nCI: ${pm.cedula}\nTitular: ${pm.titular}`;
+          if (navigator.clipboard) navigator.clipboard.writeText(text);
+          showToast('📋 Datos de Pago Móvil copiados al portapapeles', 'success');
+        };
+      }
+    } else if (payType === 'zelle') {
+      const z = config.zelle || {};
+      box.innerHTML = `
+        <div class="payment-detail-card-inner">
+          <div class="payment-detail-header">
+            <i class="fa-solid fa-dollar-sign" style="color: #7C3AED; font-size: 1.15rem;"></i>
+            <strong style="color: #1E293B; font-size: 0.92rem;">Datos de Transferencia Zelle (USD)</strong>
+            <span class="payment-detail-badge" style="background:#EDE9FE; color:#6D28D9;">USD $</span>
+          </div>
+          <div class="payment-info-grid">
+            <div class="payment-info-item" style="grid-column: 1 / -1;">
+              <span class="item-label">Correo Electrónico Zelle:</span>
+              <span class="item-val" style="color: #6D28D9; font-size: 1.05rem;">${z.correo || 'pagos@alcostosuper.com'}</span>
+            </div>
+            <div class="payment-info-item" style="grid-column: 1 / -1;">
+              <span class="item-label">Nombre del Titular:</span>
+              <span class="item-val">${z.titular || 'Al Costo Supermarket LLC'}</span>
+            </div>
+          </div>
+          <button type="button" class="copy-payment-info-btn" style="background: #7C3AED;" id="btnCopyZelle">
+            <i class="fa-regular fa-copy"></i> Copiar Correo Zelle
+          </button>
+        </div>
+      `;
+      const btnCopy = document.getElementById('btnCopyZelle');
+      if (btnCopy) {
+        btnCopy.onclick = () => {
+          if (navigator.clipboard) navigator.clipboard.writeText(z.correo || '');
+          showToast('📋 Correo Zelle copiado', 'success');
+        };
+      }
+    } else if (payType === 'binance') {
+      const b = config.binance || {};
+      box.innerHTML = `
+        <div class="payment-detail-card-inner">
+          <div class="payment-detail-header">
+            <i class="fa-brands fa-bitcoin" style="color: #F59E0B; font-size: 1.15rem;"></i>
+            <strong style="color: #1E293B; font-size: 0.92rem;">Binance Pay / Cripto (USDT)</strong>
+            <span class="payment-detail-badge" style="background:#FEF3C7; color:#B45309;">0% Comisión</span>
+          </div>
+          <div class="payment-info-grid">
+            <div class="payment-info-item">
+              <span class="item-label">Binance Pay ID:</span>
+              <span class="item-val" style="color: #D97706; font-size: 1.05rem;">${b.payId || '284910283'}</span>
+            </div>
+            <div class="payment-info-item">
+              <span class="item-label">Correo Binance:</span>
+              <span class="item-val">${b.correo || 'binance@alcostosuper.com'}</span>
+            </div>
+            <div class="payment-info-item" style="grid-column: 1 / -1;">
+              <span class="item-label">Red Aceptada:</span>
+              <span class="item-val">${b.red || 'USDT (Red TRC20 / BEP20)'}</span>
+            </div>
+          </div>
+          <button type="button" class="copy-payment-info-btn" style="background: #F59E0B; color: #111;" id="btnCopyBinance">
+            <i class="fa-regular fa-copy"></i> Copiar Binance Pay ID
+          </button>
+        </div>
+      `;
+      const btnCopy = document.getElementById('btnCopyBinance');
+      if (btnCopy) {
+        btnCopy.onclick = () => {
+          if (navigator.clipboard) navigator.clipboard.writeText(b.payId || '');
+          showToast('📋 Binance Pay ID copiado', 'success');
+        };
+      }
+    } else {
+      box.innerHTML = `
+        <div class="payment-detail-card-inner">
+          <div class="payment-detail-header">
+            <i class="fa-solid fa-money-bill-wave" style="color: #059669; font-size: 1.15rem;"></i>
+            <strong style="color: #1E293B; font-size: 0.92rem;">Pago en Efectivo contra Entrega</strong>
+          </div>
+          <p style="font-size: 0.85rem; color: #475569; margin: 0;">
+            Pagas en efectivo al recibir tu pedido. Aceptamos Dólares en efectivo ($ USD), Bolívares en efectivo o Pesos Colombianos (COP) calculados a la tasa del día.
+          </p>
+        </div>
+      `;
     }
   }
 
@@ -1015,9 +1634,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const orderData = {
       id: 'AC-' + Math.floor(1000 + Math.random() * 9000),
-      customerName: nameInput ? nameInput.value.trim() : 'Cliente Al Costo',
-      customerPhone: phoneInput ? phoneInput.value.trim() : '',
-      deliveryAddress: addrInput ? addrInput.value.trim() : state.currentAddress.address,
+      customerName: nameInput ? nameInput.value.trim() : (state.customerProfile.name || 'Cliente Al Costo'),
+      customerPhone: phoneInput ? phoneInput.value.trim() : (state.customerProfile.phone || ''),
+      deliveryType: state.deliveryType || 'delivery',
+      gpsCoordinates: state.realGpsLocation || null,
+      deliveryAddress: (state.deliveryType === 'pickup') 
+        ? `Recogida en Sede Al Costo (${STORE_COORDINATES})` 
+        : (addrInput ? addrInput.value.trim() : (state.customerProfile.address || 'Dirección de Entrega')),
       deliverySlot: slotInput ? slotInput.options[slotInput.selectedIndex].text : 'Hoy en 30-45 min',
       instructions: instInput ? instInput.value.trim() : '',
       paymentMethod: activePayCard ? activePayCard.querySelector('.payment-method-name').textContent.trim() : 'Tarjeta',
@@ -1065,10 +1688,26 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProducts();
     updateCartUI();
 
-    // Simular avance de estado de preparación
+    // Simular avance visual fluido de la entrega con movimiento en vivo del vehículo y barra
     if (state.orderTrackerInterval) clearInterval(state.orderTrackerInterval);
     
+    const trackerRouteFill = document.getElementById('trackerRouteFill');
+    const trackerVehicle = document.getElementById('trackerVehicle');
+    const trackerEtaText = document.getElementById('trackerEtaText');
+    const trackerPercentBadge = document.getElementById('trackerPercentBadge');
+
+    // Estado inicial (Paso 1 completado, Paso 2 en curso)
+    if (trackerRouteFill) trackerRouteFill.style.width = '25%';
+    if (trackerVehicle) trackerVehicle.style.left = '25%';
+    if (trackerPercentBadge) {
+      trackerPercentBadge.textContent = 'En preparación (25%)';
+      trackerPercentBadge.style.background = '#FEF3C7';
+      trackerPercentBadge.style.color = '#92400E';
+    }
+    if (trackerEtaText) trackerEtaText.textContent = 'Tiempo estimado: 25 - 35 minutos';
+
     let currentStep = 1;
+    // Transición ágil y realista cada 3.5 segundos para brindar una experiencia interactiva inmediata
     state.orderTrackerInterval = setInterval(() => {
       currentStep++;
       if (currentStep >= stepItems.length) {
@@ -1076,6 +1715,14 @@ document.addEventListener('DOMContentLoaded', () => {
         stepItems.forEach(item => {
           item.className = 'tracker-step-item completed';
         });
+        if (trackerRouteFill) trackerRouteFill.style.width = '100%';
+        if (trackerVehicle) trackerVehicle.style.left = '76%';
+        if (trackerPercentBadge) {
+          trackerPercentBadge.textContent = '¡Entregado con Éxito! (100%)';
+          trackerPercentBadge.style.background = '#DCFCE7';
+          trackerPercentBadge.style.color = '#15803D';
+        }
+        if (trackerEtaText) trackerEtaText.textContent = '¡Pedido entregado en tu puerta!';
         showToast('🎉 ¡Tu pedido de Al Costo ha llegado a tu puerta!', 'success');
       } else {
         stepItems.forEach((item, idx) => {
@@ -1085,12 +1732,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (currentStep === 2) {
-          showToast('🛵 Carlos empacó tus productos y está saliendo hacia tu dirección');
+          if (trackerRouteFill) trackerRouteFill.style.width = '55%';
+          if (trackerVehicle) trackerVehicle.style.left = '45%';
+          if (trackerPercentBadge) {
+            trackerPercentBadge.textContent = 'Empacado & Saliendo (55%)';
+            trackerPercentBadge.style.background = '#DBEAFE';
+            trackerPercentBadge.style.color = '#1E40AF';
+          }
+          if (trackerEtaText) trackerEtaText.textContent = 'Tiempo estimado: 15 - 20 minutos';
+          showToast('🛵 Carlos empacó tus víveres y ha salido en ruta hacia tu dirección');
         } else if (currentStep === 3) {
-          showToast('📍 El repartidor está a 3 cuadras de tu dirección');
+          if (trackerRouteFill) trackerRouteFill.style.width = '85%';
+          if (trackerVehicle) trackerVehicle.style.left = '68%';
+          if (trackerPercentBadge) {
+            trackerPercentBadge.textContent = 'Repartidor muy cerca (85%)';
+            trackerPercentBadge.style.background = '#EDE9FE';
+            trackerPercentBadge.style.color = '#5B21B6';
+          }
+          if (trackerEtaText) trackerEtaText.textContent = 'Tiempo estimado: 3 - 5 minutos (Repartidor a 3 cuadras)';
+          showToast('📍 El repartidor está a 3 cuadras de tu dirección con GPS activo');
         }
       }
-    }, 6000);
+    }, 3800);
   }
 
   function closeOrderTracker() {
@@ -1252,13 +1915,246 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Selector de métodos de pago
+    // Selector de métodos de pago con actualización dinámica de datos (Pago Móvil / Zelle / Binance / Efectivo)
     document.querySelectorAll('.payment-method-card[data-pay-type]').forEach(card => {
       card.addEventListener('click', () => {
         document.querySelectorAll('.payment-method-card[data-pay-type]').forEach(c => c.classList.remove('active'));
         card.classList.add('active');
+        renderActivePaymentDetails();
       });
     });
+
+    // Menú Desplegable de Cuenta de Usuario
+    if (userAccountBtn && userAccountMenu) {
+      userAccountBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = userAccountMenu.classList.toggle('active');
+        userAccountBtn.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#userAccountDropdownWrapper')) {
+          userAccountMenu.classList.remove('active');
+          userAccountBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    // Auth Modal (Login / Registro)
+    function openAuthModal(mode = 'login') {
+      if (userAccountMenu) userAccountMenu.classList.remove('active');
+      if (authModalEl) {
+        authModalEl.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+      switchAuthTab(mode);
+    }
+
+    function closeAuthModal() {
+      if (authModalEl) {
+        authModalEl.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    }
+
+    function switchAuthTab(tab) {
+      if (tab === 'login') {
+        tabAuthLogin?.classList.add('active');
+        tabAuthRegister?.classList.remove('active');
+        formAuthLogin.style.display = 'block';
+        formAuthRegister.style.display = 'none';
+      } else {
+        tabAuthRegister?.classList.add('active');
+        tabAuthLogin?.classList.remove('active');
+        formAuthRegister.style.display = 'block';
+        formAuthLogin.style.display = 'none';
+      }
+    }
+
+    if (btnOpenLoginModal) btnOpenLoginModal.onclick = () => openAuthModal('login');
+    if (btnOpenRegisterModal) btnOpenRegisterModal.onclick = () => openAuthModal('register');
+    if (closeAuthModalBtn) closeAuthModalBtn.onclick = closeAuthModal;
+    if (tabAuthLogin) tabAuthLogin.onclick = () => switchAuthTab('login');
+    if (tabAuthRegister) tabAuthRegister.onclick = () => switchAuthTab('register');
+
+    if (btnOpenProfileFromMenu) {
+      btnOpenProfileFromMenu.onclick = () => {
+        if (userAccountMenu) userAccountMenu.classList.remove('active');
+        openCustomerProfileModal();
+      };
+    }
+
+    // Submit Iniciar Sesión
+    if (formAuthLogin) {
+      formAuthLogin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const identifier = document.getElementById('loginIdentifier')?.value.trim();
+        const password = document.getElementById('loginPassword')?.value;
+        const submitBtn = formAuthLogin.querySelector('button[type="submit"]');
+
+        if (!identifier || !password) return;
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Verificando...';
+        }
+
+        try {
+          let loginSuccess = false;
+          let userObj = null;
+
+          if (typeof SupabaseService !== 'undefined') {
+            const res = await SupabaseService.loginUser(identifier, password);
+            if (res.success && res.user) {
+              loginSuccess = true;
+              userObj = res.user;
+            } else if (!res.localOnly) {
+              showToast(`❌ ${res.message || 'Error en autenticación'}`, 'error');
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Entrar a Mi Cuenta';
+              }
+              return;
+            }
+          }
+
+          if (!loginSuccess) {
+            // Fallback local si Supabase no está configurado
+            const namePart = identifier.split('@')[0] || identifier;
+            const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+            userObj = {
+              name: formattedName,
+              email: identifier.includes('@') ? identifier : '',
+              phone: !identifier.includes('@') ? identifier : ''
+            };
+          }
+
+          state.authUser = userObj;
+          localStorage.setItem('alcosto_auth_user', JSON.stringify(state.authUser));
+          updateAuthUI();
+          closeAuthModal();
+          showToast(`👋 ¡Bienvenido de nuevo, ${state.authUser.name}!`, 'success');
+        } catch (err) {
+          showToast('Error al procesar el inicio de sesión', 'error');
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Entrar a Mi Cuenta';
+          }
+        }
+      });
+    }
+
+    // Submit Crear Cuenta
+    if (formAuthRegister) {
+      formAuthRegister.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fullName = document.getElementById('regFullName')?.value.trim();
+        const email = document.getElementById('regEmail')?.value.trim();
+        const phone = document.getElementById('regPhone')?.value.trim();
+        const password = document.getElementById('regPassword')?.value;
+        const submitBtn = formAuthRegister.querySelector('button[type="submit"]');
+
+        if (!fullName || !password) return;
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Creando cuenta...';
+        }
+
+        try {
+          const payload = {
+            name: fullName,
+            email: email,
+            phone: phone,
+            password: password
+          };
+
+          if (typeof SupabaseService !== 'undefined') {
+            const res = await SupabaseService.registerUser(payload);
+            if (!res.success && !res.localOnly) {
+              showToast(`⚠️ ${res.message}`, 'error');
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Registrarme y Comenzar';
+              }
+              return;
+            }
+          }
+
+          state.authUser = {
+            name: fullName,
+            email: email,
+            phone: phone
+          };
+
+          // Actualizar datos del perfil de entrega
+          state.customerProfile.name = fullName;
+          if (phone) state.customerProfile.phone = phone;
+          localStorage.setItem('alcosto_customer_profile', JSON.stringify(state.customerProfile));
+          localStorage.setItem('alcosto_auth_user', JSON.stringify(state.authUser));
+          
+          updateAuthUI();
+          closeAuthModal();
+          showToast(`🎉 ¡Cuenta creada con éxito! Bienvenido, ${state.authUser.name}`, 'success');
+        } catch (err) {
+          showToast('Error al registrar usuario', 'error');
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Registrarme y Comenzar';
+          }
+        }
+      });
+    }
+
+    // Logout
+    if (btnLogoutUser) {
+      btnLogoutUser.addEventListener('click', () => {
+        state.authUser = null;
+        localStorage.removeItem('alcosto_auth_user');
+        updateAuthUI();
+        if (userAccountMenu) userAccountMenu.classList.remove('active');
+        showToast('🔒 Sesión cerrada correctamente');
+      });
+    }
+
+    // Alternador de Tema Claro / Oscuro (Dark Mode)
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeToggleIcon = document.getElementById('themeToggleIcon');
+
+    function applyTheme(theme) {
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        if (themeToggleIcon) {
+          themeToggleIcon.className = 'fa-solid fa-sun';
+          themeToggleIcon.style.color = '#F59E0B';
+        }
+        if (themeToggleBtn) themeToggleBtn.title = 'Cambiar a Tema Claro';
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        if (themeToggleIcon) {
+          themeToggleIcon.className = 'fa-solid fa-moon';
+          themeToggleIcon.style.color = '#4B5563';
+        }
+        if (themeToggleBtn) themeToggleBtn.title = 'Cambiar a Tema Oscuro';
+      }
+    }
+
+    // Inicializar tema guardado o preferencia del sistema
+    const savedTheme = localStorage.getItem('alcosto_theme') || 
+      (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(savedTheme);
+
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', () => {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const newTheme = isDark ? 'light' : 'dark';
+        localStorage.setItem('alcosto_theme', newTheme);
+        applyTheme(newTheme);
+        showToast(newTheme === 'dark' ? '🌙 Modo Oscuro activado' : '☀️ Modo Claro activado', 'normal');
+      });
+    }
 
     // Order Tracker Modal
     if (closeOrderTrackerBtn) closeOrderTrackerBtn.addEventListener('click', closeOrderTracker);
@@ -1436,15 +2332,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Escuchar cambios en productos en tiempo real (creados, editados o eliminados desde admin.html)
     function onProductsUpdated() {
-      if (typeof getActiveProducts === 'function') {
-        PRODUCTS_DATA = getActiveProducts();
-      }
-      renderProducts();
-      renderCart();
+      loadCatalogProductsFromDatabase().then(() => updateCartUI());
     }
 
     window.addEventListener('storage', (e) => {
-      if (e.key === 'alcosto_custom_products') {
+      if (e.key === 'alcosto_supabase_config') {
         onProductsUpdated();
       }
     });
@@ -1463,6 +2355,62 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
 
     updateHeaderRatesDisplay();
+
+    // Interacciones de la Barra de Navegación Inferior para Teléfonos (Mobile App Bar)
+    const mobileNavHome = document.getElementById('mobileNavHome');
+    const mobileNavSearch = document.getElementById('mobileNavSearch');
+    const mobileNavDeals = document.getElementById('mobileNavDeals');
+    const mobileNavWishlist = document.getElementById('mobileNavWishlist');
+    const mobileNavCart = document.getElementById('mobileNavCart');
+
+    if (mobileNavHome) {
+      mobileNavHome.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
+        mobileNavHome.classList.add('active');
+      });
+    }
+
+    if (mobileNavSearch) {
+      mobileNavSearch.addEventListener('click', () => {
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
+        mobileNavSearch.classList.add('active');
+      });
+    }
+
+    if (mobileNavDeals) {
+      mobileNavDeals.addEventListener('click', () => {
+        const promoFilter = document.querySelector('.filter-tag-chip[data-filter="ofertas"]');
+        if (promoFilter) {
+          promoFilter.click();
+        }
+        const productsGridEl = document.getElementById('productsGrid');
+        if (productsGridEl) {
+          productsGridEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
+        mobileNavDeals.classList.add('active');
+      });
+    }
+
+    if (mobileNavWishlist) {
+      mobileNavWishlist.addEventListener('click', () => {
+        const wishlistBtn = document.getElementById('wishlistBtn');
+        if (wishlistBtn) wishlistBtn.click();
+        document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
+        mobileNavWishlist.classList.add('active');
+      });
+    }
+
+    if (mobileNavCart) {
+      mobileNavCart.addEventListener('click', () => {
+        openCartDrawer();
+      });
+    }
 
     // Tecla Escape para cerrar modales
     document.addEventListener('keydown', (e) => {
