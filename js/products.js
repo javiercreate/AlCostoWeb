@@ -281,7 +281,7 @@ const PRESET_ADDRESSES = [
   { 
     id: 'addr-delivery', 
     label: 'Entrega a Domicilio', 
-    address: 'Configura tu direcciÃ³n en "Mis Datos"', 
+    address: 'Configura tu direcciÃ³n en "Mis Datos"',
     zip: '5101', 
     timeEst: '25-45 min' 
   },
