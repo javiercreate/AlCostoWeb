@@ -788,8 +788,6 @@
     .badge-dept-al-mayor { background: #DCFCE7; color: #166534; font-weight: 800; border: 1px solid #86EFAC; }
     .badge-dept-bebidas { background: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD; }
     .badge-dept-lacteos { background: #FEF9C3; color: #854D0E; border: 1px solid #FEF08A; }
-    .badge-dept-carnes-pescados { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
-    .badge-dept-frutas-verduras { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
 
     /* Botones de acción */
     .btn-action {
@@ -1099,8 +1097,8 @@
           <button class="btn-checkout-primary" id="publishToSupabaseBtn" style="padding: 8px 16px; font-size: 0.88rem; height: auto;">
             🚀 Publicar en Supabase
           </button>
-          <button class="btn-hero-cta" id="resetDefaultProductsBtn" style="padding: 8px 16px; font-size: 0.88rem; background: #EBF8FF; border: 1px solid #90CDF4; color: #2B6CB0;" title="Recargar los 24 productos base de products.js">
-            🔄 Cargar Catálogo (products.js)
+          <button class="btn-hero-cta" id="resetDefaultProductsBtn" disabled style="opacity: 0.55; padding: 8px 16px; font-size: 0.88rem; background: #EBF8FF; border: 1px solid #90CDF4; color: #2B6CB0;" title="Botón desactivado: los 24 productos demo fueron eliminados y bloqueados permanentemente">
+            🚫 Catálogo demo eliminado (bloqueado)
           </button>
           <button class="btn-hero-cta" id="exportBackupJsonBtn" style="padding: 8px 16px; font-size: 0.88rem; background: #F8F9FA; border: 1px solid var(--color-border); color: #333;">
             📥 Descargar Copia JSON
@@ -1201,8 +1199,6 @@
                 <option value="confiteria">🍬 Confitería y Dulces</option>
                 <option value="bebidas">🥤 Bebidas y Refrescos</option>
                 <option value="lacteos">🧀 Lácteos y Quesos</option>
-                <option value="carnes-pescados">🥩 Carnicería y Aves</option>
-                <option value="frutas-verduras">🥑 Frutas y Verduras</option>
               </select>
             </div>
 
@@ -1246,8 +1242,8 @@
               <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <input type="text" id="prodImage" class="form-input" placeholder="https://... o sube una imagen de tu dispositivo" style="flex: 1; min-width: 200px;">
                 <label class="btn-checkout-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; height: 42px; font-size: 0.85rem; cursor: pointer; margin: 0; background: #2563EB; border-radius: var(--radius-md);">
-                  <span>📸</span> Tomar foto / elegir
-                  <input type="file" id="prodImageUpload" accept="image/*" capture="environment" style="display: none;">
+                  <span>📁</span> Subir Imagen
+                  <input type="file" id="prodImageUpload" accept="image/*" style="display: none;">
                 </label>
               </div>
               <!-- Preview de imagen subida -->
@@ -1293,8 +1289,6 @@
             <option value="confiteria">🍬 Confitería</option>
             <option value="bebidas">🥤 Bebidas</option>
             <option value="lacteos">🧀 Lácteos</option>
-            <option value="carnes-pescados">🥩 Carnes</option>
-            <option value="frutas-verduras">🥑 Frutas</option>
           </select>
         </div>
 
@@ -1621,7 +1615,7 @@ CREATE POLICY "Actualización de usuarios" ON usuarios FOR UPDATE USING (true);
 
   <!-- Scripts -->
   <script src="js/supabase-config.js"></script>
-  <script src="js/products.js"></script>
+  <script src="js/products.js?v=20261005-departments"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

@@ -610,6 +610,10 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error cargando catálogo:', e);
       products = (typeof DEFAULT_PRODUCTS !== 'undefined') ? [...DEFAULT_PRODUCTS] : [];
     }
+    // BLOQUEO: descartar productos demo predeterminados arrastrados desde localStorage o copias viejas
+    if (typeof stripLegacyDefaultProducts === 'function') {
+      products = stripLegacyDefaultProducts(products);
+    }
     renderProductsTable();
   }
 
@@ -817,6 +821,13 @@ document.addEventListener('DOMContentLoaded', () => {
     prodIdInput.disabled = true;
     if (prodBarcodeInput) prodBarcodeInput.value = prod.barcode || '';
     prodNameInput.value = prod.name;
+    if (!Array.from(prodCategoryInput.options).some(option => option.value === prod.category)) {
+      const legacyCategoryOption = document.createElement('option');
+      legacyCategoryOption.value = prod.category;
+      legacyCategoryOption.textContent = `Categoría anterior (${prod.category})`;
+      legacyCategoryOption.dataset.legacyCategory = 'true';
+      prodCategoryInput.appendChild(legacyCategoryOption);
+    }
     prodCategoryInput.value = prod.category;
     prodPriceInput.value = prod.price;
     prodOriginalPriceInput.value = prod.originalPrice || '';
@@ -848,6 +859,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (formTitle) formTitle.textContent = '➕ Agregar o Editar Producto';
     if (cancelEditBtn) cancelEditBtn.style.display = 'none';
     prodIdInput.disabled = false;
+    prodCategoryInput.querySelectorAll('[data-legacy-category="true"]').forEach(option => option.remove());
     productForm.reset();
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
     const prodImageUpload = document.getElementById('prodImageUpload');
@@ -1122,6 +1134,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function saveImportedProducts(importedProducts) {
+    // BLOQUEO: los respaldos JSON no pueden reimportar los productos demo predeterminados
+    if (typeof stripLegacyDefaultProducts === 'function') {
+      importedProducts = stripLegacyDefaultProducts(importedProducts);
+    }
     if (typeof saveActiveProducts === 'function') {
       saveActiveProducts(importedProducts);
     } else {
@@ -1182,29 +1198,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const resetDefaultProductsBtn = document.getElementById('resetDefaultProductsBtn');
-  if (resetDefaultProductsBtn) {
-    resetDefaultProductsBtn.addEventListener('click', () => {
-      const source = (typeof DEFAULT_PRODUCTS !== 'undefined' && Array.isArray(DEFAULT_PRODUCTS))
-        ? DEFAULT_PRODUCTS
-        : (typeof getActiveProducts === 'function' ? getActiveProducts() : []);
-
-      if (source.length > 0) {
-        if (confirm(`¿Deseas recargar los ${source.length} productos base de products.js? Esto actualizará el catálogo local.`)) {
-          products = JSON.parse(JSON.stringify(source));
-          if (typeof saveActiveProducts === 'function') {
-            saveActiveProducts(products);
-          } else {
-            localStorage.setItem('alcosto_custom_products', JSON.stringify(products));
-          }
-          renderProductsTable();
-          showToast(`✅ Se cargaron ${products.length} productos de products.js`, 'success');
-        }
-      } else {
-        showToast('⚠️ No se encontraron productos en products.js', 'warning');
-      }
-    });
-  }
+  // BLOQUEO: se eliminó el botón "Cargar Catálogo (products.js)" y su manejador.
+  // Los 24 productos demo predeterminados fueron borrados de Supabase y están
+  // incluidos en LEGACY_DEFAULT_PRODUCT_IDS (js/products.js) para que no puedan volver.
 
   // ==========================================================================
   // EVENT LISTENERS ADICIONALES

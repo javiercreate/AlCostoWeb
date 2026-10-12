@@ -123,8 +123,17 @@ const SupabaseService = {
       throw new Error('Supabase no está configurado. Ingresa la URL y Anon Key primero.');
     }
 
+    // BLOQUEO DE SEGURIDAD: los 24 productos demo predeterminados (IDs viv-/char-/lac-/may-/beb-/cnf-/lim-/car-/fru-)
+    // fueron eliminados de la base el 2026-10-12 y nunca más deben republicarse.
+    const safeList = (typeof stripLegacyDefaultProducts === 'function')
+      ? stripLegacyDefaultProducts(productsList)
+      : (Array.isArray(productsList) ? productsList : []);
+    if (safeList.length === 0) {
+      return { data: [], skipped: true };
+    }
+
     // Formatear productos para Supabase
-    const payload = productsList.map(p => ({
+    const payload = safeList.map(p => ({
       id: p.id,
       ...(p.barcode ? { barcode: p.barcode } : {}),
       name: p.name,
@@ -186,9 +195,14 @@ const SupabaseService = {
 
       if (!res.ok) return null;
       const data = await res.json();
-      
+
+      // BLOQUEO DE SEGURIDAD: excluir cualquier producto demo predeterminado que exista aún en la tabla
+      const safeData = (typeof stripLegacyDefaultProducts === 'function')
+        ? stripLegacyDefaultProducts(data)
+        : (Array.isArray(data) ? data : []);
+
       // Adaptar formato a la app
-      return data.map(item => ({
+      return safeData.map(item => ({
         id: item.id,
         barcode: item.barcode || '',
         name: item.name,

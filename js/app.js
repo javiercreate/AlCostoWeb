@@ -174,7 +174,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!Array.isArray(databaseProducts)) {
         throw new Error('Supabase no devolvió una lista válida de productos.');
       }
-      PRODUCTS_DATA = databaseProducts;
+      // BLOQUEO: excluir productos demo predeterminados aunque existan en la base de datos
+      PRODUCTS_DATA = (typeof stripLegacyDefaultProducts === 'function')
+        ? stripLegacyDefaultProducts(databaseProducts)
+        : databaseProducts;
       catalogLoadState = 'ready';
     } catch (error) {
       if (requestId !== catalogLoadRequest) return;
@@ -466,10 +469,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (state.activeFilterTag === 'organico' && !prod.isOrganic) {
         return false;
       }
-      if (state.activeFilterTag === 'fresco' && prod.tag !== 'fresco' && prod.category !== 'frutas-verduras') {
-        return false;
-      }
-
       // Filtro por búsqueda
       if (state.searchQuery.trim() !== '') {
         const query = state.searchQuery.toLowerCase();
@@ -593,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
         badgeHtml = `<span class="product-badge-pill badge-wholesale">📦 Al Mayor</span>`;
       } else if (product.badge) {
         badgeHtml = `<span class="product-badge-pill badge-custom">${product.badge}</span>`;
-      } else if (product.category === 'charcuteria' || product.category === 'frutas-verduras') {
+      } else if (product.category === 'charcuteria') {
         badgeHtml = `<span class="product-badge-pill badge-fresh">🌿 Fresco</span>`;
       }
 
