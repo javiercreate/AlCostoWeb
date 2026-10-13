@@ -29,7 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
       try { return JSON.parse(localStorage.getItem('alcosto_auth_user')); } catch(e) { return null; }
     })(),
     selectedProductForModal: null,
-    orderTrackerInterval: null
+    orderTrackerInterval: null,
+    paymentProof: null // Captura de pantalla (comprobante) del pago online subida por el cliente
   };
 
   // --- ELEMENTOS DEL DOM ---
@@ -1458,6 +1459,107 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ==========================================================================
+  // SUBIDA DE CAPTURA DE COMPROBANTE DE PAGO (Pago Móvil / Zelle / Binance)
+  // ==========================================================================
+  // Comprime y convierte la imagen subida a un Data URL ligero (para no saturar localStorage)
+  function compressProofImage(file, maxDim = 1200, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('No se pudo cargar la imagen'));
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            const ratio = Math.min(maxDim / width, maxDim / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Markup del bloque "Sube tu captura del pago" (se inyecta justo debajo del botón Copiar Datos)
+  function paymentProofUploaderHTML() {
+    return `
+      <div class="payment-proof-upload-box">
+        <div class="payment-proof-upload-header">
+          <i class="fa-solid fa-camera" style="color: #108910;"></i>
+          <strong>¿Ya realizaste el pago? Adjunta tu captura de pantalla</strong>
+        </div>
+        <p class="payment-proof-upload-hint">
+          Sube el screenshot del comprobante de pago para que podamos verificar la transferencia y preparar tu pedido más rápido.
+        </p>
+        <label class="payment-proof-upload-btn" for="paymentProofInput">
+          <i class="fa-solid fa-cloud-arrow-up"></i> Subir Captura del Pago
+          <input type="file" id="paymentProofInput" accept="image/*" hidden>
+        </label>
+        <div class="payment-proof-preview" id="paymentProofPreview" style="display: none;">
+          <img id="paymentProofImg" alt="Captura del comprobante de pago">
+          <div class="payment-proof-preview-meta">
+            <span class="payment-proof-filename" id="paymentProofName"></span>
+            <button type="button" class="payment-proof-remove-btn" id="paymentProofRemoveBtn">✕ Quitar captura</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function wirePaymentProofUploader() {
+    const input = document.getElementById('paymentProofInput');
+    const preview = document.getElementById('paymentProofPreview');
+    const imgEl = document.getElementById('paymentProofImg');
+    const nameEl = document.getElementById('paymentProofName');
+    const removeBtn = document.getElementById('paymentProofRemoveBtn');
+    if (!input || !preview) return;
+
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      if (!file.type || !file.type.startsWith('image/')) {
+        showToast('⚠️ El comprobante debe ser una imagen (captura de pantalla)', 'normal');
+        input.value = '';
+        return;
+      }
+      if (file.size > 15 * 1024 * 1024) {
+        showToast('⚠️ La imagen es demasiado grande (máximo 15 MB)', 'normal');
+        input.value = '';
+        return;
+      }
+      try {
+        const dataUrl = await compressProofImage(file);
+        state.paymentProof = dataUrl;
+        if (imgEl) imgEl.src = dataUrl;
+        if (nameEl) nameEl.textContent = file.name;
+        preview.style.display = 'flex';
+        showToast('📸 Captura de pago adjunta. Se enviará junto con tu pedido', 'success');
+      } catch (e) {
+        console.error('Error procesando la captura de pago:', e);
+        showToast('⚠️ No se pudo procesar la imagen. Intenta con otra captura', 'normal');
+      }
+    });
+
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        state.paymentProof = null;
+        input.value = '';
+        if (imgEl) imgEl.src = '';
+        preview.style.display = 'none';
+      });
+    }
+  }
+
   // Renderizar detalles del método de pago activo
   async function renderActivePaymentDetails() {
     const box = document.getElementById('paymentDetailsBox');
@@ -1465,6 +1567,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const activeCard = document.querySelector('.payment-method-card.active');
     const payType = activeCard ? activeCard.getAttribute('data-pay-type') : 'pagomovil';
+
+    // Cada método online tiene su propia captura: al cambiar de método se reinicia la adjunta anterior
+    state.paymentProof = null;
 
     let config = null;
     if (typeof SupabaseService !== 'undefined') {
@@ -1508,6 +1613,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <button type="button" class="copy-payment-info-btn" id="btnCopyPagoMovil">
             <i class="fa-regular fa-copy"></i> Copiar Datos de Pago Móvil
           </button>
+          ${paymentProofUploaderHTML()}
         </div>
       `;
       const btnCopy = document.getElementById('btnCopyPagoMovil');
@@ -1540,6 +1646,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <button type="button" class="copy-payment-info-btn" style="background: #7C3AED;" id="btnCopyZelle">
             <i class="fa-regular fa-copy"></i> Copiar Correo Zelle
           </button>
+          ${paymentProofUploaderHTML()}
         </div>
       `;
       const btnCopy = document.getElementById('btnCopyZelle');
@@ -1575,6 +1682,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <button type="button" class="copy-payment-info-btn" style="background: #F59E0B; color: #111;" id="btnCopyBinance">
             <i class="fa-regular fa-copy"></i> Copiar Binance Pay ID
           </button>
+          ${paymentProofUploaderHTML()}
         </div>
       `;
       const btnCopy = document.getElementById('btnCopyBinance');
@@ -1596,6 +1704,11 @@ document.addEventListener('DOMContentLoaded', () => {
           </p>
         </div>
       `;
+    }
+
+    // Conectar el bloque de subida de captura (solo métodos de pago online)
+    if (payType === 'pagomovil' || payType === 'zelle' || payType === 'binance') {
+      wirePaymentProofUploader();
     }
   }
 
@@ -1647,6 +1760,7 @@ document.addEventListener('DOMContentLoaded', () => {
       deliverySlot: slotInput ? slotInput.options[slotInput.selectedIndex].text : 'Hoy en 30-45 min',
       instructions: instInput ? instInput.value.trim() : '',
       paymentMethod: activePayCard ? activePayCard.querySelector('.payment-method-name').textContent.trim() : 'Tarjeta',
+      paymentProof: state.paymentProof || null,
       items: Object.values(state.cart).map(item => ({
         product: {
           id: item.product.id,
@@ -1687,76 +1801,103 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Vaciar el carrito ya que la orden fue creada
     state.cart = {};
+    state.paymentProof = null;
     saveCart();
     renderProducts();
     updateCartUI();
 
-    // Simular avance visual fluido de la entrega con movimiento en vivo del vehículo y barra
+    // El tracker avanza SOLO cuando el shopper/admin cambia el estado del pedido desde admin.html
+    // (Pedido nuevo → Aprobado/En Preparación → En Camino → Entregado)
     if (state.orderTrackerInterval) clearInterval(state.orderTrackerInterval);
-    
+
     const trackerRouteFill = document.getElementById('trackerRouteFill');
     const trackerVehicle = document.getElementById('trackerVehicle');
     const trackerEtaText = document.getElementById('trackerEtaText');
     const trackerPercentBadge = document.getElementById('trackerPercentBadge');
 
-    // Estado inicial (Paso 1 completado, Paso 2 en curso)
-    if (trackerRouteFill) trackerRouteFill.style.width = '25%';
-    if (trackerVehicle) trackerVehicle.style.left = '25%';
-    if (trackerPercentBadge) {
-      trackerPercentBadge.textContent = 'En preparación (25%)';
-      trackerPercentBadge.style.background = '#FEF3C7';
-      trackerPercentBadge.style.color = '#92400E';
-    }
-    if (trackerEtaText) trackerEtaText.textContent = 'Tiempo estimado: 25 - 35 minutos';
-
-    let currentStep = 1;
-    // Transición ágil y realista cada 3.5 segundos para brindar una experiencia interactiva inmediata
-    state.orderTrackerInterval = setInterval(() => {
-      currentStep++;
-      if (currentStep >= stepItems.length) {
-        clearInterval(state.orderTrackerInterval);
-        stepItems.forEach(item => {
-          item.className = 'tracker-step-item completed';
-        });
-        if (trackerRouteFill) trackerRouteFill.style.width = '100%';
-        if (trackerVehicle) trackerVehicle.style.left = '76%';
-        if (trackerPercentBadge) {
-          trackerPercentBadge.textContent = '¡Entregado con Éxito! (100%)';
-          trackerPercentBadge.style.background = '#DCFCE7';
-          trackerPercentBadge.style.color = '#15803D';
-        }
-        if (trackerEtaText) trackerEtaText.textContent = '¡Pedido entregado en tu puerta!';
-        showToast('🎉 ¡Tu pedido de Al Costo ha llegado a tu puerta!', 'success');
-      } else {
-        stepItems.forEach((item, idx) => {
-          if (idx < currentStep) item.className = 'tracker-step-item completed';
-          else if (idx === currentStep) item.className = 'tracker-step-item current';
-          else item.className = 'tracker-step-item';
-        });
-
-        if (currentStep === 2) {
-          if (trackerRouteFill) trackerRouteFill.style.width = '55%';
-          if (trackerVehicle) trackerVehicle.style.left = '45%';
-          if (trackerPercentBadge) {
-            trackerPercentBadge.textContent = 'Empacado & Saliendo (55%)';
-            trackerPercentBadge.style.background = '#DBEAFE';
-            trackerPercentBadge.style.color = '#1E40AF';
-          }
-          if (trackerEtaText) trackerEtaText.textContent = 'Tiempo estimado: 15 - 20 minutos';
-          showToast('🛵 Carlos empacó tus víveres y ha salido en ruta hacia tu dirección');
-        } else if (currentStep === 3) {
-          if (trackerRouteFill) trackerRouteFill.style.width = '85%';
-          if (trackerVehicle) trackerVehicle.style.left = '68%';
-          if (trackerPercentBadge) {
-            trackerPercentBadge.textContent = 'Repartidor muy cerca (85%)';
-            trackerPercentBadge.style.background = '#EDE9FE';
-            trackerPercentBadge.style.color = '#5B21B6';
-          }
-          if (trackerEtaText) trackerEtaText.textContent = 'Tiempo estimado: 3 - 5 minutos (Repartidor a 3 cuadras)';
-          showToast('📍 El repartidor está a 3 cuadras de tu dirección con GPS activo');
-        }
+    // Configuración visual por cada estado del pedido (alineado con los estados del panel admin)
+    const TRACKER_STATES = {
+      nuevo: {
+        completedSteps: 0, currentStep: 0, fill: '12%', vehicle: '20%',
+        badge: 'Pedido recibido (12%)', badgeBg: '#FEF3C7', badgeColor: '#92400E',
+        eta: 'Esperando a que el shopper apruebe tu pedido en la tienda',
+        toast: '📩 Tu pedido fue recibido. El shopper debe aprobarlo desde la tienda'
+      },
+      preparacion: {
+        completedSteps: 1, currentStep: 1, fill: '45%', vehicle: '40%',
+        badge: 'Seleccionando tus víveres (45%)', badgeBg: '#DBEAFE', badgeColor: '#1E40AF',
+        eta: 'Tiempo estimado: 15 - 20 minutos',
+        toast: '🛒 Tu shopper aprobó el pedido y está seleccionando tus víveres en el supermercado'
+      },
+      camino: {
+        completedSteps: 3, currentStep: 3, fill: '80%', vehicle: '72%',
+        badge: 'En camino hacia tu puerta (80%)', badgeBg: '#EDE9FE', badgeColor: '#5B21B6',
+        eta: 'Tiempo estimado: 3 - 5 minutos (Repartidor a 3 cuadras)',
+        toast: '🛵 Tu pedido empacó y salió de la tienda: va en camino hacia tu dirección'
+      },
+      entregado: {
+        completedSteps: 4, currentStep: -1, fill: '100%', vehicle: '86%',
+        badge: '¡Entregado con Éxito! (100%)', badgeBg: '#DCFCE7', badgeColor: '#15803D',
+        eta: '¡Pedido entregado en tu puerta!',
+        toast: '🎉 ¡Tu pedido de Al Costo ha llegado a tu puerta!'
+      },
+      cancelado: {
+        completedSteps: 0, currentStep: 0, fill: '0%', vehicle: '12%',
+        badge: 'Pedido cancelado', badgeBg: '#FEE2E2', badgeColor: '#B91C1C',
+        eta: 'Tu pedido fue cancelado. Escríbenos por WhatsApp si tienes dudas',
+        toast: '❌ Tu pedido fue cancelado. Escríbenos por WhatsApp si tienes dudas'
       }
-    }, 3800);
+    };
+
+    let lastTrackerStatus = null;
+
+    function applyTrackerStatus(rawStatus) {
+      const status = (rawStatus || 'nuevo').toLowerCase();
+      if (status === lastTrackerStatus) return;
+      const isFirstRender = lastTrackerStatus === null;
+      const conf = TRACKER_STATES[status] || TRACKER_STATES.nuevo;
+
+      // Aviso al cliente solo cuando el estado cambia de verdad (nunca en el primer render)
+      if (!isFirstRender) {
+        showToast(conf.toast, status === 'cancelado' ? 'normal' : 'success');
+      }
+      lastTrackerStatus = status;
+
+      stepItems.forEach((item, idx) => {
+        item.className = 'tracker-step-item';
+        if (idx < conf.completedSteps) item.classList.add('completed');
+        else if (idx === conf.currentStep) item.classList.add('current');
+      });
+
+      if (trackerRouteFill) trackerRouteFill.style.width = conf.fill;
+      if (trackerVehicle) trackerVehicle.style.left = conf.vehicle;
+      if (trackerPercentBadge) {
+        trackerPercentBadge.textContent = conf.badge;
+        trackerPercentBadge.style.background = conf.badgeBg;
+        trackerPercentBadge.style.color = conf.badgeColor;
+      }
+      if (trackerEtaText) trackerEtaText.textContent = conf.eta;
+    }
+
+    // Consulta periódica del estado real: primero localStorage (admin.html en el mismo navegador), luego Supabase
+    async function pollOrderStatus() {
+      let status = null;
+      try {
+        const orders = JSON.parse(localStorage.getItem('alcosto_orders')) || [];
+        const found = orders.find(o => String(o.id) === String(orderData.id));
+        if (found && found.status) status = found.status;
+      } catch (e) { /* ignora lectura local corrupta */ }
+
+      if (typeof SupabaseService !== 'undefined') {
+        const cloudStatus = await SupabaseService.fetchOrderStatusFromSupabase(orderData.id);
+        if (cloudStatus) status = cloudStatus;
+      }
+
+      applyTrackerStatus(status || 'nuevo');
+    }
+
+    applyTrackerStatus('nuevo');
+    state.orderTrackerInterval = setInterval(pollOrderStatus, 3000);
   }
 
   function closeOrderTracker() {
@@ -2161,6 +2302,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Order Tracker Modal
     if (closeOrderTrackerBtn) closeOrderTrackerBtn.addEventListener('click', closeOrderTracker);
+    const trackerBackToShopBtn = document.getElementById('trackerBackToShopBtn');
+    if (trackerBackToShopBtn) trackerBackToShopBtn.addEventListener('click', closeOrderTracker);
     if (chatWithShopperBtn) {
       chatWithShopperBtn.addEventListener('click', () => {
         const userMsg = prompt('Escribe un mensaje para Carlos (tu Shopper Al Costo):', 'Hola Carlos, por favor que los aguacates no estén muy blandos.');

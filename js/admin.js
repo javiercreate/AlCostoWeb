@@ -437,6 +437,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="order-customer-name">👤 ${order.customerName}</div>
             <div class="order-customer-details">📍 ${order.deliveryAddress}</div>
             <div class="order-customer-details">💳 Pago: <strong>${order.paymentMethod || 'Efectivo'}</strong></div>
+            ${order.paymentProof ? `
+              <div class="order-customer-details">
+                🧾 Captura de pago adjunta:
+                <a href="${order.paymentProof}" target="_blank" style="color: #108910; font-weight: 800;">Ver comprobante ↗</a>
+              </div>
+            ` : ''}
             ${order.instructions ? `<div class="order-customer-details" style="color: #B45309;">📝 Nota: "${order.instructions}"</div>` : ''}
           </div>
 
@@ -554,6 +560,14 @@ document.addEventListener('DOMContentLoaded', () => {
         <div><strong>Horario:</strong> ${order.deliverySlot}</div>
         <div><strong>Método de Pago:</strong> ${order.paymentMethod}</div>
         ${order.instructions ? `<div style="color: #b45309; margin-top: 4px;"><strong>Instrucciones:</strong> ${order.instructions}</div>` : ''}
+        ${order.paymentProof ? `
+          <div style="margin-top: 10px;">
+            <strong>🧾 Captura de Pago Adjunta:</strong>
+            <a href="${order.paymentProof}" target="_blank">
+              <img src="${order.paymentProof}" alt="Captura del comprobante de pago" style="display: block; width: 100%; max-height: 260px; object-fit: contain; margin-top: 6px; border-radius: 10px; border: 1px solid #E2E8F0; background: #000;">
+            </a>
+          </div>
+        ` : ''}
       </div>
 
       <div style="margin-bottom: 16px;">

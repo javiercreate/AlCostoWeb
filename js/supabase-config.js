@@ -284,6 +284,26 @@ const SupabaseService = {
     }
   },
 
+  // Consultar solo el estado actual de un pedido puntual (para el tracker en vivo del cliente)
+  async fetchOrderStatusFromSupabase(orderId) {
+    const config = this.getConfig();
+    if (!config.url || !config.anonKey) return null;
+
+    try {
+      const res = await fetch(`${config.url}/rest/v1/pedidos?select=status&id=eq.${encodeURIComponent(orderId)}&limit=1`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        return (Array.isArray(rows) && rows[0] && rows[0].status) ? rows[0].status : null;
+      }
+    } catch (e) {
+      console.warn('Error consultando estado del pedido en Supabase:', e);
+    }
+    return null;
+  },
+
   // Configuración predeterminada de métodos de pago (Pago Móvil, Zelle, Binance Pay, Efectivo)
   getDefaultPaymentConfig() {
     return {
