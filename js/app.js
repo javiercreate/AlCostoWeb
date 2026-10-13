@@ -2560,6 +2560,27 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // ==========================================================================
+    // BARRA LATERAL GLASS MÓVIL: aparece al hacer scroll y se oculta al detenerse
+    // ==========================================================================
+    const mobileBottomNavEl = document.getElementById('mobileBottomNav');
+    if (mobileBottomNavEl) {
+      let mobileNavHideTimer = null;
+
+      const showMobileNavRail = () => {
+        // Si el carrito está abierto no se muestra (el drawer cubre toda la pantalla)
+        if (document.body.classList.contains('cart-drawer-open')) return;
+        mobileBottomNavEl.classList.add('visible');
+        if (mobileNavHideTimer) clearTimeout(mobileNavHideTimer);
+        // Se oculta 2.5 segundos después del último scroll (tiempo de más para tocar un ítem)
+        mobileNavHideTimer = setTimeout(() => {
+          mobileBottomNavEl.classList.remove('visible');
+        }, 2500);
+      };
+
+      window.addEventListener('scroll', showMobileNavRail, { passive: true });
+    }
+
     // Tecla Escape para cerrar modales
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {

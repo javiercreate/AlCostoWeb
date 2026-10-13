@@ -4274,32 +4274,54 @@ body {
 }
 
 @media (max-width: 768px) {
+  /* ==========================================================================
+     BARRA LATERAL DE NAVEGACIÓN MÓVIL (GLASS RAIL VERTICAL)
+     Aparece al hacer scroll y se oculta cuando el usuario deja de moverse.
+     Al flotar vertical en el borde derecho NUNCA tapa botones inferiores
+     como "Continuar al Pago", en ningún modelo de teléfono.
+     ========================================================================== */
   .mobile-bottom-nav {
     display: flex;
+    flex-direction: column;
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: calc(60px + env(safe-area-inset-bottom, 0px));
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border-top: 1px solid rgba(226, 232, 240, 0.9);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    top: 50%;
+    right: 10px;
+    left: auto;
+    bottom: auto;
+    width: 56px;
+    height: auto;
+    padding: 10px 5px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 20px;
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.18);
     z-index: 250;
     align-items: center;
-    justify-content: space-around;
-    padding: 4px 6px;
-    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+    justify-content: flex-start;
     box-sizing: border-box;
-    transition: transform 0.3s ease, opacity 0.3s ease;
-  }
-
-  /* Con el carrito abierto, la barra inferior se retira: el botón "Continuar al Pago" queda siempre visible */
-  body.cart-drawer-open .mobile-bottom-nav {
-    transform: translateY(110%);
+    /* Oculta por defecto: aparece mientras el usuario hace scroll */
     opacity: 0;
     pointer-events: none;
+    transform: translateY(-50%) translateX(140%);
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.32s ease;
+  }
+
+  .mobile-bottom-nav.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) translateX(0);
+  }
+
+  /* Con el carrito abierto la barra se retira por completo: nada tapa el botón de pago */
+  body.cart-drawer-open .mobile-bottom-nav,
+  body.cart-drawer-open .mobile-bottom-nav.visible {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%) translateX(140%);
   }
 
   .mobile-nav-item {
@@ -4309,29 +4331,32 @@ body {
     justify-content: center;
     background: none;
     border: none;
-    color: #64748B;
+    color: #475569;
     text-decoration: none;
-    font-size: 0.68rem;
+    font-size: 0.56rem;
     font-weight: 700;
-    padding: 4px 8px;
-    border-radius: 10px;
+    line-height: 1.1;
+    white-space: nowrap;
+    padding: 5px 2px;
+    border-radius: 14px;
     transition: all 0.2s ease;
     cursor: pointer;
     position: relative;
-    flex: 1;
-    max-width: 72px;
+    flex: 0 0 auto;
+    width: 48px;
   }
 
   .mobile-nav-item .nav-icon {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     line-height: 1;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
     transition: transform 0.2s ease;
   }
 
   .mobile-nav-item.active,
   .mobile-nav-item:active {
     color: #108910;
+    background: rgba(16, 137, 16, 0.12);
   }
 
   .mobile-nav-item:active .nav-icon {
@@ -4340,8 +4365,8 @@ body {
 
   .mobile-nav-badge {
     position: absolute;
-    top: 2px;
-    right: 14px;
+    top: 0;
+    right: 4px;
     background: #EF4444;
     color: white;
     font-size: 0.65rem;
