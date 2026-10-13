@@ -991,6 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cartDrawerEl && drawerBackdropEl) {
       cartDrawerEl.classList.add('active');
       drawerBackdropEl.classList.add('active');
+      document.body.classList.add('cart-drawer-open'); // Oculta la barra de navegación inferior móvil
       document.body.style.overflow = 'hidden';
     }
   }
@@ -999,6 +1000,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cartDrawerEl && drawerBackdropEl) {
       cartDrawerEl.classList.remove('active');
       drawerBackdropEl.classList.remove('active');
+      document.body.classList.remove('cart-drawer-open'); // Devuelve la barra de navegación inferior
       document.body.style.overflow = '';
     }
   }

@@ -4280,7 +4280,7 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    height: 60px;
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
     background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
@@ -4290,7 +4290,16 @@ body {
     align-items: center;
     justify-content: space-around;
     padding: 4px 6px;
+    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  /* Con el carrito abierto, la barra inferior se retira: el botón "Continuar al Pago" queda siempre visible */
+  body.cart-drawer-open .mobile-bottom-nav {
+    transform: translateY(110%);
+    opacity: 0;
+    pointer-events: none;
   }
 
   .mobile-nav-item {
