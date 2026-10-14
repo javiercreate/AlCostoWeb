@@ -14,11 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
     appliedCoupon: null,
     shopperTipPercent: 10,
     deliveryType: localStorage.getItem('alcosto_delivery_type') || 'delivery', // 'delivery' | 'pickup'
-    routeConfirmed: localStorage.getItem('alcosto_route_confirmed') === 'true',
     realGpsLocation: (function() {
       try { return JSON.parse(localStorage.getItem('alcosto_user_gps')); } catch(e) { return null; }
     })(),
-    currentAddress: JSON.parse(localStorage.getItem('alcosto_address')) || PRESET_ADDRESSES[0],
     customerProfile: JSON.parse(localStorage.getItem('alcosto_customer_profile')) || {
       name: '',
       phone: '',
@@ -46,9 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const filterTagChips = document.querySelectorAll('.filter-tag-chip');
 
   // Header & Profile & Auth Elements
-  const headerAddressLabelEl = document.getElementById('headerAddressLabel');
-  const headerDeliveryTypeEl = document.getElementById('headerDeliveryType');
-  const deliverySelectorBtn = document.getElementById('deliverySelectorBtn');
   const userAccountDropdownWrapper = document.getElementById('userAccountDropdownWrapper');
   const userAccountBtn = document.getElementById('userAccountBtn');
   const userAccountBtnLabel = document.getElementById('userAccountBtnLabel');
@@ -70,10 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const formAuthLogin = document.getElementById('formAuthLogin');
   const formAuthRegister = document.getElementById('formAuthRegister');
 
-  const customerProfileBtn = document.getElementById('customerProfileBtn');
-  const customerProfileBtnLabel = document.getElementById('customerProfileBtnLabel');
-  const heroOpenProfileBtn = document.getElementById('heroOpenProfileBtn');
-  const modalOpenProfileBtn = document.getElementById('modalOpenProfileBtn');
   const customerProfileModal = document.getElementById('customerProfileModal');
   const closeCustomerProfileModalBtn = document.getElementById('closeCustomerProfileModalBtn');
   const customerProfileForm = document.getElementById('customerProfileForm');
@@ -109,9 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Modales
   const productModalEl = document.getElementById('productDetailModal');
   const closeProductModalBtn = document.getElementById('closeProductModalBtn');
-  const addressModalEl = document.getElementById('addressModal');
-  const closeAddressModalBtn = document.getElementById('closeAddressModalBtn');
-  const addressOptionsContainerEl = document.getElementById('addressOptionsContainer');
   const checkoutModalEl = document.getElementById('checkoutModal');
   const closeCheckoutModalBtn = document.getElementById('closeCheckoutModalBtn');
   const checkoutFormEl = document.getElementById('checkoutForm');
@@ -147,7 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
   async function init() {
     updateAuthUI();
     renderCategoryPills();
-    updateAddressUI();
     PRODUCTS_DATA = [];
     await loadCatalogProductsFromDatabase();
     updateCartUI();
@@ -1123,23 +1110,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   // GESTIÓN DE PERFIL Y DATOS DE ENTREGA
   // ==========================================================================
-  function updateAddressUI() {
-    if (state.customerProfile && state.customerProfile.address && state.deliveryType === 'delivery') {
-      state.currentAddress.address = state.customerProfile.address;
-    }
-
-    if (headerAddressLabelEl) {
-      const displayName = state.customerProfile.name ? `${state.customerProfile.name}: ` : '';
-      headerAddressLabelEl.textContent = displayName + state.currentAddress.address;
-    }
-    if (headerDeliveryTypeEl) {
-      headerDeliveryTypeEl.textContent = state.deliveryType === 'delivery' ? 'Entrega a' : 'Recoger en';
-    }
-    if (customerProfileBtnLabel) {
-      customerProfileBtnLabel.textContent = state.customerProfile.name ? state.customerProfile.name.split(' ')[0] : 'Mis Datos';
-    }
-  }
-
   function openCustomerProfileModal() {
     if (!customerProfileModal) return;
     if (profNameInput) profNameInput.value = state.customerProfile.name || '';
@@ -1156,6 +1126,21 @@ document.addEventListener('DOMContentLoaded', () => {
       customerProfileModal.classList.remove('active');
       document.body.style.overflow = '';
     }
+  }
+
+  // ==========================================================================
+  // MODO MANUAL: SI EL CLIENTE ESCRIBE SU DIRECCIÓN, EL GPS SE PAUSA SOLO
+  // ==========================================================================
+  // Detecta si un texto de dirección fue generado automáticamente por el GPS
+  function isGpsAddressText(val) {
+    if (!val) return false;
+    const v = String(val).trim();
+    return v.includes('Ubicación GPS') || /^lat:/i.test(v);
+  }
+
+  // true cuando el cliente escribió su dirección a mano (destino ≠ punto GPS)
+  function isManualAddressValue(val) {
+    return Boolean(val && String(val).trim() && !isGpsAddressText(val));
   }
 
   // ==========================================================================
@@ -1227,161 +1212,33 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
-  // MODAL DE SELECCIÓN OBLIGATORIA DE RUTA Y UBICACIÓN GPS
-  // ==========================================================================
-  let pendingCheckoutAfterRoute = false;
-
-  function openAddressModal(forCheckout = false) {
-    if (!addressModalEl) return;
-    pendingCheckoutAfterRoute = Boolean(forCheckout);
-
-    const routeCardDelivery = document.getElementById('routeCardDelivery');
-    const routeCardPickup = document.getElementById('routeCardPickup');
-    const radioDelivery = document.getElementById('radioRouteDelivery');
-    const radioPickup = document.getElementById('radioRoutePickup');
-    const routeInputAddress = document.getElementById('routeInputAddress');
-    const routeInputReference = document.getElementById('routeInputReference');
-    const btnDetectGps = document.getElementById('btnDetectGpsLocation');
-    const gpsResultBox = document.getElementById('gpsResultBox');
-    const gpsCoordsDisplay = document.getElementById('gpsCoordsDisplay');
-    const gpsMapLink = document.getElementById('gpsMapLink');
-    const btnConfirmRoute = document.getElementById('btnConfirmRouteSelection');
-
-    // Prellenar campos
-    if (routeInputAddress) {
-      routeInputAddress.value = state.customerProfile.address || '';
-    }
-    if (routeInputReference) {
-      routeInputReference.value = state.customerProfile.reference || '';
-    }
-
-    // Si ya existe ubicación GPS guardada, mostrarla
-    if (state.realGpsLocation && gpsResultBox && gpsCoordsDisplay && gpsMapLink) {
-      gpsResultBox.style.display = 'block';
-      gpsCoordsDisplay.textContent = `Lat: ${state.realGpsLocation.lat.toFixed(6)}, Lng: ${state.realGpsLocation.lng.toFixed(6)} (Precisión: ±${state.realGpsLocation.accuracy || 10}m)`;
-      gpsMapLink.href = state.realGpsLocation.mapsUrl || `https://www.google.com/maps?q=${state.realGpsLocation.lat},${state.realGpsLocation.lng}`;
-    }
-
-    // Sincronizar selección actual
-    const currentType = state.deliveryType || 'delivery';
-    if (currentType === 'pickup') {
-      if (routeCardPickup) routeCardPickup.classList.add('active');
-      if (routeCardDelivery) routeCardDelivery.classList.remove('active');
-      if (radioPickup) radioPickup.checked = true;
-    } else {
-      if (routeCardDelivery) routeCardDelivery.classList.add('active');
-      if (routeCardPickup) routeCardPickup.classList.remove('active');
-      if (radioDelivery) radioDelivery.checked = true;
-    }
-
-    // Toggle interactivo de rutas
-    if (routeCardDelivery) {
-      routeCardDelivery.onclick = () => {
-        routeCardDelivery.classList.add('active');
-        if (routeCardPickup) routeCardPickup.classList.remove('active');
-        if (radioDelivery) radioDelivery.checked = true;
-      };
-    }
-    if (routeCardPickup) {
-      routeCardPickup.onclick = () => {
-        routeCardPickup.classList.add('active');
-        if (routeCardDelivery) routeCardDelivery.classList.remove('active');
-        if (radioPickup) radioPickup.checked = true;
-      };
-    }
-
-    // Botón GPS
-    if (btnDetectGps) {
-      btnDetectGps.onclick = (e) => {
-        e.stopPropagation();
-        detectLiveGpsLocation(btnDetectGps, gpsResultBox, gpsCoordsDisplay, gpsMapLink, routeInputAddress);
-      };
-    }
-
-    // Confirmar ruta y ubicación (Obligatorio)
-    if (btnConfirmRoute) {
-      btnConfirmRoute.onclick = () => {
-        const isDelivery = radioDelivery ? radioDelivery.checked : true;
-        if (isDelivery) {
-          const addrVal = routeInputAddress ? routeInputAddress.value.trim() : '';
-          const hasGps = Boolean(state.realGpsLocation && state.realGpsLocation.lat);
-          if (!addrVal && !hasGps) {
-            showToast('⚠️ Por favor detecta tu ubicación GPS o escribe tu dirección para el despacho', 'warning');
-            if (routeInputAddress) routeInputAddress.focus();
-            return;
-          }
-          state.deliveryType = 'delivery';
-          state.customerProfile.address = addrVal || `Ubicación GPS (${state.realGpsLocation.lat.toFixed(5)}, ${state.realGpsLocation.lng.toFixed(5)})`;
-          if (routeInputReference) state.customerProfile.reference = routeInputReference.value.trim();
-          localStorage.setItem('alcosto_customer_profile', JSON.stringify(state.customerProfile));
-          state.currentAddress = {
-            id: 'addr-delivery',
-            label: 'Entrega a Domicilio con GPS',
-            address: state.customerProfile.address + (state.customerProfile.reference ? ` (${state.customerProfile.reference})` : ''),
-            zip: '5101',
-            timeEst: '25-45 min'
-          };
-        } else {
-          state.deliveryType = 'pickup';
-          state.currentAddress = PRESET_ADDRESSES[1] || {
-            id: 'addr-pickup',
-            label: 'Recoger en Tienda Al Costo (Gratis)',
-            address: `Sede Al Costo (Coords: ${STORE_COORDINATES})`,
-            zip: '5101',
-            timeEst: 'Listo en 15 min'
-          };
-        }
-
-        state.routeConfirmed = true;
-        localStorage.setItem('alcosto_route_confirmed', 'true');
-        localStorage.setItem('alcosto_delivery_type', state.deliveryType);
-        localStorage.setItem('alcosto_address', JSON.stringify(state.currentAddress));
-
-        updateAddressUI();
-        updateCartUI();
-        closeAddressModal();
-        showToast(`✅ Ruta fijada: ${state.currentAddress.label}`, 'success');
-
-        if (pendingCheckoutAfterRoute) {
-          pendingCheckoutAfterRoute = false;
-          openCheckoutModal();
-        }
-      };
-    }
-
-    addressModalEl.classList.add('active');
-    document.body.style.overflow = 'hidden';
-  }
-
-  function closeAddressModal() {
-    if (addressModalEl) {
-      addressModalEl.classList.remove('active');
-      document.body.style.overflow = '';
-    }
-  }
-
-  // ==========================================================================
   // CHECKOUT MODAL Y PROCESO DE PAGO
   // ==========================================================================
   async function openCheckoutModal() {
-    const { total, itemCount } = calculateCartTotals();
+    const { itemCount } = calculateCartTotals();
     if (itemCount === 0) {
       showToast('⚠️ Agrega productos a tu carrito antes de pagar');
       return;
     }
 
-    // VALIDACIÓN OBLIGATORIA: El usuario DEBE haber seleccionado su ruta antes de pagar
-    if (!state.routeConfirmed) {
-      showToast('📍 Por favor selecciona tu ruta de entrega y confirma tu ubicación antes de pagar');
-      closeCartDrawer();
-      openAddressModal(true);
-      return;
-    }
-
     closeCartDrawer();
 
+    // Elementos del bloque de despacho dentro del Checkout
     const checkoutTotalSummaryEl = document.getElementById('checkoutTotalSummary');
-    if (checkoutTotalSummaryEl) {
+    const btnModeDelivery = document.getElementById('btnModeDelivery');
+    const btnModePickup = document.getElementById('btnModePickup');
+    const checkoutDeliverySection = document.getElementById('checkoutDeliverySection');
+    const checkoutPickupInfo = document.getElementById('checkoutPickupInfo');
+    const checkoutGpsBadge = document.getElementById('checkoutGpsBadge');
+    const checkoutGpsCoords = document.getElementById('checkoutGpsCoords');
+    const checkoutGpsMapLink = document.getElementById('checkoutGpsMapLink');
+    const btnRefreshCheckoutGps = document.getElementById('btnRefreshCheckoutGps');
+    const addrInput = document.getElementById('orderAddress');
+
+    // Actualiza el total mostrado (recalcula con el envío según la modalidad activa)
+    function renderCheckoutTotal() {
+      if (!checkoutTotalSummaryEl) return;
+      const { total } = calculateCartTotals();
       checkoutTotalSummaryEl.innerHTML = `
         <span style="font-size: 1.35rem; font-weight: 900; color: #108910;">$${total.toFixed(2)}</span>
         <div style="display: flex; gap: 6px; font-size: 0.78rem; font-weight: 700; margin-top: 4px;">
@@ -1391,66 +1248,100 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }
 
-    // Renderizar resumen de la ruta seleccionada en el Checkout
-    const checkoutRouteText = document.getElementById('checkoutRouteText');
-    const checkoutGpsBadge = document.getElementById('checkoutGpsBadge');
-    const checkoutGpsCoords = document.getElementById('checkoutGpsCoords');
-    const checkoutGpsMapLink = document.getElementById('checkoutGpsMapLink');
-    const btnRefreshCheckoutGps = document.getElementById('btnRefreshCheckoutGps');
+    // MODO MANUAL EN CHECKOUT: si el cliente escribe su dirección, se ocultan las coordenadas GPS
+    const checkoutManualNotice = document.getElementById('checkoutManualNotice');
 
-    if (checkoutRouteText) {
-      if (state.deliveryType === 'pickup') {
-        checkoutRouteText.innerHTML = `
-          <strong>🏪 Modalidad: Recoger en Tienda Al Costo (Gratis)</strong>
-          <span style="color: #475569;">Sede Principal (Coords: ${STORE_COORDINATES}) • Listo en 15 min</span>
-        `;
-        if (checkoutGpsBadge) checkoutGpsBadge.style.display = 'none';
-      } else {
-        checkoutRouteText.innerHTML = `
-          <strong>🛵 Modalidad: Delivery a Domicilio Express (25-45 min)</strong>
-          <span>📍 ${state.customerProfile.address || 'Ubicación confirmada'} ${state.customerProfile.reference ? `<br><small style="color:#64748B;">Ref: ${state.customerProfile.reference}</small>` : ''}</span>
-        `;
-        if (state.realGpsLocation && checkoutGpsBadge && checkoutGpsCoords && checkoutGpsMapLink) {
-          checkoutGpsCoords.textContent = `${state.realGpsLocation.lat.toFixed(5)}, ${state.realGpsLocation.lng.toFixed(5)} (±${state.realGpsLocation.accuracy || 10}m)`;
-          checkoutGpsMapLink.href = state.realGpsLocation.mapsUrl;
-          checkoutGpsBadge.style.display = 'block';
-        }
+    function syncCheckoutManualMode() {
+      const currentAddr = document.getElementById('orderAddress');
+      const isManual = state.deliveryType !== 'pickup' && isManualAddressValue(currentAddr ? currentAddr.value : '');
+      if (checkoutGpsBadge) {
+        checkoutGpsBadge.style.display = (!isManual && state.realGpsLocation && state.deliveryType !== 'pickup') ? 'block' : 'none';
       }
+      if (checkoutManualNotice) checkoutManualNotice.style.display = isManual ? 'flex' : 'none';
     }
 
-    const btnChangeRoute = document.getElementById('btnChangeRouteInCheckout');
-    if (btnChangeRoute) {
-      btnChangeRoute.onclick = () => {
-        closeCheckoutModal();
-        openAddressModal(true);
-      };
+    // Aplica la modalidad de despacho elegida (Delivery GPS o Retirar en Tienda)
+    function applyDispatchMode(mode, opts = {}) {
+      const { autoGps = false } = opts;
+      state.deliveryType = (mode === 'pickup') ? 'pickup' : 'delivery';
+      localStorage.setItem('alcosto_delivery_type', state.deliveryType);
+
+      if (btnModeDelivery) btnModeDelivery.classList.toggle('active', state.deliveryType === 'delivery');
+      if (btnModePickup) btnModePickup.classList.toggle('active', state.deliveryType === 'pickup');
+
+      if (state.deliveryType === 'pickup') {
+        // Retirar en Tienda: envío $0.00 y se ocultan dirección/GPS
+        if (checkoutDeliverySection) checkoutDeliverySection.style.display = 'none';
+        if (checkoutPickupInfo) checkoutPickupInfo.style.display = 'block';
+        if (addrInput) addrInput.value = `Recogida en Tienda Al Costo (Coords: ${STORE_COORDINATES})`;
+        if (checkoutGpsBadge) checkoutGpsBadge.style.display = 'none';
+        if (checkoutManualNotice) checkoutManualNotice.style.display = 'none';
+        showToast('🏪 Modalidad: Retirar en Tienda • Envío $0.00', 'success');
+      } else {
+        // Delivery GPS: se muestran dirección/GPS y se activa la detección de ubicación
+        if (checkoutDeliverySection) checkoutDeliverySection.style.display = 'block';
+        if (checkoutPickupInfo) checkoutPickupInfo.style.display = 'none';
+        if (addrInput && addrInput.value.startsWith('Recogida en Tienda')) {
+          addrInput.value = state.customerProfile.address
+            ? state.customerProfile.address + (state.customerProfile.reference ? ` (Ref: ${state.customerProfile.reference})` : '')
+            : '';
+        }
+        syncCheckoutManualMode();
+        // Activar detección GPS automáticamente solo si aún no hay ubicación fijada
+        if (autoGps && !state.realGpsLocation && btnRefreshCheckoutGps) {
+          detectLiveGpsLocation(btnRefreshCheckoutGps, null, checkoutGpsCoords, checkoutGpsMapLink, addrInput);
+          if (checkoutGpsBadge) checkoutGpsBadge.style.display = 'block';
+        }
+        showToast('🛵 Modalidad: Delivery GPS • Envío normal a tu puerta', 'success');
+      }
+
+      localStorage.setItem('alcosto_delivery_type', state.deliveryType);
+      renderCheckoutTotal();
+      updateCartUI();
+    }
+
+    if (btnModeDelivery) {
+      btnModeDelivery.onclick = () => applyDispatchMode('delivery', { autoGps: true });
+    }
+    if (btnModePickup) {
+      btnModePickup.onclick = () => applyDispatchMode('pickup');
     }
 
     if (btnRefreshCheckoutGps) {
       btnRefreshCheckoutGps.onclick = () => {
         const orderAddressInput = document.getElementById('orderAddress');
+        // Si el cliente escribió una dirección a mano, preguntar antes de reemplazarla por el GPS
+        if (isManualAddressValue(orderAddressInput ? orderAddressInput.value : '')) {
+          const useGps = window.confirm('✋ Escribiste una dirección manualmente. ¿Quieres reemplazarla por la ubicación GPS en vivo?');
+          if (!useGps) {
+            showToast('✍️ Mantuvimos tu dirección manual. Las coordenadas GPS siguen pausadas.');
+            return;
+          }
+          orderAddressInput.value = '';
+        }
         detectLiveGpsLocation(btnRefreshCheckoutGps, null, checkoutGpsCoords, checkoutGpsMapLink, orderAddressInput);
         if (checkoutGpsBadge) checkoutGpsBadge.style.display = 'block';
+        if (checkoutManualNotice) checkoutManualNotice.style.display = 'none';
       };
     }
 
     // Prellenar con los datos guardados del cliente
     const nameInput = document.getElementById('orderName');
     const phoneInput = document.getElementById('orderPhone');
-    const addrInput = document.getElementById('orderAddress');
     if (nameInput) {
       nameInput.value = (state.authUser && state.authUser.name) ? state.authUser.name : (state.customerProfile.name || '');
     }
     if (phoneInput) {
       phoneInput.value = (state.authUser && state.authUser.phone) ? state.authUser.phone : (state.customerProfile.phone || '');
     }
+
     if (addrInput) {
-      if (state.deliveryType === 'pickup') {
-        addrInput.value = `Recogida en Tienda Al Costo (Coords: ${STORE_COORDINATES})`;
-      } else if (state.customerProfile.address) {
-        addrInput.value = state.customerProfile.address + (state.customerProfile.reference ? ` (Ref: ${state.customerProfile.reference})` : '');
-      }
+      addrInput.oninput = () => syncCheckoutManualMode();
     }
+
+    // Sincronizar la modalidad guardada (o Delivery por defecto la primera vez)
+    applyDispatchMode(state.deliveryType || 'delivery');
+    syncCheckoutManualMode();
 
     // Cargar y mostrar datos del método de pago activo (Pago Móvil / Zelle / Binance Pay / Efectivo)
     await renderActivePaymentDetails();
@@ -1755,7 +1646,11 @@ document.addEventListener('DOMContentLoaded', () => {
       customerName: nameInput ? nameInput.value.trim() : (state.customerProfile.name || 'Cliente Al Costo'),
       customerPhone: phoneInput ? phoneInput.value.trim() : (state.customerProfile.phone || ''),
       deliveryType: state.deliveryType || 'delivery',
-      gpsCoordinates: state.realGpsLocation || null,
+      // En Retirar en Tienda no se envían coordenadas GPS (iría el repartidor sin sentido)
+      // Si el cliente escribió su dirección a mano, TAMPOCO se envían GPS para no confundir al repartidor
+      gpsCoordinates: (state.deliveryType === 'pickup' || isManualAddressValue(addrInput ? addrInput.value : ''))
+        ? null
+        : (state.realGpsLocation || null),
       deliveryAddress: (state.deliveryType === 'pickup') 
         ? `Recogida en Sede Al Costo (${STORE_COORDINATES})` 
         : (addrInput ? addrInput.value.trim() : (state.customerProfile.address || 'Dirección de Entrega')),
@@ -1787,7 +1682,14 @@ document.addEventListener('DOMContentLoaded', () => {
       existingOrders.unshift(orderData);
       localStorage.setItem('alcosto_orders', JSON.stringify(existingOrders));
     } catch (e) {
-      console.error('Error guardando pedido:', e);
+      // Si la cuota de localStorage está llena (capturas base64 grandes), reintentar sin la captura
+      try {
+        const existingOrders = JSON.parse(localStorage.getItem('alcosto_orders')) || [];
+        existingOrders.unshift({ ...orderData, paymentProof: null });
+        localStorage.setItem('alcosto_orders', JSON.stringify(existingOrders));
+      } catch (e2) {
+        console.error('Error guardando pedido:', e2);
+      }
     }
 
     // Publicar pedido a Supabase si está conectado
@@ -2016,16 +1918,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (drawerBackdropEl) drawerBackdropEl.addEventListener('click', closeCartDrawer);
 
     // Dirección y Perfil de Entrega
-    if (deliverySelectorBtn) deliverySelectorBtn.addEventListener('click', openAddressModal);
-    if (closeAddressModalBtn) closeAddressModalBtn.addEventListener('click', closeAddressModal);
+    // (El modal "Cambiar Ruta" fue eliminado: la modalidad Delivery GPS / Retirar en Tienda
+    //  ahora se elige directamente dentro del Checkout)
 
     // Botones para abrir Modal de Datos de Entrega
-    if (customerProfileBtn) customerProfileBtn.addEventListener('click', openCustomerProfileModal);
-    if (heroOpenProfileBtn) heroOpenProfileBtn.addEventListener('click', openCustomerProfileModal);
-    if (modalOpenProfileBtn) modalOpenProfileBtn.addEventListener('click', () => {
-      closeAddressModal();
-      openCustomerProfileModal();
-    });
     if (closeCustomerProfileModalBtn) closeCustomerProfileModalBtn.addEventListener('click', closeCustomerProfileModal);
 
     // Guardar Formulario de Datos del Cliente
@@ -2039,8 +1935,6 @@ document.addEventListener('DOMContentLoaded', () => {
           reference: profReferenceInput ? profReferenceInput.value.trim() : ''
         };
         localStorage.setItem('alcosto_customer_profile', JSON.stringify(state.customerProfile));
-        state.deliveryType = 'delivery';
-        updateAddressUI();
         closeCustomerProfileModal();
         showToast(`✅ Datos guardados: Entregar a ${state.customerProfile.name}`, 'success');
       });
@@ -2057,6 +1951,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (checkoutFormEl) {
       checkoutFormEl.addEventListener('submit', (e) => {
         e.preventDefault();
+
+        // Validación solo en modo Delivery GPS: requiere dirección escrita o GPS capturado
+        if (state.deliveryType !== 'pickup') {
+          const addrInput = document.getElementById('orderAddress');
+          const addrVal = addrInput ? addrInput.value.trim() : '';
+          const hasGps = Boolean(state.realGpsLocation && state.realGpsLocation.lat);
+          if (!addrVal && !hasGps) {
+            showToast('⚠️ Escribe tu dirección de entrega o captura tu ubicación GPS para continuar', 'warning');
+            if (addrInput) addrInput.focus();
+            return;
+          }
+        }
+
         launchLiveOrderTracker();
       });
     }
@@ -2586,7 +2493,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Escape') {
         closeCartDrawer();
         closeProductModal();
-        closeAddressModal();
         closeCheckoutModal();
         closeOrderTracker();
       }

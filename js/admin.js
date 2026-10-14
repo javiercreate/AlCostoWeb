@@ -246,23 +246,72 @@ document.addEventListener('DOMContentLoaded', () => {
   // GESTIÓN DE PEDIDOS / COMPRAS (ORDERS DASHBOARD)
   // ==========================================================================
   async function loadOrders() {
+    // Convierte una fila de Supabase (snake_case) al formato camelCase que usa el panel.
+    // Si la tabla aún no tiene las columnas nuevas, usa los campos locales equivalentes.
+    function normalizeSupabaseOrder(row) {
+      const pick = (...names) => {
+        for (const n of names) {
+          if (row[n] !== undefined && row[n] !== null) return row[n];
+        }
+        return null;
+      };
+      return {
+        ...row,
+        id: row.id,
+        customerName: pick('customerName', 'customer_name') || 'Cliente Al Costo',
+        customerPhone: pick('customerPhone', 'customer_phone') || '',
+        deliveryAddress: pick('deliveryAddress', 'delivery_address') || '',
+        deliverySlot: pick('deliverySlot', 'delivery_slot') || '',
+        instructions: pick('instructions') || '',
+        paymentMethod: pick('paymentMethod', 'payment_method') || 'Efectivo',
+        paymentProof: pick('paymentProof', 'payment_proof') || null,
+        gpsCoordinates: pick('gpsCoordinates', 'gps_coordinates') || null,
+        deliveryType: pick('deliveryType', 'delivery_type') || 'delivery',
+        deliveryFee: pick('deliveryFee', 'delivery_fee') || 0,
+        items: row.items || [],
+        subtotal: row.subtotal || 0,
+        discount: row.discount || 0,
+        tip: row.tip || 0,
+        total: row.total || 0,
+        status: row.status || 'nuevo',
+        created_at: row.created_at || new Date().toISOString()
+      };
+    }
+
     // 1. Intentar cargar desde Supabase si está configurado
     const supabaseOrders = await SupabaseService.fetchOrdersFromSupabase();
+
+    // Pedidos guardados en este navegador (incluyen la captura de pago subida en la misma tienda)
+    let localOrders = [];
+    try {
+      localOrders = JSON.parse(localStorage.getItem('alcosto_orders')) || [];
+    } catch (e) {
+      localOrders = [];
+    }
+
     if (supabaseOrders && supabaseOrders.length > 0) {
-      orders = supabaseOrders;
+      orders = supabaseOrders.map(normalizeSupabaseOrder);
+
+      // Completar la captura de pago / GPS con la copia local cuando la nube no la tiene
+      orders.forEach(order => {
+        const local = localOrders.find(l => String(l.id) === String(order.id));
+        if (local) {
+          if (!order.paymentProof && local.paymentProof) order.paymentProof = local.paymentProof;
+          if (!order.gpsCoordinates && local.gpsCoordinates) order.gpsCoordinates = local.gpsCoordinates;
+          if ((!order.deliveryType || order.deliveryType === 'delivery') && local.deliveryType) {
+            order.deliveryType = local.deliveryType;
+          }
+        }
+      });
+
+      // Sumar pedidos locales que aún no llegaron a la nube (ej: fallo de red)
+      const cloudIds = new Set(orders.map(o => String(o.id)));
+      localOrders.forEach(local => {
+        if (!cloudIds.has(String(local.id))) orders.push(normalizeSupabaseOrder(local));
+      });
     } else {
       // 2. Cargar desde LocalStorage
-      try {
-        const savedOrders = localStorage.getItem('alcosto_orders');
-        if (savedOrders) {
-          orders = JSON.parse(savedOrders);
-        } else {
-          orders = [];
-        }
-      } catch (e) {
-        console.error('Error cargando pedidos:', e);
-        orders = [];
-      }
+      orders = localOrders.map(normalizeSupabaseOrder);
     }
 
     updateOrdersStats();
@@ -438,9 +487,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="order-customer-details">📍 ${order.deliveryAddress}</div>
             <div class="order-customer-details">💳 Pago: <strong>${order.paymentMethod || 'Efectivo'}</strong></div>
             ${order.paymentProof ? `
-              <div class="order-customer-details">
-                🧾 Captura de pago adjunta:
-                <a href="${order.paymentProof}" target="_blank" style="color: #108910; font-weight: 800;">Ver comprobante ↗</a>
+              <div class="order-customer-details" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                🧾 Captura de pago:
+                <a href="${order.paymentProof}" target="_blank" title="Ver captura del pago en tamaño completo">
+                  <img src="${order.paymentProof}" alt="Captura del comprobante de pago" class="order-payment-proof-thumb" loading="lazy">
+                </a>
+                <a href="${order.paymentProof}" target="_blank" style="color: #108910; font-weight: 800; font-size: 0.78rem;">Ver comprobante ↗</a>
               </div>
             ` : ''}
             ${order.instructions ? `<div class="order-customer-details" style="color: #B45309;">📝 Nota: "${order.instructions}"</div>` : ''}
@@ -512,12 +564,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Guarda los pedidos en localStorage sin romperse si las capturas base64 exceden la cuota (~5MB)
+  function persistOrdersLocally() {
+    try {
+      localStorage.setItem('alcosto_orders', JSON.stringify(orders));
+    } catch (e) {
+      // Sin capturas en la copia local: la nube sigue siendo la fuente de verdad de las imágenes
+      const lean = orders.map(o => ({ ...o, paymentProof: null }));
+      try {
+        localStorage.setItem('alcosto_orders', JSON.stringify(lean));
+      } catch (e2) {
+        console.warn('No se pudieron guardar los pedidos en localStorage (cuota llena):', e2);
+      }
+    }
+  }
+
   async function changeOrderStatus(orderId, newStatus) {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
     order.status = newStatus;
-    localStorage.setItem('alcosto_orders', JSON.stringify(orders));
+    persistOrdersLocally();
 
     // Si Supabase está configurado, actualizar en la nube
     await SupabaseService.updateOrderStatus(orderId, newStatus);

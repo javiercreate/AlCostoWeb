@@ -730,107 +730,6 @@
   </div>
 
   <!-- ==========================================================================
-       MODAL 2: SELECCIÓN OBLIGATORIA DE RUTA Y UBICACIÓN GPS EN VIVO
-       ========================================================================== -->
-  <div class="modal-overlay" id="addressModal">
-    <div class="modal-box route-modal-container" style="max-width: 560px; padding: 26px;">
-      <button class="modal-close-btn" id="closeAddressModalBtn" aria-label="Cerrar">✕</button>
-      
-      <div class="route-modal-header">
-        <div class="route-badge-step">📍 PASO REQUERIDO ANTES DE PEDIR</div>
-        <h3 class="route-modal-title">¿Cómo deseas recibir tu compra?</h3>
-        <p class="route-modal-sub">
-          Selecciona tu ruta de despacho. Si eliges Delivery, detectaremos tu ubicación GPS en vivo para que el repartidor llegue con precisión exacta.
-        </p>
-      </div>
-
-      <div class="route-options-grid">
-        <!-- Opción 1: Delivery con GPS -->
-        <div class="route-option-card active" id="routeCardDelivery" data-route="delivery">
-          <div class="route-card-header">
-            <span class="route-card-icon">🛵</span>
-            <div class="route-card-title-wrap">
-              <h4>Delivery a Domicilio con GPS</h4>
-              <span class="route-card-badge">Express 25-45 min</span>
-            </div>
-            <input type="radio" name="routeTypeSelection" id="radioRouteDelivery" value="delivery" checked class="route-radio">
-          </div>
-          <p class="route-card-desc">
-            Despacho directo hasta tu puerta o local comercial con geolocalización satelital.
-          </p>
-
-          <!-- Bloque de Ubicación GPS en Vivo -->
-          <div class="route-gps-box">
-            <div class="gps-box-header">
-              <span class="gps-pulse-dot"></span>
-              <strong>Geolocalización GPS en Tiempo Real:</strong>
-            </div>
-
-            <button type="button" class="btn-detect-gps" id="btnDetectGpsLocation">
-              <span class="gps-btn-icon">🛰️</span>
-              <span id="btnGpsText">Detectar Mi Ubicación GPS en Vivo</span>
-            </button>
-
-            <div class="gps-result-box" id="gpsResultBox" style="display: none;">
-              <div class="gps-result-status">
-                <span class="status-icon">🟢</span>
-                <span class="status-text" id="gpsStatusText">Ubicación GPS capturada con éxito</span>
-              </div>
-              <div class="gps-coords-display" id="gpsCoordsDisplay">
-                Coordenadas: Lat: --, Lng: -- (Precisión: ±--m)
-              </div>
-              <a href="#" id="gpsMapLink" target="_blank" class="gps-map-preview-btn">
-                🗺️ Ver mi ubicación exacta en Google Maps ↗
-              </a>
-            </div>
-
-            <!-- Campos de texto complementarios -->
-            <div style="margin-top: 12px;">
-              <label for="routeInputAddress" style="font-size: 0.8rem; font-weight: 700; color: #1e293b; display: block; margin-bottom: 4px;">
-                Dirección / Sector / Número de Casa o Apto *
-              </label>
-              <input type="text" id="routeInputAddress" class="form-input" placeholder="Ej: Calle 4 con Av. 2, Edif. Los Pinos, Apto 3B" style="margin-bottom: 8px;">
-              
-              <label for="routeInputReference" style="font-size: 0.8rem; font-weight: 700; color: #1e293b; display: block; margin-bottom: 4px;">
-                Punto de Referencia para el Chofer (Opcional)
-              </label>
-              <input type="text" id="routeInputReference" class="form-input" placeholder="Ej: Portón negro, frente al abasto o semáforo">
-            </div>
-          </div>
-        </div>
-
-        <!-- Opción 2: Recogida en Tienda (Gratis) -->
-        <div class="route-option-card" id="routeCardPickup" data-route="pickup">
-          <div class="route-card-header">
-            <span class="route-card-icon">🏪</span>
-            <div class="route-card-title-wrap">
-              <h4>Recoger en Tienda Al Costo</h4>
-              <span class="route-card-badge free">Gratis • $0.00 Envío</span>
-            </div>
-            <input type="radio" name="routeTypeSelection" id="radioRoutePickup" value="pickup" class="route-radio">
-          </div>
-          <p class="route-card-desc">
-            Empacamos tus productos y los retiras sin colas ni esperas en nuestra sede principal.
-          </p>
-          <div class="pickup-info-box">
-            <strong style="color: #1e3a8a;">📍 Sede Principal Al Costo:</strong>
-            <div style="font-size: 0.8rem; font-family: monospace; color: #1e40af; margin: 3px 0;">Coordenadas: 7º48'25.6"N 71º11'12.3"W</div>
-            <div style="font-size: 0.8rem; color: #475569; margin-bottom: 4px;">⏱️ Listo para recoger en 15 minutos</div>
-            <a href="https://www.google.com/maps?q=7.807111,-71.186750" target="_blank" style="color: #0284C7; font-weight: 700; text-decoration: none; font-size: 0.82rem;">
-              🗺️ Ver ubicación de la tienda en Google Maps →
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Botón de Confirmación Obligatorio -->
-      <button type="button" class="btn-checkout-primary" id="btnConfirmRouteSelection" style="width: 100%; margin-top: 16px; padding: 13px; font-size: 1rem;">
-        ✅ Confirmar Ruta y Guardar Ubicación
-      </button>
-    </div>
-  </div>
-
-  <!-- ==========================================================================
        MODAL 2B: MIS DATOS DE CONTACTO Y ENTREGA (SIN CONTRASEÑAS NI LOGINS)
        ========================================================================== -->
   <div class="modal-overlay" id="customerProfileModal">
@@ -892,60 +791,114 @@
       </div>
 
       <form id="checkoutForm">
-        <!-- Resumen de la Ruta Seleccionada -->
-        <div class="checkout-route-summary-pill" id="checkoutRouteSummaryPill">
-          <div class="checkout-route-text" id="checkoutRouteText">
-            <strong>Ruta de Despacho:</strong>
-            <span>Cargando ruta seleccionada...</span>
+        <!-- ===================================================================
+             1° PASO: DATOS DE CONTACTO DEL CLIENTE
+             =================================================================== -->
+        <div class="checkout-step-block">
+          <div class="checkout-step-title"><span class="checkout-step-num">1</span> Datos de contacto</div>
+
+          <div class="checkout-form-grid">
+            <div class="form-group">
+              <label for="orderName">Nombre Completo *</label>
+              <input type="text" id="orderName" class="form-input" required placeholder="Ej: Fernando Gómez">
+            </div>
+
+            <div class="form-group">
+              <label for="orderPhone">Teléfono de Contacto *</label>
+              <input type="tel" id="orderPhone" class="form-input" required placeholder="Ej: 0412-1234567 o +34 600 000 000">
+            </div>
           </div>
-          <button type="button" class="btn-change-route" id="btnChangeRouteInCheckout">
-            🔄 Cambiar Ruta
-          </button>
         </div>
 
-        <div class="checkout-form-grid">
-          <div class="form-group">
-            <label for="orderName">Nombre Completo *</label>
-            <input type="text" id="orderName" class="form-input" required placeholder="Ej: Fernando Gómez">
-          </div>
+        <!-- ===================================================================
+             2° PASO: ADVERTENCIA Y DIRECCIÓN MANUAL DE ENTREGA
+             =================================================================== -->
+        <div class="checkout-step-block">
+          <div class="checkout-step-title"><span class="checkout-step-num">2</span> Dirección de entrega</div>
 
-          <div class="form-group">
-            <label for="orderPhone">Teléfono de Contacto *</label>
-            <input type="tel" id="orderPhone" class="form-input" required placeholder="Ej: 0412-1234567 o +34 600 000 000">
-          </div>
+          <!-- Dirección y GPS: se ocultan por completo si elige Retirar en Tienda -->
+          <div id="checkoutDeliverySection">
+            <!-- AVISO DESTACADO: SI EL DESTINO ES OTRO, ESCRIBIRLO A MANO -->
+            <div class="gps-manual-alert" id="checkoutManualAlert" style="margin-top: 0; margin-bottom: 10px;">
+              <span class="gps-manual-alert-icon">✍️</span>
+              <div class="gps-manual-alert-body">
+                <strong class="gps-manual-alert-title">⚠️ ¿Tu dirección de destino NO es la misma desde donde haces el pedido?</strong>
+                <p class="gps-manual-alert-text">Colócala por escrito en el recuadro de abajo. En cuanto empieces a escribir, las coordenadas GPS se ocultan automáticamente para que no haya confusión con el repartidor.</p>
+              </div>
+            </div>
 
-          <div class="form-group form-field-full">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <label for="orderAddress" style="margin: 0;">Dirección / Ubicación de Entrega *</label>
+              <label for="orderAddress" style="margin: 0;">Dirección / Referencia de Entrega *</label>
               <button type="button" id="btnRefreshCheckoutGps" style="background: none; border: none; color: #166534; font-size: 0.78rem; font-weight: 700; cursor: pointer; text-decoration: underline;">
                 📍 Capturar / Actualizar GPS en Vivo
               </button>
             </div>
-            <input type="text" id="orderAddress" class="form-input" required placeholder="Calle, sector, referencia de llegada">
+            <input type="text" id="orderAddress" class="form-input" placeholder="Calle, sector, referencia de llegada">
             <div id="checkoutGpsBadge" style="display: none; font-size: 0.76rem; color: #15803D; font-weight: 600; margin-top: 4px;">
               🛰️ Coordenadas GPS fijadas: <span id="checkoutGpsCoords"></span> (<a href="#" id="checkoutGpsMapLink" target="_blank" style="color: #0284C7; font-weight: 700;">Ver mapa</a>)
             </div>
+            <div id="checkoutManualNotice" class="gps-manual-mode-badge" style="display: none;">
+              ✍️ <strong>Dirección manual activa:</strong> las coordenadas GPS quedaron pausadas. Borra el texto del recuadro si deseas volver a mostrarlas.
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="orderSlot">Horario de Entrega Deseado</label>
-            <select id="orderSlot" class="form-select">
-              <option value="now">Lo antes posible (Hoy en 30-45 min)</option>
-              <option value="afternoon">Hoy: 5:00 PM - 6:30 PM</option>
-              <option value="night">Hoy: 7:00 PM - 8:30 PM</option>
-              <option value="tomorrow">Mañana por la mañana (9:00 AM - 11:00 AM)</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="orderInstructions">Instrucciones para el Shopper</label>
-            <input type="text" id="orderInstructions" class="form-input" placeholder="Ej: Dejar en la portería o tocar timbre">
+          <!-- Info de la sede: solo visible si elige Retirar en Tienda -->
+          <div id="checkoutPickupInfo" class="pickup-info-box" style="display: none;">
+            <strong style="color: #1e3a8a;">📍 Sede Principal Al Costo:</strong>
+            <div style="font-size: 0.8rem; font-family: monospace; color: #1e40af; margin: 3px 0;">Coordenadas: 7º48'25.6"N 71º11'12.3"W</div>
+            <div style="font-size: 0.8rem; color: #475569; margin-bottom: 4px;">⏱️ Listo para recoger en 15 minutos • Envío $0.00</div>
+            <a href="https://www.google.com/maps?q=7.807111,-71.186750" target="_blank" style="color: #0284C7; font-weight: 700; text-decoration: none; font-size: 0.82rem;">
+              🗺️ Ver ubicación de la tienda en Google Maps →
+            </a>
           </div>
         </div>
 
-        <div style="margin-bottom: 12px; font-weight: 700; font-size: 0.9rem;">
-          Método de Pago:
+        <!-- ===================================================================
+             3° PASO: SELECCIÓN DE MODALIDAD DE DESPACHO (2 BOTONES PARALELOS)
+             =================================================================== -->
+        <div class="checkout-step-block">
+          <div class="checkout-step-title"><span class="checkout-step-num">3</span> Modalidad de despacho</div>
+
+          <div class="dispatch-mode-selector">
+            <button type="button" class="dispatch-mode-btn active" id="btnModeDelivery" data-mode="delivery">
+              <span class="dispatch-mode-icon">🛵</span>
+              <span class="dispatch-mode-name">Delivery GPS</span>
+              <span class="dispatch-mode-desc">Te lo llevamos a tu puerta con ubicación en vivo</span>
+            </button>
+            <button type="button" class="dispatch-mode-btn" id="btnModePickup" data-mode="pickup">
+              <span class="dispatch-mode-icon">🏪</span>
+              <span class="dispatch-mode-name">Retirar en Tienda</span>
+              <span class="dispatch-mode-desc">Recoge tu pedido en nuestra sede • Envío $0.00</span>
+            </button>
+          </div>
         </div>
+
+        <!-- ===================================================================
+             4° PASO: CONFIRMACIÓN DE ENTREGA Y PAGO
+             =================================================================== -->
+        <div class="checkout-step-block">
+          <div class="checkout-step-title"><span class="checkout-step-num">4</span> Horario y método de pago</div>
+
+          <div class="checkout-form-grid">
+            <div class="form-group">
+              <label for="orderSlot">Horario de Entrega Deseado</label>
+              <select id="orderSlot" class="form-select">
+                <option value="now">Lo antes posible (Hoy en 30-45 min)</option>
+                <option value="afternoon">Hoy: 5:00 PM - 6:30 PM</option>
+                <option value="night">Hoy: 7:00 PM - 8:30 PM</option>
+                <option value="tomorrow">Mañana por la mañana (9:00 AM - 11:00 AM)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="orderInstructions">Instrucciones para el Shopper</label>
+              <input type="text" id="orderInstructions" class="form-input" placeholder="Ej: Dejar en la portería o tocar timbre">
+            </div>
+          </div>
+
+          <div style="margin-bottom: 12px; font-weight: 700; font-size: 0.9rem;">
+            Método de Pago:
+          </div>
 
         <div class="payment-methods-selector">
           <div class="payment-method-card active" data-pay-type="pagomovil">
@@ -975,6 +928,7 @@
           <span style="font-weight: 600; color: #444;">Total final del pedido:</span>
           <span id="checkoutTotalSummary" style="font-size: 1.35rem; font-weight: 800; color: var(--color-brand-green);">$0.00</span>
         </div>
+        </div><!-- /4° paso -->
 
         <button type="submit" class="btn-checkout-primary">
           Confirmar y Asignar Shopper 🛵

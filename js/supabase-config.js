@@ -228,37 +228,71 @@ const SupabaseService = {
   },
 
   // Guardar un nuevo pedido en Supabase
+  // NOTA: payment_proof / gps_coordinates / delivery_type son columnas OPCIONALES en la tabla
+  // "pedidos". Si aún no existen, el primer intento falla (42703) y se reintenta sin ellas
+  // para que el pedido SIEMPRE se guarde aunque falten las columnas.
   async sendOrderToSupabase(orderData) {
     const config = this.getConfig();
     if (!config.url || !config.anonKey) return null;
 
-    try {
-      const payload = {
-        id: orderData.id,
-        customer_name: orderData.customerName,
-        customer_phone: orderData.customerPhone,
-        delivery_address: orderData.deliveryAddress,
-        delivery_slot: orderData.deliverySlot,
-        instructions: orderData.instructions || '',
-        payment_method: orderData.paymentMethod,
-        items: orderData.items,
-        subtotal: orderData.subtotal,
-        discount: orderData.discount,
-        delivery_fee: orderData.deliveryFee,
-        tip: orderData.tip,
-        total: orderData.total,
-        status: orderData.status || 'nuevo',
-        created_at: new Date().toISOString()
-      };
+    const basePayload = {
+      id: orderData.id,
+      customer_name: orderData.customerName,
+      customer_phone: orderData.customerPhone,
+      delivery_address: orderData.deliveryAddress,
+      delivery_slot: orderData.deliverySlot,
+      instructions: orderData.instructions || '',
+      payment_method: orderData.paymentMethod,
+      items: orderData.items,
+      subtotal: orderData.subtotal,
+      discount: orderData.discount,
+      delivery_fee: orderData.deliveryFee,
+      tip: orderData.tip,
+      total: orderData.total,
+      status: orderData.status || 'nuevo',
+      created_at: new Date().toISOString()
+    };
 
+    // Campos extra que permiten al admin ver la captura del pago y la ubicación GPS
+    const extraPayload = {
+      payment_proof: orderData.paymentProof || null,
+      gps_coordinates: orderData.gpsCoordinates || null,
+      delivery_type: orderData.deliveryType || 'delivery'
+    };
+
+    const insertOrder = async (payload) => {
       const res = await fetch(`${config.url}/rest/v1/pedidos`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify(payload)
       });
-
       if (res.ok) {
-        return await res.json();
+        return { ok: true, data: await res.json() };
+      }
+      const errText = await res.text().catch(() => '');
+      return { ok: false, status: res.status, error: errText };
+    };
+
+    try {
+      // 1º Intento: con captura de pago, GPS y modalidad
+      const full = await insertOrder({ ...basePayload, ...extraPayload });
+      if (full.ok) return full.data;
+
+      // 2º Intento: si la tabla aún no tiene esas columnas (error 42703), guardar sin ellas
+      const isMissingColumn = full.status === 400 && /42703|does not exist/i.test(full.error || '');
+      if (isMissingColumn) {
+        console.warn(
+          'Supabase: la tabla "pedidos" no tiene las columnas payment_proof / gps_coordinates / ' +
+          'delivery_type. El pedido se guardó SIN la captura. Ejecuta este SQL en el editor de Supabase para habilitarlas:\n' +
+          'ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS payment_proof text;\n' +
+          'ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS gps_coordinates jsonb;\n' +
+          'ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS delivery_type text;'
+        );
+        const fallback = await insertOrder(basePayload);
+        if (fallback.ok) return fallback.data;
+        console.warn('Supabase: el reintento del pedido también falló:', fallback.error);
+      } else {
+        console.warn('Supabase: error guardando pedido:', full.error);
       }
     } catch (e) {
       console.warn('Error enviando pedido a Supabase:', e);
