@@ -2391,17 +2391,40 @@ body {
   flex-shrink: 0;
 }
 
-/* Selector de modalidad de despacho: 2 botones paralelos lado a lado */
+/* Selector de modalidad de despacho: 2 botones paralelos en PC, 1 sobre otro en móvil */
 .dispatch-mode-selector {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  width: 100%;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .dispatch-mode-selector {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
+}
+
+.dispatch-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-border);
+  background: var(--color-card-bg, #1e293b); /* Asegura fondo oscuro oscuro/tarjeta */
+  color: var(--color-text-primary, #ffffff);
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dispatch-mode-btn * {
+  display: block; /* Forzar a que cada texto/icono vaya en su propia línea */
 }
 
 .dispatch-mode-btn {
