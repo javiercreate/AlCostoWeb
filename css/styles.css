@@ -1208,7 +1208,10 @@ body {
 
 .hero-graphic-badge {
   background: white;
-  color: var(--color-text-primary);
+  /* Fondo SIEMPRE claro (blanco/blanco 96%) en ambos temas, por lo que el texto
+     debe ser oscuro fijo: usar var(--color-text-primary) aquí hacía que en modo
+     oscuro el texto fuera #F8FAFC (blanco sobre blanco, invisible) */
+  color: #1A1A1A;
   border-radius: var(--radius-lg);
   padding: 16px 20px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
