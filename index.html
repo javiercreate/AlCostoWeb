@@ -1107,6 +1107,16 @@
     </div>
   </div>
 
+  <!-- Botón Flotante de "Mi Pedido en Curso": aparece solo mientras haya un pedido activo y desaparece al ser entregado o cancelado -->
+  <button type="button" class="active-order-fab" id="activeOrderFabBtn" style="display: none;" title="Ver el estado de tu pedido en curso">
+    <span class="active-order-fab-pulse" aria-hidden="true"></span>
+    <i class="fa-solid fa-motorcycle" aria-hidden="true"></i>
+    <span class="active-order-fab-text">
+      <strong id="activeOrderFabCode">Mi pedido</strong>
+      <small id="activeOrderFabStatus">📩 Pedido recibido</small>
+    </span>
+  </button>
+
   <!-- Botón Flotante de WhatsApp hacia el dueño (+34 602 07 08 46) -->
   <a href="https://wa.me/34602070846?text=Hola%20Al%20Costo,%20quisiera%20hacer%20un%20pedido%20o%20consultar%20precios" target="_blank" class="floating-wa-btn" title="Escribir por WhatsApp al dueño (+34 602 07 08 46)">
     <i class="fa-brands fa-whatsapp" style="font-size: 1.15rem;"></i> <span>WhatsApp (+34 602 07 08 46)</span>

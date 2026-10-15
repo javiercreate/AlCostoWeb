@@ -570,6 +570,27 @@ const SupabaseService = {
   // ==========================================================================
   // AUTENTICACIÓN Y GESTIÓN DE USUARIOS EN SUPABASE
   // ==========================================================================
+  // Devuelve el hash SHA-256 (hex, 64 caracteres) de una contraseña.
+  // La contraseña en claro NUNCA se envía al servidor ni se guarda: solo su hash.
+  async hashPassword(password) {
+    const text = String(password || '');
+    if (typeof crypto !== 'undefined' && crypto.subtle && typeof TextEncoder !== 'undefined') {
+      const bytes = new TextEncoder().encode(text);
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      return Array.from(new Uint8Array(digest))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+    // Web Crypto solo existe en contextos seguros (HTTPS o localhost):
+    // si no está disponible, no se permite guardar ni verificar la contraseña.
+    return null;
+  },
+
+  // Detecta si el valor guardado ya es un hash SHA-256 (64 hex) y no texto plano
+  isHashedPassword(stored) {
+    return /^[0-9a-f]{64}$/i.test(String(stored || ''));
+  },
+
   async registerUser(userData) {
     const config = this.getConfig();
     if (!config.url || !config.anonKey) {
@@ -577,11 +598,20 @@ const SupabaseService = {
     }
 
     try {
+      // Cifrar la contraseña ANTES de enviarla (nunca viaja en texto plano)
+      const hashedPassword = await this.hashPassword(userData.password);
+      if (!hashedPassword) {
+        return {
+          success: false,
+          message: 'Tu navegador no permite cifrar la contraseña de forma segura (se requiere HTTPS). Recarga la página e inténtalo de nuevo.'
+        };
+      }
+
       const payload = {
         nombre: userData.name,
         email: userData.email ? userData.email.toLowerCase().trim() : null,
         telefono: userData.phone ? userData.phone.trim() : null,
-        password_hash: userData.password, // En producción se recomienda hashear
+        password_hash: hashedPassword, // Hash SHA-256: la contraseña en claro queda solo en el navegador
         direccion_predeterminada: userData.address || '',
         rol: 'cliente',
         created_at: new Date().toISOString()
@@ -639,9 +669,43 @@ const SupabaseService = {
           return { success: false, message: 'Usuario no encontrado. Verifica tu correo o teléfono.' };
         }
         const user = rows[0];
-        if (user.password_hash !== password) {
+
+        // Cifrar la contraseña ingresada para compararla con el hash guardado
+        const hashedInput = await this.hashPassword(password);
+        if (!hashedInput) {
+          return {
+            success: false,
+            message: 'Tu navegador no permite verificar la contraseña de forma segura (se requiere HTTPS). Recarga la página e inténtalo de nuevo.'
+          };
+        }
+
+        const storedPassword = String(user.password_hash || '');
+        const accountIsHashed = this.isHashedPassword(storedPassword);
+
+        // Cuentas nuevas: comparación por hash. Cuentas antiguas (texto plano):
+        // se acepta la contraseña original y se encripta el registro al instante.
+        const passwordMatches = accountIsHashed
+          ? storedPassword.toLowerCase() === hashedInput
+          : storedPassword === String(password || '');
+
+        if (!passwordMatches) {
           return { success: false, message: 'Contraseña incorrecta. Inténtalo de nuevo.' };
         }
+
+        // Migración automática: cuenta antigua con contraseña en texto plano →
+        // se reemplaza por su hash SHA-256 para no volver a guardarla sin cifrar.
+        if (!accountIsHashed) {
+          try {
+            await fetch(`${config.url}/rest/v1/usuarios?${queryParam}`, {
+              method: 'PATCH',
+              headers: { ...this.getHeaders(), 'Prefer': 'return=minimal' },
+              body: JSON.stringify({ password_hash: hashedInput })
+            });
+          } catch (e) {
+            console.warn('No se pudo encriptar la contraseña guardada (se reintentará en el próximo inicio):', e);
+          }
+        }
+
         return {
           success: true,
           user: {

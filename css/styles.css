@@ -4373,3 +4373,102 @@ body {
     box-shadow: 0 3px 12px rgba(37, 211, 102, 0.4);
   }
 }
+
+/* ==========================================================================
+   BOTÓN FLOTANTE "MI PEDIDO EN CURSO"
+   Se muestra en la tienda solo mientras el cliente tenga un pedido activo
+   (se oculta automáticamente cuando es entregado o cancelado)
+   ========================================================================== */
+.active-order-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 350;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px 10px 14px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, #108910, #003D29);
+  color: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 8px 24px rgba(16, 137, 16, 0.45);
+  animation: activeOrderFabPop 0.35s ease;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.active-order-fab:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 28px rgba(16, 137, 16, 0.55);
+}
+
+.active-order-fab i {
+  font-size: 1.25rem;
+  color: #FFD600;
+}
+
+.active-order-fab-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.active-order-fab-text strong {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.active-order-fab-text small {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.92;
+}
+
+/* Punto verde "latiendo" que indica que el pedido sigue vivo */
+.active-order-fab-pulse {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #FFD600;
+  flex-shrink: 0;
+}
+
+.active-order-fab-pulse::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 214, 0, 0.7);
+  animation: activeOrderFabPulseRing 1.6s ease-out infinite;
+}
+
+@keyframes activeOrderFabPulseRing {
+  0% { transform: scale(0.7); opacity: 1; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+@keyframes activeOrderFabPop {
+  0% { transform: translateY(14px) scale(0.9); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .active-order-fab {
+    bottom: 80px; /* Por encima del bottom nav móvil */
+    right: 12px;
+    padding: 8px 14px 8px 12px;
+    gap: 8px;
+  }
+
+  .active-order-fab i { font-size: 1.1rem; }
+  .active-order-fab-text strong { font-size: 0.76rem; }
+  .active-order-fab-text small { font-size: 0.66rem; }
+}

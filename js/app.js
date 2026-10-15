@@ -145,6 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Reabrir el seguimiento del pedido activo (si el cliente recargó la página)
     restoreActiveOrderTracker();
 
+    // Mostrar el botón flotante de "Mi pedido en curso" mientras exista uno activo
+    refreshActiveOrderFab();
+
   }
 
   async function loadCatalogProductsFromDatabase() {
@@ -1827,7 +1830,11 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(conf.toast, status === 'cancelado' ? 'normal' : 'success');
       }
       // Pedido terminado: se limpia la sesión para no reabrirlo en la próxima carga
-      if (isFinalOrderStatus(status)) clearActiveOrderId();
+      // y se oculta el botón flotante de "Mi pedido en curso"
+      if (isFinalOrderStatus(status)) {
+        clearActiveOrderId();
+        refreshActiveOrderFab();
+      }
 
       lastTrackerStatus = status;
 
@@ -1935,6 +1942,92 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (state.orderTrackerInterval) {
       clearInterval(state.orderTrackerInterval);
+    }
+    // Al volver a la tienda queda visible el botón de "Mi pedido en curso"
+    refreshActiveOrderFab();
+  }
+
+  // ==========================================================================
+  // BOTÓN FLOTANTE "MI PEDIDO EN CURSO" (visible en la tienda mientras haya pedido activo)
+  // ==========================================================================
+  const activeOrderFabBtn = document.getElementById('activeOrderFabBtn');
+  let activeOrderFabInterval = null;
+
+  function getFabStatusLabel(status) {
+    const labels = {
+      nuevo: '📩 Pedido recibido',
+      preparacion: '🛒 En preparación',
+      camino: '🛵 En camino hacia ti',
+      entregado: '✅ Entregado',
+      cancelado: '❌ Cancelado'
+    };
+    return labels[String(status || 'nuevo').toLowerCase()] || '📩 Pedido recibido';
+  }
+
+  // Busca el estado más reciente del pedido activo (local primero, luego Supabase)
+  async function getActiveOrderSnapshot() {
+    const activeId = getActiveOrderId();
+    if (!activeId) return { activeId: null, status: null, order: null };
+
+    let localOrder = null;
+    try {
+      const localOrders = JSON.parse(localStorage.getItem('alcosto_orders')) || [];
+      localOrder = localOrders.find(o => String(o.id) === String(activeId)) || null;
+    } catch (e) {
+      localOrder = null;
+    }
+
+    let status = (localOrder && localOrder.status) ? localOrder.status : null;
+
+    if (typeof SupabaseService !== 'undefined') {
+      const cloudStatus = await SupabaseService.fetchOrderStatusFromSupabase(activeId);
+      // null = Supabase respondió y el pedido no existe → sesión obsoleta
+      if (cloudStatus === null && !localOrder) {
+        clearActiveOrderId();
+        return { activeId: null, status: null, order: null };
+      }
+      if (cloudStatus) status = cloudStatus;
+    }
+
+    return { activeId, status, order: localOrder };
+  }
+
+  // Muestra u oculta el botón flotante según el pedido activo
+  async function refreshActiveOrderFab() {
+    if (!activeOrderFabBtn) return;
+
+    try {
+      const { activeId, status } = await getActiveOrderSnapshot();
+
+      // Sin pedido activo o pedido terminado → el botón desaparece
+      if (!activeId || (status && isFinalOrderStatus(status))) {
+        if (activeId) clearActiveOrderId();
+        activeOrderFabBtn.style.display = 'none';
+        stopActiveOrderFabPolling();
+        return;
+      }
+
+      const codeEl = document.getElementById('activeOrderFabCode');
+      const statusEl = document.getElementById('activeOrderFabStatus');
+      if (codeEl) codeEl.textContent = `Mi pedido #${activeId}`;
+      if (statusEl) statusEl.textContent = getFabStatusLabel(status);
+      activeOrderFabBtn.style.display = 'inline-flex';
+      startActiveOrderFabPolling();
+    } catch (e) {
+      console.warn('No se pudo actualizar el botón de pedido en curso:', e);
+    }
+  }
+
+  // Consulta ligera del estado mientras el cliente sigue navegando en la tienda
+  function startActiveOrderFabPolling() {
+    if (activeOrderFabInterval) return;
+    activeOrderFabInterval = setInterval(refreshActiveOrderFab, 10000);
+  }
+
+  function stopActiveOrderFabPolling() {
+    if (activeOrderFabInterval) {
+      clearInterval(activeOrderFabInterval);
+      activeOrderFabInterval = null;
     }
   }
 
@@ -2330,6 +2423,32 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('alcosto_theme', newTheme);
         applyTheme(newTheme);
         showToast(newTheme === 'dark' ? '🌙 Modo Oscuro activado' : '☀️ Modo Claro activado', 'normal');
+      });
+    }
+
+    // Botón flotante: reabrir el seguimiento del pedido en curso desde la tienda
+    if (activeOrderFabBtn) {
+      activeOrderFabBtn.addEventListener('click', async () => {
+        const { activeId, status, order } = await getActiveOrderSnapshot();
+
+        if (!activeId) {
+          refreshActiveOrderFab();
+          return;
+        }
+
+        if (status && isFinalOrderStatus(status)) {
+          clearActiveOrderId();
+          refreshActiveOrderFab();
+          showToast('ℹ️ Tu último pedido ya fue entregado o cancelado');
+          return;
+        }
+
+        if (order) {
+          startOrderTracker(order, order.status || 'nuevo');
+        } else {
+          const resumedStatus = status || 'nuevo';
+          startOrderTracker({ id: activeId, status: resumedStatus }, resumedStatus);
+        }
       });
     }
 
