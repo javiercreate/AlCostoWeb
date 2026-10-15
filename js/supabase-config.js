@@ -11,6 +11,33 @@ const PUBLIC_SUPABASE_CONFIG = {
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6YnJ3bGFtbGx0aW1naHJoeHNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3OTIyNTAsImV4cCI6MjEwNjM2ODI1MH0.cR85t6G8FGNKxVstbxdSTxo9FmOyf-0_f3EJ_fxsAqI'
 };
 
+// Alias de columnas de la tabla public.pedidos: el código escribe nombres en inglés
+// (customer_name, delivery_fee...), pero algunas tablas fueron creadas con nombres
+// en español (nombre_cliente, telefono, direccion, horario, metodo_pago, envio...).
+const ORDER_COLUMN_ALIASES = {
+  customer_name: ['nombre_cliente'],
+  customer_phone: ['telefono'],
+  delivery_address: ['direccion'],
+  delivery_slot: ['horario'],
+  payment_method: ['metodo_pago'],
+  delivery_fee: ['envio'],
+  instructions: ['instrucciones', 'nota']
+};
+
+// Columnas opcionales del pedido: si faltan en la tabla se descartan con advertencia
+// (el pedido SIEMPRE se guarda, aunque sea sin la captura, sin el GPS o sin la nota).
+const OPTIONAL_ORDER_COLUMNS = ['payment_proof', 'gps_coordinates', 'delivery_type', 'instructions', 'discount', 'tip'];
+
+// Extrae los nombres de columna faltantes del error 42703 de PostgREST/Postgres
+function extractMissingColumns(errorText) {
+  if (!errorText) return [];
+  const regex = /column\s+\\?"?([a-zA-Z_][a-zA-Z0-9_]*)\\?"?\s+(?:of relation|does not exist)/g;
+  const columns = [];
+  let match;
+  while ((match = regex.exec(errorText)) !== null) columns.push(match[1]);
+  return [...new Set(columns)];
+}
+
 const SupabaseService = {
   // Obtener credenciales para la tienda (usuario cliente: usa configuración guardada o por defecto la pública)
   getConfig() {
@@ -227,10 +254,65 @@ const SupabaseService = {
     }
   },
 
+  // Inserta un pedido adaptando el payload a las columnas REALES de public.pedidos.
+  // Si Supabase responde 42703 (columna inexistente) traduce la columna a su alias en
+  // español y reintenta; las columnas opcionales se descartan con un aviso + SQL.
+  async insertOrderAdapted(insertOrder, initialPayload) {
+    let payload = { ...initialPayload };
+    // Cada iteración adapta al menos una columna, así que el tope es holgado
+    const maxAttempts = Object.keys(initialPayload).length * 2 + 2;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const result = await insertOrder(payload);
+      if (result.ok) return result;
+
+      const isMissingColumn = result.status === 400 && /42703|does not exist/i.test(result.error || '');
+      const missing = isMissingColumn ? extractMissingColumns(result.error) : [];
+      if (!missing.length) return result; // Otro tipo de error: lo decide el llamador
+
+      let adapted = false;
+      missing.forEach((column) => {
+        if (!(column in payload)) return;
+
+        const alias = (ORDER_COLUMN_ALIASES[column] || []).find((name) => !(name in payload));
+        if (alias) {
+          payload[alias] = payload[column];
+          delete payload[column];
+          adapted = true;
+          console.warn(`Supabase: la columna "${column}" no existe en public.pedidos; se usó su alias "${alias}".`);
+          return;
+        }
+
+        if (OPTIONAL_ORDER_COLUMNS.includes(column)) {
+          delete payload[column];
+          adapted = true;
+          const sqlType = column === 'gps_coordinates' ? 'jsonb' : 'text';
+          console.warn(
+            `Supabase: la columna opcional "${column}" no existe en public.pedidos; se omitió. ` +
+            `Ejecuta: ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS ${column} ${sqlType};`
+          );
+          return;
+        }
+
+        // Columna imprescindible (items, total, status...) sin alias: no se arriesga
+        // a guardar un pedido incompleto, se reporta el error con su SQL.
+        console.warn(
+          `Supabase: la columna "${column}" no existe en public.pedidos ni tiene alias; ` +
+          `el pedido NO se guardó en la nube. SQL: ` +
+          `ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS ${column} <tipo>;`
+        );
+      });
+
+      if (!adapted) return result;
+    }
+
+    return { ok: false, status: 400, error: 'No fue posible mapear las columnas de public.pedidos' };
+  },
+
   // Guardar un nuevo pedido en Supabase
-  // NOTA: payment_proof / gps_coordinates / delivery_type son columnas OPCIONALES en la tabla
-  // "pedidos". Si aún no existen, el primer intento falla (42703) y se reintenta sin ellas
-  // para que el pedido SIEMPRE se guarde aunque falten las columnas.
+  // NOTA: el payload se adapta a las columnas reales de public.pedidos (ver
+  // insertOrderAdapted). payment_proof / gps_coordinates / delivery_type son
+  // OPCIONALES: si faltan, se descartan y el pedido SIEMPRE se guarda.
   async sendOrderToSupabase(orderData) {
     const config = this.getConfig();
     if (!config.url || !config.anonKey) return null;
@@ -275,10 +357,10 @@ const SupabaseService = {
 
     try {
       // 1º Intento: con captura de pago, GPS y modalidad
-      const full = await insertOrder({ ...basePayload, ...extraPayload });
+      const full = await this.insertOrderAdapted(insertOrder, { ...basePayload, ...extraPayload });
       if (full.ok) return full.data;
 
-      // 2º Intento: si la tabla aún no tiene esas columnas (error 42703), guardar sin ellas
+      // 2º Intento: reintento sin las columnas opcionales (payment_proof / gps / delivery_type)
       const isMissingColumn = full.status === 400 && /42703|does not exist/i.test(full.error || '');
       if (isMissingColumn) {
         console.warn(
@@ -288,7 +370,7 @@ const SupabaseService = {
           'ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS gps_coordinates jsonb;\n' +
           'ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS delivery_type text;'
         );
-        const fallback = await insertOrder(basePayload);
+        const fallback = await this.insertOrderAdapted(insertOrder, basePayload);
         if (fallback.ok) return fallback.data;
         console.warn('Supabase: el reintento del pedido también falló:', fallback.error);
       } else {
@@ -329,11 +411,16 @@ const SupabaseService = {
         headers: this.getHeaders()
       });
       if (res.ok) {
+        // 200 con lista vacía: el pedido no existe en la tabla (null)
         const rows = await res.json();
         return (Array.isArray(rows) && rows[0] && rows[0].status) ? rows[0].status : null;
       }
+      // Respuesta inválida: estado desconocido (undefined). NO se limpia la sesión.
+      return undefined;
     } catch (e) {
       console.warn('Error consultando estado del pedido en Supabase:', e);
+      // Sin conexión: estado desconocido (undefined). NO se limpia la sesión.
+      return undefined;
     }
     return null;
   },
@@ -443,7 +530,12 @@ const SupabaseService = {
 
   // Generador de Enlace WhatsApp para el dueño (+34 602 07 08 46) con Ubicación GPS Real
   createOwnerWhatsAppLink(order) {
-    const itemsList = order.items.map(i => `• ${i.quantity}x ${i.product.name} ($${(i.product.price * i.quantity).toFixed(2)})`).join('%0A');
+    const itemsList = (Array.isArray(order.items) ? order.items : []).map(i => {
+      const source = i.product || i;
+      const qty = parseFloat(i.quantity) || 0;
+      const price = parseFloat(source.price) || 0;
+      return `• ${qty}x ${source.name || 'Producto'} ($${(price * qty).toFixed(2)})`;
+    }).join('%0A');
     
     let gpsText = '';
     if (order.gpsCoordinates && order.gpsCoordinates.lat && order.gpsCoordinates.lng) {
@@ -465,12 +557,12 @@ const SupabaseService = {
       `*Teléfono:* ${order.customerPhone}%0A` +
       `*Dirección:* ${order.deliveryAddress}%0A` +
       gpsText +
-      `*Horario:* ${order.deliverySlot}%0A` +
-      `*Método de Pago:* ${order.paymentMethod}%0A` +
+      `*Horario:* ${order.deliverySlot || 'A coordinar'}%0A` +
+      `*Método de Pago:* ${order.paymentMethod || 'No especificado'}%0A` +
       (order.instructions ? `*Nota:* ${order.instructions}%0A` : '') +
       `%0A*--- PRODUCTOS SOLICITADOS ---*%0A` +
       `${itemsList}%0A%0A` +
-      `*Total a Pagar:* $${order.total.toFixed(2)}`;
+      `*Total a Pagar:* $${(parseFloat(order.total) || 0).toFixed(2)}`;
 
     return `https://wa.me/${OWNER_PHONE}?text=${message}`;
   },

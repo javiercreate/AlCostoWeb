@@ -142,6 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initHeroCarousel();
     setupEventListeners();
 
+    // Reabrir el seguimiento del pedido activo (si el cliente recargó la página)
+    restoreActiveOrderTracker();
+
   }
 
   async function loadCatalogProductsFromDatabase() {
@@ -1615,21 +1618,48 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   // SEGUIMIENTO EN VIVO (LIVE ORDER TRACKING INSTACART)
   // ==========================================================================
+  // ==========================================================================
+  // SESIÓN DE SEGUIMIENTO ACTIVA (persiste entre recargas de la página)
+  // ==========================================================================
+  const ACTIVE_ORDER_ID_KEY = 'active_order_id';
+
+  // Guarda el id del pedido confirmado para poder reabrir su seguimiento
+  function saveActiveOrderId(orderId) {
+    if (!orderId) return;
+    try {
+      localStorage.setItem(ACTIVE_ORDER_ID_KEY, String(orderId));
+    } catch (e) {
+      console.warn('No se pudo guardar active_order_id:', e);
+    }
+  }
+
+  // Devuelve el id del pedido activo o null
+  function getActiveOrderId() {
+    try {
+      return localStorage.getItem(ACTIVE_ORDER_ID_KEY);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Limpia la sesión de seguimiento (pedido terminado o inexistente)
+  function clearActiveOrderId() {
+    try {
+      localStorage.removeItem(ACTIVE_ORDER_ID_KEY);
+    } catch (e) {
+      console.warn('No se pudo limpiar active_order_id:', e);
+    }
+  }
+
+  // Estados que cierran la sesión de seguimiento (pedido terminado)
+  function isFinalOrderStatus(status) {
+    const normalized = String(status || '').toLowerCase();
+    return normalized === 'entregado' || normalized === 'cancelado';
+  }
+
+  // Crea el pedido a partir del checkout y abre el seguimiento en vivo
   function launchLiveOrderTracker() {
     closeCheckoutModal();
-
-    if (orderTrackerModalEl) {
-      orderTrackerModalEl.classList.add('active');
-      document.body.style.overflow = 'hidden';
-    }
-
-    // Reset de los pasos
-    const stepItems = document.querySelectorAll('.tracker-step-item');
-    stepItems.forEach((item, index) => {
-      item.className = 'tracker-step-item';
-      if (index === 0) item.classList.add('completed');
-      if (index === 1) item.classList.add('current');
-    });
 
     // Recopilar datos del pedido antes de vaciar el carrito
     const nameInput = document.getElementById('orderName');
@@ -1697,11 +1727,9 @@ document.addEventListener('DOMContentLoaded', () => {
       SupabaseService.sendOrderToSupabase(orderData);
     }
 
-    // Configurar enlace de WhatsApp directo al dueño (+34 602 07 08 46)
-    const waShareBtn = document.getElementById('orderWhatsAppShareBtn');
-    if (waShareBtn && typeof SupabaseService !== 'undefined') {
-      waShareBtn.href = SupabaseService.createOwnerWhatsAppLink(orderData);
-    }
+    // Persistir la sesión de seguimiento: al recargar o volver a entrar,
+    // la página reabre automáticamente este pedido (ver restoreActiveOrderTracker)
+    saveActiveOrderId(orderData.id);
 
     // Vaciar el carrito ya que la orden fue creada
     state.cart = {};
@@ -1709,6 +1737,39 @@ document.addEventListener('DOMContentLoaded', () => {
     saveCart();
     renderProducts();
     updateCartUI();
+
+    // Abrir la vista de trayectoria con el pedido recién creado
+    startOrderTracker(orderData, 'nuevo');
+  }
+
+  // ==========================================================================
+  // VISTA DE SEGUIMIENTO (compartida: pedido nuevo o restaurado tras recargar)
+  // ==========================================================================
+  function startOrderTracker(orderData, initialStatus) {
+    if (!orderData || !orderData.id) return;
+
+    if (orderTrackerModalEl) {
+      orderTrackerModalEl.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    // Código real del pedido en la cabecera del modal (antes era fijo: AC-8924)
+    const trackerOrderCode = document.getElementById('trackerOrderCode');
+    if (trackerOrderCode) trackerOrderCode.textContent = `PEDIDO #${orderData.id} CONFIRMADO`;
+
+    // Reset de los pasos de la trayectoria
+    const stepItems = document.querySelectorAll('.tracker-step-item');
+    stepItems.forEach((item, index) => {
+      item.className = 'tracker-step-item';
+      if (index === 0) item.classList.add('completed');
+      if (index === 1) item.classList.add('current');
+    });
+
+    // Enlace de WhatsApp directo al dueño (+34 602 07 08 46)
+    const waShareBtn = document.getElementById('orderWhatsAppShareBtn');
+    if (waShareBtn && typeof SupabaseService !== 'undefined' && Array.isArray(orderData.items) && orderData.items.length > 0) {
+      waShareBtn.href = SupabaseService.createOwnerWhatsAppLink(orderData);
+    }
 
     // El tracker avanza SOLO cuando el shopper/admin cambia el estado del pedido desde admin.html
     // (Pedido nuevo → Aprobado/En Preparación → En Camino → Entregado)
@@ -1765,6 +1826,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!isFirstRender) {
         showToast(conf.toast, status === 'cancelado' ? 'normal' : 'success');
       }
+      // Pedido terminado: se limpia la sesión para no reabrirlo en la próxima carga
+      if (isFinalOrderStatus(status)) clearActiveOrderId();
+
       lastTrackerStatus = status;
 
       stepItems.forEach((item, idx) => {
@@ -1800,10 +1864,70 @@ document.addEventListener('DOMContentLoaded', () => {
       applyTrackerStatus(status || 'nuevo');
     }
 
-    applyTrackerStatus('nuevo');
+    applyTrackerStatus(initialStatus || orderData.status || 'nuevo');
     state.orderTrackerInterval = setInterval(pollOrderStatus, 3000);
   }
 
+  // ==========================================================================
+  // RESTAURAR EL SEGUIMIENTO AL RECARGAR / VOLVER A ENTRAR
+  // ==========================================================================
+  // Reabre el modal de trayectoria + chat del pedido guardado en "active_order_id",
+  // de modo que la sesión de seguimiento no desaparezca al refrescar la página.
+  async function restoreActiveOrderTracker() {
+    try {
+      const activeId = getActiveOrderId();
+      if (!activeId) return;
+
+      // 1) Pedido guardado en este navegador (caso normal: se creó en este equipo)
+      let localOrder = null;
+      try {
+        const localOrders = JSON.parse(localStorage.getItem('alcosto_orders')) || [];
+        localOrder = localOrders.find(o => String(o.id) === String(activeId)) || null;
+      } catch (e) {
+        localOrder = null;
+      }
+
+      if (localOrder) {
+        if (isFinalOrderStatus(localOrder.status)) {
+          // Pedido ya entregado o cancelado: no hay nada que seguir
+          clearActiveOrderId();
+          return;
+        }
+        startOrderTracker(localOrder, localOrder.status || 'nuevo');
+        showToast(`🔄 Retomamos el seguimiento de tu pedido #${activeId}`, 'success');
+        return;
+      }
+
+      // 2) Sin copia local: consultar a Supabase el estado del pedido
+      if (typeof SupabaseService === 'undefined') {
+        clearActiveOrderId();
+        return;
+      }
+
+      const cloudStatus = await SupabaseService.fetchOrderStatusFromSupabase(activeId);
+
+      if (cloudStatus === null) {
+        // Supabase respondió y el pedido no existe → sesión obsoleta
+        clearActiveOrderId();
+        return;
+      }
+
+      if (isFinalOrderStatus(cloudStatus)) {
+        clearActiveOrderId();
+        return;
+      }
+
+      // undefined = sin conexión / error: se conserva la sesión y el tracker sigue consultando
+      const resumedStatus = cloudStatus || 'nuevo';
+      startOrderTracker({ id: activeId, status: resumedStatus }, resumedStatus);
+      showToast(`🔄 Retomamos el seguimiento de tu pedido #${activeId}`, 'success');
+    } catch (e) {
+      console.warn('No se pudo restaurar el seguimiento del pedido activo:', e);
+    }
+  }
+
+  // Cerrar el seguimiento: se detiene el polling pero la sesión (active_order_id)
+  // se conserva, de modo que el pedido se reabre en la próxima carga de la página.
   function closeOrderTracker() {
     if (orderTrackerModalEl) {
       orderTrackerModalEl.classList.remove('active');

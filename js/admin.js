@@ -246,8 +246,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // GESTIÓN DE PEDIDOS / COMPRAS (ORDERS DASHBOARD)
   // ==========================================================================
   async function loadOrders() {
-    // Convierte una fila de Supabase (snake_case) al formato camelCase que usa el panel.
-    // Si la tabla aún no tiene las columnas nuevas, usa los campos locales equivalentes.
+    // Convierte una fila de public.pedidos (cualquiera sea el idioma de sus columnas)
+    // al formato camelCase que usa el panel. Se aceptan alias en inglés (customer_name,
+    // delivery_fee...) y en español (nombre_cliente, telefono, direccion, horario,
+    // metodo_pago, envio...), así nunca aparecen "undefined" en la tarjeta ni en el modal.
     function normalizeSupabaseOrder(row) {
       const pick = (...names) => {
         for (const n of names) {
@@ -258,21 +260,23 @@ document.addEventListener('DOMContentLoaded', () => {
       return {
         ...row,
         id: row.id,
-        customerName: pick('customerName', 'customer_name') || 'Cliente Al Costo',
-        customerPhone: pick('customerPhone', 'customer_phone') || '',
-        deliveryAddress: pick('deliveryAddress', 'delivery_address') || '',
-        deliverySlot: pick('deliverySlot', 'delivery_slot') || '',
+        customerName: pick('customerName', 'customer_name', 'nombre_cliente') || 'Cliente Al Costo',
+        customerPhone: pick('customerPhone', 'customer_phone', 'telefono') || '',
+        deliveryAddress: pick('deliveryAddress', 'delivery_address', 'direccion') || '',
+        deliverySlot: pick('deliverySlot', 'delivery_slot', 'horario') || '',
         instructions: pick('instructions') || '',
-        paymentMethod: pick('paymentMethod', 'payment_method') || 'Efectivo',
+        // Sin valor por defecto: se muestra exactamente lo que envió el checkout (null → "No especificado")
+        paymentMethod: pick('paymentMethod', 'payment_method', 'metodo_pago'),
         paymentProof: pick('paymentProof', 'payment_proof') || null,
         gpsCoordinates: pick('gpsCoordinates', 'gps_coordinates') || null,
         deliveryType: pick('deliveryType', 'delivery_type') || 'delivery',
-        deliveryFee: pick('deliveryFee', 'delivery_fee') || 0,
-        items: row.items || [],
-        subtotal: row.subtotal || 0,
-        discount: row.discount || 0,
-        tip: row.tip || 0,
-        total: row.total || 0,
+        // Siempre numérico: evita "$NaN" cuando el envío viene vacío, como texto o en pedidos de retiro
+        deliveryFee: (parseFloat(pick('deliveryFee', 'delivery_fee', 'envio')) || 0),
+        items: Array.isArray(row.items) ? row.items : [],
+        subtotal: (parseFloat(row.subtotal) || 0),
+        discount: (parseFloat(row.discount) || 0),
+        tip: (parseFloat(row.tip) || 0),
+        total: (parseFloat(row.total) || 0),
         status: row.status || 'nuevo',
         created_at: row.created_at || new Date().toISOString()
       };
@@ -352,7 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let totalSales = 0;
     orders.forEach(o => {
-      if (o.status !== 'cancelado') totalSales += (o.total || 0);
+      if (o.status !== 'cancelado') totalSales += (parseFloat(o.total) || 0);
     });
 
     if (statNewOrdersCount) statNewOrdersCount.textContent = newCount;
@@ -379,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof totalSalesAmount === 'undefined') {
       let calcTotal = 0;
       orders.forEach(o => {
-        if (o.status !== 'cancelado') calcTotal += (o.total || 0);
+        if (o.status !== 'cancelado') calcTotal += (parseFloat(o.total) || 0);
       });
       totalSalesAmount = calcTotal;
     }
@@ -439,6 +443,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- Ítems de pedido tolerantes a la estructura que llega desde Supabase ---
+  // Acepta { product: {...}, quantity } (checkout de la tienda) o campos planos
+  // ({ nombre, precio, cantidad }); evita "undefined" y "NaN" en la vista del pedido.
+  function getItemSource(item) {
+    return (item && item.product) ? item.product : (item || {});
+  }
+  function getItemName(item) {
+    const source = getItemSource(item);
+    return source.name || source.nombre || 'Producto';
+  }
+  function getItemUnit(item) {
+    const source = getItemSource(item);
+    return source.unit || source.unidad || '';
+  }
+  function getItemQuantity(item) {
+    return parseFloat(item && (item.quantity || item.cantidad)) || 0;
+  }
+  function getItemUnitPrice(item) {
+    const source = getItemSource(item);
+    return parseFloat(source.price || source.precio) || 0;
+  }
+  function getItemLineTotal(item) {
+    return (getItemUnitPrice(item) * getItemQuantity(item)).toFixed(2);
+  }
+
   function renderOrdersCards() {
     if (!ordersCardsContainer) return;
 
@@ -484,8 +513,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
           <div class="order-customer-info">
             <div class="order-customer-name">👤 ${order.customerName}</div>
-            <div class="order-customer-details">📍 ${order.deliveryAddress}</div>
-            <div class="order-customer-details">💳 Pago: <strong>${order.paymentMethod || 'Efectivo'}</strong></div>
+            <div class="order-customer-details">📞 Teléfono: ${order.customerPhone || 'Sin teléfono registrado'}</div>
+            <div class="order-customer-details">📍 ${order.deliveryAddress || (order.deliveryType === 'pickup' ? 'Retiro en Tienda Al Costo' : 'Sin dirección registrada')}</div>
+            <div class="order-customer-details">🕒 Horario: ${order.deliverySlot || 'A coordinar con el shopper'}</div>
+            <div class="order-customer-details">🚚 Modalidad: <strong>${order.deliveryType === 'pickup' ? '🏪 Retiro en Tienda' : '🛵 Delivery a domicilio'}</strong></div>
+            <div class="order-customer-details">💳 Pago: <strong>${order.paymentMethod || 'No especificado'}</strong></div>
             ${order.paymentProof ? `
               <div class="order-customer-details" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
                 🧾 Captura de pago:
@@ -494,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </a>
                 <a href="${order.paymentProof}" target="_blank" style="color: #108910; font-weight: 800; font-size: 0.78rem;">Ver comprobante ↗</a>
               </div>
-            ` : ''}
+            ` : `<div class="order-customer-details">🧾 Pago en efectivo / Sin comprobante</div>`}
             ${order.instructions ? `<div class="order-customer-details" style="color: #B45309;">📝 Nota: "${order.instructions}"</div>` : ''}
           </div>
 
@@ -502,8 +534,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="font-weight: 700; margin-bottom: 6px; color: #333;">Artículos del Pedido (${order.items ? order.items.length : 0}):</div>
             ${(order.items || []).map(i => `
               <div class="order-item-line">
-                <span><strong>${i.quantity}x</strong> ${i.product ? i.product.name : 'Producto'}</span>
-                <span>$${((i.product ? i.product.price : 0) * i.quantity).toFixed(2)}</span>
+                <span><strong>${getItemQuantity(i)}x</strong> ${getItemName(i)}</span>
+                <span>$${getItemLineTotal(i)}</span>
               </div>
             `).join('')}
           </div>
@@ -598,10 +630,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const order = orders.find(o => o.id === orderId);
     if (!order || !orderDetailModal || !orderDetailModalBody) return;
 
+    // Montos SIEMPRE numéricos: evita "$NaN" en pedidos con envío $0.00,
+    // con columna "envio" vacía o de tipo "Retiro en Tienda".
+    const subtotalAmount = parseFloat(order.subtotal) || 0;
+    const deliveryFeeAmount = parseFloat(order.deliveryFee) || 0;
+    const tipAmount = parseFloat(order.tip) || 0;
+    const totalAmount = parseFloat(order.total) || 0;
+    const isPickup = order.deliveryType === 'pickup';
+    const deliveryFeeLabel = isPickup
+      ? 'GRATIS (Retiro en Tienda)'
+      : (deliveryFeeAmount === 0 ? 'GRATIS' : `$${deliveryFeeAmount.toFixed(2)}`);
+
     const itemsHtml = (order.items || []).map(i => `
       <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
-        <span><strong>${i.quantity}x</strong> ${i.product ? i.product.name : 'Artículo'} (${i.product ? i.product.unit : ''})</span>
-        <strong>$${((i.product ? i.product.price : 0) * i.quantity).toFixed(2)}</strong>
+        <span><strong>${getItemQuantity(i)}x</strong> ${getItemName(i)}${getItemUnit(i) ? ` (${getItemUnit(i)})` : ''}</span>
+        <strong>$${getItemLineTotal(i)}</strong>
       </div>
     `).join('');
 
@@ -615,8 +658,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       <div style="background: #f8f9fa; border-radius: 12px; padding: 14px; margin-bottom: 16px; font-size: 0.88rem;">
         <div><strong>Cliente:</strong> ${order.customerName}</div>
-        <div><strong>Teléfono:</strong> ${order.customerPhone}</div>
-        <div><strong>Dirección:</strong> ${order.deliveryAddress}</div>
+        <div><strong>Teléfono:</strong> ${order.customerPhone || 'No registrado'}</div>
+        <div><strong>Dirección:</strong> ${order.deliveryAddress || (isPickup ? 'Retiro en Tienda Al Costo' : 'Sin dirección registrada')}</div>
         ${order.gpsCoordinates ? `
           <div style="margin-top: 8px;">
             <a href="${order.gpsCoordinates.mapsUrl || `https://www.google.com/maps?q=${order.gpsCoordinates.lat},${order.gpsCoordinates.lng}`}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: #DCFCE7; color: #166534; font-weight: 800; font-size: 0.8rem; padding: 6px 12px; border-radius: 9999px; text-decoration: none; border: 1px solid #86EFAC;">
@@ -624,17 +667,19 @@ document.addEventListener('DOMContentLoaded', () => {
             </a>
           </div>
         ` : ''}
-        <div><strong>Horario:</strong> ${order.deliverySlot}</div>
-        <div><strong>Método de Pago:</strong> ${order.paymentMethod}</div>
+        <div><strong>Horario:</strong> ${order.deliverySlot || 'A coordinar con el shopper'}</div>
+        <div><strong>Método de Pago:</strong> ${order.paymentMethod || 'No especificado'}</div>
+        <div><strong>Modalidad:</strong> ${isPickup ? '🏪 Retiro en Tienda' : '🛵 Delivery a domicilio'}</div>
         ${order.instructions ? `<div style="color: #b45309; margin-top: 4px;"><strong>Instrucciones:</strong> ${order.instructions}</div>` : ''}
         ${order.paymentProof ? `
           <div style="margin-top: 10px;">
             <strong>🧾 Captura de Pago Adjunta:</strong>
-            <a href="${order.paymentProof}" target="_blank">
+            <a href="${order.paymentProof}" target="_blank" rel="noopener">
               <img src="${order.paymentProof}" alt="Captura del comprobante de pago" style="display: block; width: 100%; max-height: 260px; object-fit: contain; margin-top: 6px; border-radius: 10px; border: 1px solid #E2E8F0; background: #000;">
             </a>
+            <a href="${order.paymentProof}" target="_blank" rel="noopener" style="display: inline-block; margin-top: 8px; color: #108910; font-weight: 800; font-size: 0.82rem; text-decoration: none;">Abrir captura completa ↗</a>
           </div>
-        ` : ''}
+        ` : `<div style="margin-top: 10px;"><strong>🧾 Comprobante:</strong> Pago en efectivo / Sin comprobante</div>`}
       </div>
 
       <div style="margin-bottom: 16px;">
@@ -643,12 +688,12 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
 
       <div style="border-top: 2px solid var(--color-border); padding-top: 10px; font-size: 0.9rem;">
-        <div style="display: flex; justify-content: space-between;"><span>Subtotal:</span> <span>$${parseFloat(order.subtotal || 0).toFixed(2)}</span></div>
-        <div style="display: flex; justify-content: space-between;"><span>Envío:</span> <span>${order.deliveryFee === 0 ? 'GRATIS' : '$' + parseFloat(order.deliveryFee).toFixed(2)}</span></div>
-        <div style="display: flex; justify-content: space-between;"><span>Propina:</span> <span>$${parseFloat(order.tip || 0).toFixed(2)}</span></div>
+        <div style="display: flex; justify-content: space-between;"><span>Subtotal:</span> <span>$${subtotalAmount.toFixed(2)}</span></div>
+        <div style="display: flex; justify-content: space-between;"><span>Envío:</span> <span>${deliveryFeeLabel}</span></div>
+        <div style="display: flex; justify-content: space-between;"><span>Propina:</span> <span>$${tipAmount.toFixed(2)}</span></div>
         <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: 900; color: #108910; margin-top: 6px;">
           <span>Total:</span>
-          <span>$${parseFloat(order.total || 0).toFixed(2)}</span>
+          <span>$${totalAmount.toFixed(2)}</span>
         </div>
       </div>
     `;

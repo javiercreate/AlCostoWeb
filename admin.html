@@ -1471,6 +1471,10 @@
           Si creaste un proyecto nuevo en Supabase, ve a <strong>SQL Editor</strong>, pega este código y pulsa <strong>Run</strong>. Creará las tablas <code>productos</code> y <code>pedidos</code> con permisos de lectura y escritura abiertos.
         </p>
 
+        <p style="font-size: 0.82rem; color: #666; margin-bottom: 12px;">
+          📌 Si tu tabla <code>pedidos</code> ya existe con columnas en español (<code>nombre_cliente</code>, <code>telefono</code>, <code>direccion</code>, <code>horario</code>, <code>metodo_pago</code>, <code>envio</code>), no cambies nada: el panel admin y la tienda detectan ambos nombres automáticamente y adaptan la escritura cuando Supabase responde que una columna no existe.
+        </p>
+
         <pre class="code-sql-snippet" id="sqlSnippet">
 -- 1. Tabla de Productos
 CREATE TABLE IF NOT EXISTS productos (
@@ -1510,8 +1514,17 @@ CREATE TABLE IF NOT EXISTS pedidos (
   tip NUMERIC DEFAULT 0,
   total NUMERIC NOT NULL,
   status TEXT DEFAULT 'nuevo',
+  payment_proof TEXT,
+  gps_coordinates JSONB,
+  delivery_type TEXT DEFAULT 'delivery',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Columnas opcionales del pedido (captura de pago, GPS y modalidad)
+-- para tablas de pedidos que ya fueron creadas antes
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS payment_proof TEXT;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS gps_coordinates JSONB;
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS delivery_type TEXT DEFAULT 'delivery';
 
 -- 3. Tabla de Configuración de Métodos de Pago
 CREATE TABLE IF NOT EXISTS configuracion_pagos (
