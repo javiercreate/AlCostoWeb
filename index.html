@@ -32,13 +32,6 @@
       <button class="copy-code-btn" id="copyPromoBtn" title="Copiar cupón">ENVIOGRATIS</button>
     </div>
 
-    <!-- Tasa de Cambio en Vivo Reubicada para maximizar espacio de búsqueda -->
-    <div class="currency-exchange-ticker" id="liveCurrencyTicker" title="Tasas oficiales de cambio del supermercado">
-      <span>💵 1$ =</span>
-      <strong id="tickerBsRate">860.18 Bs</strong>
-      <span style="opacity: 0.5;">|</span>
-      <strong id="tickerCopRate">3,800 COP</strong>
-    </div>
   </div>
 
   <!-- ==========================================================================
@@ -65,7 +58,7 @@
               type="text" 
               class="search-input" 
               id="searchInput" 
-              placeholder="Buscar víveres, charcutería, frutas, lácteos, marcas o pasillos..." 
+              placeholder="Buscar víveres, charcutería, lácteos, marcas o pasillos..." 
               autocomplete="off"
             >
             <button class="search-clear-btn" id="searchClearBtn" aria-label="Limpiar búsqueda">
@@ -379,71 +372,18 @@
               </div>
             </div>
 
-            <!-- Slide 5: Frutas, Verduras y Campo Fresco -->
-            <div class="hero-slide" data-slide="4">
-              <div class="hero-banner slide-frescos">
-                <!-- Fondo de emojis repetidos estilo Emojipedia -->
-                <div class="banner-emoji-pattern" aria-hidden="true">
-                  <div class="emoji-pattern-row">
-                    <span>🥑</span><span>🍎</span><span>🍌</span><span>🥦</span><span>🥕</span><span>🍅</span><span>🌾</span><span>🍇</span><span>🍉</span><span>🥑</span><span>🍎</span><span>🍌</span><span>🥦</span><span>🥕</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🥦</span><span>🥕</span><span>🍅</span><span>🥑</span><span>🌾</span><span>🍎</span><span>🍌</span><span>🍇</span><span>🍉</span><span>🥦</span><span>🥕</span><span>🍅</span><span>🥑</span><span>🌾</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🍌</span><span>🍉</span><span>🥑</span><span>🍎</span><span>🥦</span><span>🥕</span><span>🍅</span><span>🌾</span><span>🍇</span><span>🍌</span><span>🍉</span><span>🥑</span><span>🍎</span><span>🥦</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🍅</span><span>🍇</span><span>🌾</span><span>🥦</span><span>🥑</span><span>🍎</span><span>🍌</span><span>🥕</span><span>🍉</span><span>🍅</span><span>🍇</span><span>🌾</span><span>🥦</span><span>🥑</span>
-                  </div>
-                </div>
-
-                <div class="hero-content">
-                  <div class="hero-tag">🥑 Directo del Productor</div>
-                  <h1 class="hero-title">Frutas de campo, <span>verduras y hortalizas</span> 100% frescas.</h1>
-                  <p class="hero-subtitle">
-                    Seleccionadas diariamente con estrictos controles de calidad. Aguacates mantecosos, plátanos maduros y vegetales crujientes para tu cocina.
-                  </p>
-                  <div class="hero-cta-group">
-                    <a href="#catalogo" class="btn-hero-cta">Explorar Catálogo</a>
-                    <a href="https://wa.me/34602070846?text=Hola,%20quisiera%20consultar%20por%20frutas%20y%20verduras%20frescas" target="_blank" class="btn-hero-cta btn-hero-secondary">
-                      <span>💬 Pedir Frescos WhatsApp</span>
-                    </a>
-                  </div>
-                </div>
-
-                <div class="hero-graphic">
-                  <div class="hero-graphic-badge badge-farm">
-                    <div class="badge-row">
-                      <span class="icon">🥑</span>
-                      <span>Cosecha Fresca del Día</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">🍎</span>
-                      <span>Selección Manual de Calidad</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">🛵</span>
-                      <span>Empaque Cuidadoso al Frío</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
 
           <!-- Flechas de navegación interactiva del carrusel -->
           <button class="hero-carousel-arrow prev" id="heroPrevBtn" aria-label="Anterior slide">‹</button>
           <button class="hero-carousel-arrow next" id="heroNextBtn" aria-label="Siguiente slide">›</button>
 
-          <!-- Puntos / Dots de paginación interactivos (5 slides) -->
+          <!-- Puntos / Dots de paginación interactivos (4 slides) -->
           <div class="hero-carousel-dots" id="heroCarouselDots">
             <button class="hero-dot active" data-slide-to="0" aria-label="Ir a Slide 1"></button>
             <button class="hero-dot" data-slide-to="1" aria-label="Ir a Slide 2"></button>
             <button class="hero-dot" data-slide-to="2" aria-label="Ir a Slide 3"></button>
             <button class="hero-dot" data-slide-to="3" aria-label="Ir a Slide 4"></button>
-            <button class="hero-dot" data-slide-to="4" aria-label="Ir a Slide 5"></button>
           </div>
 
         </div>
@@ -1119,7 +1059,7 @@
 
   <!-- Botón Flotante de WhatsApp hacia el dueño (+34 602 07 08 46) -->
   <a href="https://wa.me/34602070846?text=Hola%20Al%20Costo,%20quisiera%20hacer%20un%20pedido%20o%20consultar%20precios" target="_blank" class="floating-wa-btn" title="Escribir por WhatsApp al dueño (+34 602 07 08 46)">
-    <i class="fa-brands fa-whatsapp" style="font-size: 1.15rem;"></i> <span>WhatsApp (+34 602 07 08 46)</span>
+    <i class="fa-brands fa-whatsapp" style="font-size: 1.6rem;"></i>
   </a>
 
   <!-- ==========================================================================

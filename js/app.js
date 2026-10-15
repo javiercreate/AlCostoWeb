@@ -2609,21 +2609,9 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Actualizar indicador de tasas en el navbar de madera
-    function updateHeaderRatesDisplay() {
-      const tickerBsEl = document.getElementById('tickerBsRate');
-      const tickerCopEl = document.getElementById('tickerCopRate');
-      if (tickerBsEl && CURRENCY_RATES && CURRENCY_RATES.BS) {
-        tickerBsEl.textContent = `${CURRENCY_RATES.BS.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
-      }
-      if (tickerCopEl && CURRENCY_RATES && CURRENCY_RATES.COP) {
-        tickerCopEl.textContent = `${Math.round(CURRENCY_RATES.COP).toLocaleString('es-CO')} COP`;
-      }
-    }
-
     // Escuchar actualizaciones de tasas en vivo desde la API o admin
+    // (el indicador de tasas del header fue retirado; solo se re-renderiza catálogo y carrito)
     window.addEventListener('alcosto:rates-updated', () => {
-      updateHeaderRatesDisplay();
       if (typeof renderProducts === 'function') renderProducts();
       if (typeof renderCart === 'function') renderCart();
     });
@@ -2651,8 +2639,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
       }
     } catch (e) {}
-
-    updateHeaderRatesDisplay();
 
     // Interacciones de la Barra de Navegación Inferior para Teléfonos (Mobile App Bar)
     const mobileNavHome = document.getElementById('mobileNavHome');
