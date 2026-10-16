@@ -1746,6 +1746,84 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
+  // AVISO DE LLEGADA DEL PEDIDO: TIMBRE + VIBRACIÓN DEL TELÉFONO
+  // ==========================================================================
+  // Tono tipo timbre de puerta (dos notas "ding-dong" con armónico suave y
+  // caída larga), distinto del bip corto de los mensajes de redes sociales:
+  // se reconoce al instante como "llegó el pedido" sin ser estridente.
+  async function playArrivalChime() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
+      if (!state.arrivalAudioCtx) state.arrivalAudioCtx = new AC();
+      const ctx = state.arrivalAudioCtx;
+      // El navegador exige un gesto previo: al primer toque se desbloquea y suena.
+      // Se espera como mucho 300 ms para no quedarse colgado si sigue pendiente
+      // (entonces se reintenta en el primer toque de la pantalla).
+      if (ctx.state !== 'running' && ctx.resume) {
+        try {
+          await Promise.race([
+            ctx.resume(),
+            new Promise(resolve => setTimeout(resolve, 300))
+          ]);
+        } catch (e) { return false; }
+      }
+      if (ctx.state !== 'running') return false;
+
+      const startAt = ctx.currentTime + 0.02;
+      const master = ctx.createGain();
+      master.gain.value = 0.16; // sutil: se oye, no asusta
+      master.connect(ctx.destination);
+
+      [
+        { freq: 659.25, delay: 0, dur: 0.85 },   // Mi5 – primer golpe del timbre
+        { freq: 523.25, delay: 0.26, dur: 1.15 } // Do5 – cola del timbre
+      ].forEach(note => {
+        const t0 = startAt + note.delay;
+        [1, 2].forEach(harmonic => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(note.freq * harmonic, t0);
+          gain.gain.setValueAtTime(0.0001, t0);
+          gain.gain.exponentialRampToValueAtTime(harmonic === 1 ? 1 : 0.22, t0 + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t0 + note.dur);
+          osc.connect(gain);
+          gain.connect(master);
+          osc.start(t0);
+          osc.stop(t0 + note.dur + 0.05);
+        });
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function notifyOrderArrival() {
+    // Vibración del teléfono (los que la soportan, p. ej. Android)
+    try {
+      if (typeof navigator.vibrate === 'function') navigator.vibrate([120, 70, 180]);
+    } catch (e) { /* dispositivo sin vibración */ }
+
+    // Si aún no hay permiso de audio, suena en el primer toque de la pantalla
+    playArrivalChime().then(played => {
+      if (played) return;
+      const cleanup = () => {
+        window.removeEventListener('pointerdown', onFirstTouch);
+        window.removeEventListener('keydown', onFirstTouch);
+        clearTimeout(guardTimer);
+      };
+      const onFirstTouch = () => {
+        playArrivalChime().then(ok => { if (ok) cleanup(); });
+      };
+      window.addEventListener('pointerdown', onFirstTouch);
+      window.addEventListener('keydown', onFirstTouch);
+      const guardTimer = setTimeout(cleanup, 60000);
+    });
+  }
+
+  // ==========================================================================
   // VISTA DE SEGUIMIENTO (compartida: pedido nuevo o restaurado tras recargar)
   // ==========================================================================
   function startOrderTracker(orderData, initialStatus) {
@@ -1872,6 +1950,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Aviso al cliente solo cuando el estado cambia de verdad (nunca en el primer render)
       if (!isFirstRender) {
         showToast(conf.toast, status === 'cancelado' ? 'normal' : 'success');
+        // Al llegar el pedido a tu puerta: timbre + vibración del teléfono
+        if (status === 'entregado') notifyOrderArrival();
       }
       // Pedido terminado: se limpia la sesión para no reabrirlo en la próxima carga
       // y se oculta el botón flotante de "Mi pedido en curso"
