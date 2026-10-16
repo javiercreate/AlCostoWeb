@@ -1777,6 +1777,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // El tracker avanza SOLO cuando el shopper/admin cambia el estado del pedido desde admin.html
     // (Pedido nuevo → Aprobado/En Preparación → En Camino → Entregado)
     if (state.orderTrackerInterval) clearInterval(state.orderTrackerInterval);
+    if (state.orderTrackerAnimInterval) clearInterval(state.orderTrackerAnimInterval);
 
     const trackerRouteFill = document.getElementById('trackerRouteFill');
     const trackerVehicle = document.getElementById('trackerVehicle');
@@ -1784,40 +1785,82 @@ document.addEventListener('DOMContentLoaded', () => {
     const trackerPercentBadge = document.getElementById('trackerPercentBadge');
 
     // Configuración visual por cada estado del pedido (alineado con los estados del panel admin)
+    //
+    // from/to = de dónde a dónde recorren la barra y la moto en cada tramo, y travelMs
+    // el tiempo que tarda en recorrerlo. Así el avance va con el reloj y es gradual:
+    // antes, al marcar "en camino", la moto saltaba de golpe hasta la casa.
     const TRACKER_STATES = {
       nuevo: {
-        completedSteps: 0, currentStep: 0, fill: '12%', vehicle: '20%',
-        badge: 'Pedido recibido (12%)', badgeBg: '#FEF3C7', badgeColor: '#92400E',
+        completedSteps: 0, currentStep: 0,
+        from: { fill: 0, vehicle: 12 }, to: { fill: 12, vehicle: 18 }, travelMs: 15000,
+        badge: (pct) => `Pedido recibido (${pct}%)`, badgeBg: '#FEF3C7', badgeColor: '#92400E',
         eta: 'Esperando a que el shopper apruebe tu pedido en la tienda',
         toast: '📩 Tu pedido fue recibido. El shopper debe aprobarlo desde la tienda'
       },
       preparacion: {
-        completedSteps: 1, currentStep: 1, fill: '45%', vehicle: '40%',
-        badge: 'Seleccionando tus víveres (45%)', badgeBg: '#DBEAFE', badgeColor: '#1E40AF',
+        completedSteps: 1, currentStep: 1,
+        from: { fill: 12, vehicle: 18 }, to: { fill: 45, vehicle: 42 }, travelMs: 60000,
+        badge: (pct) => `Seleccionando tus víveres (${pct}%)`, badgeBg: '#DBEAFE', badgeColor: '#1E40AF',
         eta: 'Tiempo estimado: 15 - 20 minutos',
         toast: '🛒 Tu shopper aprobó el pedido y está seleccionando tus víveres en el supermercado'
       },
       camino: {
-        completedSteps: 3, currentStep: 3, fill: '80%', vehicle: '72%',
-        badge: 'En camino hacia tu puerta (80%)', badgeBg: '#EDE9FE', badgeColor: '#5B21B6',
+        completedSteps: 3, currentStep: 3,
+        // Se queda a media ruta acercándose poco a poco: a la casa solo llega al entregarse
+        from: { fill: 45, vehicle: 42 }, to: { fill: 68, vehicle: 59 }, travelMs: 240000,
+        badge: (pct) => `En camino hacia tu puerta (${pct}%)`, badgeBg: '#EDE9FE', badgeColor: '#5B21B6',
         eta: 'Tiempo estimado: 3 - 5 minutos (Repartidor a 3 cuadras)',
         toast: '🛵 Tu pedido empacó y salió de la tienda: va en camino hacia tu dirección'
       },
       entregado: {
-        completedSteps: 4, currentStep: -1, fill: '100%', vehicle: '86%',
-        badge: '¡Entregado con Éxito! (100%)', badgeBg: '#DCFCE7', badgeColor: '#15803D',
+        completedSteps: 4, currentStep: -1,
+        from: { fill: 68, vehicle: 59 }, to: { fill: 100, vehicle: 82 }, travelMs: 20000,
+        badge: () => '¡Entregado con Éxito! (100%)', badgeBg: '#DCFCE7', badgeColor: '#15803D',
         eta: '¡Pedido entregado en tu puerta!',
         toast: '🎉 ¡Tu pedido de Al Costo ha llegado a tu puerta!'
       },
       cancelado: {
-        completedSteps: 0, currentStep: 0, fill: '0%', vehicle: '12%',
-        badge: 'Pedido cancelado', badgeBg: '#FEE2E2', badgeColor: '#B91C1C',
+        completedSteps: 0, currentStep: 0,
+        from: { fill: 0, vehicle: 12 }, to: { fill: 0, vehicle: 12 }, travelMs: 0,
+        badge: () => 'Pedido cancelado', badgeBg: '#FEE2E2', badgeColor: '#B91C1C',
         eta: 'Tu pedido fue cancelado. Escríbenos por WhatsApp si tienes dudas',
         toast: '❌ Tu pedido fue cancelado. Escríbenos por WhatsApp si tienes dudas'
       }
     };
 
     let lastTrackerStatus = null;
+    // Estado de la animación de recorrido (barra + moto) y valores pintados en pantalla
+    let activeBadgeConf = null;
+    let currentFill = 0;
+    let currentVehicle = 12;
+    let trackerAnim = null;
+
+    // Avanza el tramo del estado actual al ritmo del reloj (lineal: velocidad constante,
+    // sin tramos muertos al empezar o terminar)
+    function tickTrackerProgress() {
+      if (!trackerAnim) return;
+      const elapsed = Date.now() - trackerAnim.startTs;
+      const t = trackerAnim.travelMs > 0 ? Math.min(elapsed / trackerAnim.travelMs, 1) : 1;
+      renderTrackerProgress(
+        trackerAnim.fromFill + (trackerAnim.toFill - trackerAnim.fromFill) * t,
+        trackerAnim.fromVehicle + (trackerAnim.toVehicle - trackerAnim.fromVehicle) * t
+      );
+      if (t >= 1) trackerAnim = null; // tramo completado: la moto se detiene
+    }
+
+    // Pinta barra, moto y el porcentaje del badge con los valores dados
+    function renderTrackerProgress(fillPct, vehiclePct) {
+      currentFill = fillPct;
+      currentVehicle = vehiclePct;
+      if (trackerRouteFill) trackerRouteFill.style.width = `${fillPct.toFixed(1)}%`;
+      if (trackerVehicle) trackerVehicle.style.left = `${vehiclePct.toFixed(1)}%`;
+      if (trackerPercentBadge && activeBadgeConf) {
+        const pct = Math.round(fillPct);
+        trackerPercentBadge.textContent = typeof activeBadgeConf.badge === 'function'
+          ? activeBadgeConf.badge(pct)
+          : activeBadgeConf.badge;
+      }
+    }
 
     function applyTrackerStatus(rawStatus) {
       const status = (rawStatus || 'nuevo').toLowerCase();
@@ -1844,14 +1887,27 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (idx === conf.currentStep) item.classList.add('current');
       });
 
-      if (trackerRouteFill) trackerRouteFill.style.width = conf.fill;
-      if (trackerVehicle) trackerVehicle.style.left = conf.vehicle;
+      activeBadgeConf = conf;
       if (trackerPercentBadge) {
-        trackerPercentBadge.textContent = conf.badge;
         trackerPercentBadge.style.background = conf.badgeBg;
         trackerPercentBadge.style.color = conf.badgeColor;
       }
       if (trackerEtaText) trackerEtaText.textContent = conf.eta;
+
+      // Recorrido del tramo: al restaurar la sesión se empieza desde el origen del
+      // estado; si el shopper cambia de estado a mitad de camino, se continúa desde
+      // donde vaya la moto (nunca salta de golpe)
+      const startFill = isFirstRender ? conf.from.fill : currentFill;
+      const startVehicle = isFirstRender ? conf.from.vehicle : currentVehicle;
+      trackerAnim = {
+        fromFill: startFill,
+        fromVehicle: startVehicle,
+        toFill: conf.to.fill,
+        toVehicle: conf.to.vehicle,
+        startTs: Date.now(),
+        travelMs: conf.travelMs
+      };
+      renderTrackerProgress(startFill, startVehicle);
     }
 
     // Consulta periódica del estado real: primero localStorage (admin.html en el mismo navegador), luego Supabase
@@ -1873,6 +1929,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     applyTrackerStatus(initialStatus || orderData.status || 'nuevo');
     state.orderTrackerInterval = setInterval(pollOrderStatus, 3000);
+
+    // Recorrido gradual de barra y moto: avanza con el reloj en lugar de saltar
+    tickTrackerProgress();
+    state.orderTrackerAnimInterval = setInterval(tickTrackerProgress, 400);
   }
 
   // ==========================================================================
@@ -1942,6 +2002,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (state.orderTrackerInterval) {
       clearInterval(state.orderTrackerInterval);
+    }
+    if (state.orderTrackerAnimInterval) {
+      clearInterval(state.orderTrackerAnimInterval);
     }
     // Al volver a la tienda queda visible el botón de "Mi pedido en curso"
     refreshActiveOrderFab();
