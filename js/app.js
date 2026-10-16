@@ -28,6 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
     })(),
     selectedProductForModal: null,
     orderTrackerInterval: null,
+    chatMessages: [],
+    chatReplyIndex: 0,
     paymentProof: null // Captura de pantalla (comprobante) del pago online subida por el cliente
   };
 
@@ -106,6 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const orderTrackerModalEl = document.getElementById('orderTrackerModal');
   const closeOrderTrackerBtn = document.getElementById('closeOrderTrackerBtn');
   const chatWithShopperBtn = document.getElementById('chatWithShopperBtn');
+  const chatModalEl = document.getElementById('chatModal');
+  const chatMessagesEl = document.getElementById('chatMessages');
+  let chatTypingEl = document.getElementById('chatTyping'); // `let`: se vuelve a buscar tras repintar
+  const chatForm = document.getElementById('chatForm');
+  const chatInput = document.getElementById('chatInput');
+  const chatSendBtn = document.getElementById('chatSendBtn');
+  const closeChatBtn = document.getElementById('closeChatBtn');
   const toastContainerEl = document.getElementById('toastContainer');
   let catalogLoadState = 'loading';
   let catalogLoadRequest = 0;
@@ -1824,6 +1833,102 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
+  // CHAT CON EL SHOPPER (CUADRO DE DIÁLOGO CONVERSACIONAL)
+  // ==========================================================================
+  const CHAT_GREETING = '¡Hola! Soy Carlos 👋 Ya tengo tu pedido. ¿Necesitas algún cambio o preferencia en los víveres?';
+  const CHAT_REPLIES = [
+    '¡Entendido! Seleccionaré los más firmes y frescos para ti. 👌',
+    '¡Claro! Lo reviso ahora mismo y te aviso por aquí. 👍',
+    'Perfecto, lo dejo anotado en tu pedido 📝',
+    'Cualquier cosa me escribes por aquí, estoy pendiente 😊'
+  ];
+
+  function chatTimeNow() {
+    try {
+      return new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function escapeChatText(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Pinta la conversación entera y deja el scroll al final (último mensaje)
+  function renderChatMessages() {
+    if (!chatMessagesEl) return;
+    const bubbles = state.chatMessages.map(msg => `
+      <div class="chat-msg ${msg.from === 'me' ? 'chat-msg-me' : 'chat-msg-shopper'}">
+        ${msg.from === 'me' ? '' : '<span class="chat-msg-avatar" aria-hidden="true">👨‍🌾</span>'}
+        <div class="chat-msg-bubble">
+          <p>${escapeChatText(msg.text)}</p>
+          <time>${msg.time || ''}</time>
+        </div>
+      </div>`).join('');
+    const typing = chatTypingEl ? chatTypingEl.outerHTML : '';
+    chatMessagesEl.innerHTML = bubbles + typing;
+    // El repintado sustituye el nodo del indicador: hay que volver a referenciarlo
+    chatTypingEl = document.getElementById('chatTyping');
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  }
+
+  function setChatTyping(visible) {
+    if (!chatTypingEl) return;
+    chatTypingEl.hidden = !visible;
+    if (chatMessagesEl) chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  }
+
+  function openChatModal() {
+    if (!chatModalEl) return;
+    if (state.chatMessages.length === 0) {
+      state.chatMessages.push({ from: 'shopper', text: CHAT_GREETING, time: chatTimeNow() });
+    }
+    renderChatMessages();
+    setChatTyping(false);
+    chatModalEl.classList.add('active');
+    syncBodyScrollLock();
+    // El foco solo en escritorio: en el móvil abriría el teclado y taparía la conversación
+    if (chatInput && window.innerWidth > 768) {
+      setTimeout(() => chatInput.focus(), 250);
+    }
+  }
+
+  function closeChatModal() {
+    if (!chatModalEl) return;
+    chatModalEl.classList.remove('active');
+    setChatTyping(false);
+    syncBodyScrollLock();
+  }
+
+  function sendChatMessage(text) {
+    const clean = (text || '').trim();
+    if (!clean) return;
+    state.chatMessages.push({ from: 'me', text: clean, time: chatTimeNow() });
+    renderChatMessages();
+    if (chatInput) chatInput.value = '';
+    if (chatSendBtn) chatSendBtn.disabled = true;
+
+    // Carlos escribe un momento antes de responder
+    setChatTyping(true);
+    setTimeout(() => {
+      const reply = CHAT_REPLIES[state.chatReplyIndex % CHAT_REPLIES.length];
+      state.chatReplyIndex += 1;
+      state.chatMessages.push({ from: 'shopper', text: reply, time: chatTimeNow() });
+      setChatTyping(false);
+      renderChatMessages();
+    }, 1300);
+  }
+
+  // Deja bloqueado el scroll del fondo solo si sigue algún modal abierto
+  function syncBodyScrollLock() {
+    const anyModalOpen = !!document.querySelector('.modal-overlay.active');
+    document.body.style.overflow = anyModalOpen ? 'hidden' : '';
+  }
+
+  // ==========================================================================
   // VISTA DE SEGUIMIENTO (compartida: pedido nuevo o restaurado tras recargar)
   // ==========================================================================
   function startOrderTracker(orderData, initialStatus) {
@@ -2090,7 +2195,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeOrderTracker() {
     if (orderTrackerModalEl) {
       orderTrackerModalEl.classList.remove('active');
-      document.body.style.overflow = '';
+      syncBodyScrollLock();
     }
     if (state.orderTrackerInterval) {
       clearInterval(state.orderTrackerInterval);
@@ -2611,15 +2716,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeOrderTrackerBtn) closeOrderTrackerBtn.addEventListener('click', closeOrderTracker);
     const trackerBackToShopBtn = document.getElementById('trackerBackToShopBtn');
     if (trackerBackToShopBtn) trackerBackToShopBtn.addEventListener('click', closeOrderTracker);
-    if (chatWithShopperBtn) {
-      chatWithShopperBtn.addEventListener('click', () => {
-        const userMsg = prompt('Escribe un mensaje para Carlos (tu Shopper Al Costo):', 'Hola Carlos, por favor que los aguacates no estén muy blandos.');
-        if (userMsg) {
-          showToast('📨 Mensaje enviado a Carlos');
-          setTimeout(() => {
-            showToast('💬 Carlos: ¡Entendido! Seleccionaré los más firmes y frescos para ti. 👌', 'success');
-          }, 2500);
-        }
+    if (chatWithShopperBtn) chatWithShopperBtn.addEventListener('click', openChatModal);
+    if (closeChatBtn) closeChatBtn.addEventListener('click', closeChatModal);
+    if (chatModalEl) {
+      // Tocar fuera del cuadro de diálogo (fondo difuminado) lo cierra
+      chatModalEl.addEventListener('click', (e) => {
+        if (e.target === chatModalEl) closeChatModal();
+      });
+    }
+    if (chatForm) {
+      chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        sendChatMessage(chatInput ? chatInput.value : '');
+      });
+    }
+    if (chatInput && chatSendBtn) {
+      // El botón de enviar solo se activa si hay texto
+      chatInput.addEventListener('input', () => {
+        chatSendBtn.disabled = chatInput.value.trim().length === 0;
       });
     }
 
@@ -2875,6 +2989,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Tecla Escape para cerrar modales
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        // Si el chat está abierto, Escape lo cierra solo (sigue el seguimiento detrás)
+        if (chatModalEl && chatModalEl.classList.contains('active')) {
+          closeChatModal();
+          return;
+        }
         closeCartDrawer();
         closeProductModal();
         closeCheckoutModal();

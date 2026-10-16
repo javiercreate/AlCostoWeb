@@ -976,6 +976,34 @@
   </div>
 
   <!-- ==========================================================================
+       MODAL 4bis: CHAT CON EL SHOPPER (CUADRO DE DIÁLOGO)
+       ========================================================================== -->
+  <div class="modal-overlay" id="chatModal">
+    <div class="modal-box chat-box">
+      <div class="chat-header">
+        <span class="chat-header-avatar" aria-hidden="true">👨‍🌾</span>
+        <div class="chat-header-info">
+          <h4>Carlos Mendoza</h4>
+          <span class="chat-header-status"><span class="chat-status-dot"></span> Shopper Al Costo · en línea</span>
+        </div>
+        <button class="modal-close-btn" id="closeChatBtn" aria-label="Cerrar chat">✕</button>
+      </div>
+
+      <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-label="Conversación con tu shopper">
+        <!-- Los mensajes se pintan desde js/app.js -->
+        <div class="chat-typing" id="chatTyping" hidden aria-label="Carlos está escribiendo">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <form class="chat-input-row" id="chatForm" autocomplete="off">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Escribe un mensaje para Carlos…" maxlength="300" aria-label="Mensaje">
+        <button type="submit" class="chat-send-btn" id="chatSendBtn" aria-label="Enviar mensaje" disabled>➤</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
        MODAL 5: INICIAR SESIÓN / CREAR CUENTA (AUTH MODAL)
        ========================================================================== -->
   <div class="modal-overlay" id="authModal">
