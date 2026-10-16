@@ -3547,13 +3547,14 @@ body {
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
+/* Barra de la ruta por donde corre la moto: ROJA en todos los dispositivos */
 .map-route-line-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, #10B981, #059669);
+  background: linear-gradient(90deg, #EF4444 0%, #DC2626 55%, #B91C1C 100%);
   border-radius: 9999px;
   transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.75);
 }
 
 .map-vehicle {
