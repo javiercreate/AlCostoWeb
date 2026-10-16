@@ -73,6 +73,17 @@
   --shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.7);
 }
 
+/* ==========================================================================
+   COLOR-SCHEME: DESACTIVA EL "MODO OSCURO FORZADO" DE CHROME / ANDROID
+   En teléfonos con auto-dark activado el navegador invertía los fondos claros
+   y el badge "PEDIDO #XXXX CONFIRMADO" perdía su fondo blanco (se veía el texto
+   suelto, sin resaltar). Declarar color-scheme: only light impide esa inversión
+   y NO afecta al modo oscuro propio de la web, que se aplica con variables CSS.
+   ========================================================================== */
+:root {
+  color-scheme: only light;
+}
+
 /* Reset y base */
 *, *::before, *::after {
   box-sizing: border-box;
