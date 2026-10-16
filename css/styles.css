@@ -3574,6 +3574,56 @@ body {
   100% { transform: scaleX(-1) translateY(-4px); }
 }
 
+/* Al llegar a la puerta la moto se sustituye por el repartidor saludando */
+.map-vehicle.arrived {
+  transform: none;
+  animation: arrivalWave 1.4s infinite ease-in-out;
+}
+
+@keyframes arrivalWave {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  50% { transform: translateY(-5px) rotate(5deg); }
+}
+
+/* Globo de diálogo del repartidor cuando ya está en tu puerta */
+.map-arrival-bubble {
+  position: absolute;
+  right: 4%;
+  top: 14px;
+  max-width: 64%;
+  background: #FFFFFF;
+  color: #0F172A;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 7px 11px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: left;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  z-index: 7;
+  animation: arrivalBubblePop 0.35s ease;
+}
+
+.map-arrival-bubble[hidden] {
+  display: none;
+}
+
+.map-arrival-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  right: 26px;
+  border: 6px solid transparent;
+  border-top-color: #FFFFFF;
+  border-bottom: 0;
+}
+
+@keyframes arrivalBubblePop {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
 .map-pin {
   position: absolute;
   font-size: 1.8rem;

@@ -1783,6 +1783,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const trackerVehicle = document.getElementById('trackerVehicle');
     const trackerEtaText = document.getElementById('trackerEtaText');
     const trackerPercentBadge = document.getElementById('trackerPercentBadge');
+    const trackerArrivalBubble = document.getElementById('trackerArrivalBubble');
 
     // Configuración visual por cada estado del pedido (alineado con los estados del panel admin)
     //
@@ -1814,10 +1815,10 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       entregado: {
         completedSteps: 4, currentStep: -1,
-        from: { fill: 68, vehicle: 59 }, to: { fill: 100, vehicle: 82 }, travelMs: 20000,
+        from: { fill: 68, vehicle: 59 }, to: { fill: 100, vehicle: 82 }, travelMs: 6000,
         badge: () => '¡Entregado con Éxito! (100%)', badgeBg: '#DCFCE7', badgeColor: '#15803D',
         eta: '¡Pedido entregado en tu puerta!',
-        toast: '🎉 ¡Tu pedido de Al Costo ha llegado a tu puerta!'
+        toast: '🙋 Hola, ya estoy afuera con tu pedido'
       },
       cancelado: {
         completedSteps: 0, currentStep: 0,
@@ -1880,6 +1881,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       lastTrackerStatus = status;
+
+      // Al llegar a la puerta la moto se cambia por el repartidor saludando
+      // con el aviso "Hola, ya estoy afuera con tu pedido"
+      const arrived = status === 'entregado';
+      if (trackerVehicle) {
+        trackerVehicle.textContent = arrived ? '🙋‍♂️' : '🛵💨';
+        trackerVehicle.classList.toggle('arrived', arrived);
+        if (arrived) trackerVehicle.title = 'Repartidor en tu puerta';
+        else trackerVehicle.removeAttribute('title');
+      }
+      if (trackerArrivalBubble) trackerArrivalBubble.hidden = !arrived;
 
       stepItems.forEach((item, idx) => {
         item.className = 'tracker-step-item';
