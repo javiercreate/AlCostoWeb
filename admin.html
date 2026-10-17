@@ -124,6 +124,56 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    /* ==========================================================================
+       PESTAÑA EXCLUSIVA DE CONFIGURACIÓN (TASA DE CAMBIO / MONEDAS / API)
+       ========================================================================== */
+    .settings-pane-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      padding: 18px 22px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .settings-pane-title {
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: var(--color-primary);
+      margin: 0 0 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .settings-pane-subtitle {
+      font-size: 0.85rem;
+      color: var(--color-text-secondary);
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .settings-pane-head + .admin-card {
+      margin-top: 0;
+    }
+
+    @media (max-width: 768px) {
+      .settings-pane-head {
+        padding: 14px 16px;
+      }
+      .settings-pane-title {
+        font-size: 1.1rem;
+      }
+      .settings-pane-subtitle {
+        font-size: 0.8rem;
+      }
+    }
+
     /* Tarjetas de Estadísticas */
     .stats-dashboard-grid {
       display: grid;
@@ -1061,6 +1111,10 @@
         <span>⚡ Servidor Supabase</span>
         <span id="supabaseNavStatus" style="font-size: 0.75rem;">🔴</span>
       </button>
+
+      <button class="tab-btn" data-tab="tab-settings">
+        <span>⚙️ Configuración (Tasa de Cambio)</span>
+      </button>
     </div>
   </nav>
 
@@ -1068,6 +1122,25 @@
        CONTENIDO PRINCIPAL
        ========================================================================== -->
   <main class="container" style="padding-top: 14px;">
+
+    <!-- ========================================================================
+         PESTAÑA: CONFIGURACIÓN (TASA DE CAMBIO / MONEDAS / API)
+         Este módulo vive SOLO aquí dentro de su propio tab-pane: ya NO se
+         muestra duplicado en las vistas de Catálogo, Compras, Pagos,
+         Supabase ni Tienda. Solo aparece al pulsar "Configuración".
+         ======================================================================== -->
+    <div class="tab-pane" id="tab-settings">
+
+    <!-- Encabezado de la sección de configuración -->
+    <div class="settings-pane-head">
+      <div>
+        <h2 class="settings-pane-title">⚙️ Configuración de Tasa de Cambio</h2>
+        <p class="settings-pane-subtitle">
+          Administra la tasa del dólar en Bolívares (🇻🇪 Bs.) y en Pesos Colombianos (🇨🇴 COP).
+          Sincroniza con la API o edítala manualmente; al guardar, todos los precios del catálogo se actualizan.
+        </p>
+      </div>
+    </div>
 
     <!-- ========================================================================
          WIDGET DE TASAS DE CAMBIO EN VIVO (BSV Y COP)
@@ -1121,6 +1194,8 @@
         </div>
       </div>
     </div>
+
+    </div><!-- /cierre pestaña tab-settings -->
 
     <!-- ========================================================================
          PESTAÑA 1: GESTIÓN DE COMPRAS Y PEDIDOS (ORDERS DASHBOARD)
@@ -1796,6 +1871,11 @@ CREATE POLICY "Actualización de usuarios" ON usuarios FOR UPDATE USING (true);
         <span>Supabase</span>
       </button>
 
+      <button class="mobile-nav-btn" data-tab="tab-settings">
+        <span class="icon">⚙️</span>
+        <span>Ajustes</span>
+      </button>
+
       <a href="index.html" class="mobile-nav-btn" style="text-decoration: none;">
         <span class="icon">🏪</span>
         <span>Tienda</span>
@@ -1821,6 +1901,6 @@ CREATE POLICY "Actualización de usuarios" ON usuarios FOR UPDATE USING (true);
   <script src="js/supabase-config.js?v=20261016-tracker"></script>
   <script src="js/products.js?v=20261016-tracker"></script>
   <script src="js/ai-photo.js?v=20261017-ia-fotos"></script>
-  <script src="js/admin.js?v=20261017-ia-fotos"></script>
+  <script src="js/admin.js?v=20261017-tasa-config"></script>
 </body>
 </html>

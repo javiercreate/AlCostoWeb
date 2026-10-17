@@ -1851,6 +1851,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     syncAdminRatesUI();
 
+    // El módulo de tasa de cambio ahora vive SOLO en la pestaña "Configuración".
+    // Al abrirla refrescamos el panel por si la tasa cambió desde otra vista o
+    // desde la sincronización automática diaria.
+    document.querySelectorAll('[data-tab="tab-settings"]').forEach(settingsTabBtn => {
+      settingsTabBtn.addEventListener('click', () => {
+        syncAdminRatesUI();
+      });
+    });
+
     if (btnSaveAdminRates) {
       btnSaveAdminRates.addEventListener('click', () => {
         const bs = parseFloat(inputAdminRateBs.value);
