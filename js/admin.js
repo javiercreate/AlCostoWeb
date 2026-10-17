@@ -743,9 +743,52 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProductsTable();
   }
 
-  function renderProductsTable() {
+  // Utilidad: cede el hilo principal al navegador evitando que la interfaz
+  // se congele mientras se repinta la tabla (crítico en dispositivos móviles).
+  function nextAnimationFrames(count = 1) {
+    return new Promise(resolve => {
+      let remaining = count;
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      // Respaldo con temporizador: si rAF está suspendido (pestaña en segundo
+      // plano o vista no visible), el proceso nunca debe quedarse colgado.
+      const fallbackTimer = setTimeout(done, 400);
+      const tick = () => {
+        remaining -= 1;
+        if (remaining <= 0) {
+          clearTimeout(fallbackTimer);
+          done();
+        } else {
+          requestAnimationFrame(tick);
+        }
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  // Utilidad: limita la frecuencia de eventos muy repetidos
+  // (p. ej. cada tecla escrita en el buscador del catálogo).
+  function debounce(callback, delay = 180) {
+    let timerId = null;
+    return (...args) => {
+      clearTimeout(timerId);
+      timerId = setTimeout(() => callback(...args), delay);
+    };
+  }
+
+  let productsTableRenderSeq = 0;
+  const PRODUCTS_TABLE_CHUNK_SIZE = 60;
+
+  async function renderProductsTable() {
     updatePriceAdjustmentProductOptions();
     if (!productsTableBody) return;
+
+    // Token de renderizado: si llega una orden más reciente, esta queda obsoleta
+    const renderSeq = ++productsTableRenderSeq;
 
     const searchTerm = tableSearchInput ? tableSearchInput.value.toLowerCase().trim() : '';
     const categoryFilter = tableCategoryFilter ? tableCategoryFilter.value : 'all';
@@ -767,7 +810,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    productsTableBody.innerHTML = filtered.map(p => {
+    const rowsHtml = filtered.map(p => {
       const catObj = CATEGORIES.find(c => c.id === p.category);
       const catLabel = catObj ? `${catObj.icon} ${catObj.name}` : p.category;
 
@@ -775,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <tr>
           <td>
             <div style="display: flex; align-items: center; gap: 10px;">
-              <img src="${p.image}" class="admin-thumb" alt="${p.name}" onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80'">
+              <img src="${p.image}" class="admin-thumb" alt="${p.name}" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80'">
               <div>
                 <strong>${p.name}</strong>
                 <div style="font-size: 0.72rem; color: #888;">ID: ${p.id}</div>
@@ -808,7 +851,21 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
         </tr>
       `;
-    }).join('');
+    });
+
+    // Pintado por trozos: los catálogos grandes se agregan por fragmentos,
+    // cediendo el hilo principal entre ellos para no congelar la interfaz.
+    if (rowsHtml.length > PRODUCTS_TABLE_CHUNK_SIZE) {
+      productsTableBody.innerHTML = '';
+      for (let start = 0; start < rowsHtml.length; start += PRODUCTS_TABLE_CHUNK_SIZE) {
+        if (renderSeq !== productsTableRenderSeq) return; // otra renderización más reciente
+        productsTableBody.insertAdjacentHTML('beforeend', rowsHtml.slice(start, start + PRODUCTS_TABLE_CHUNK_SIZE).join(''));
+        await nextAnimationFrames(1);
+      }
+      if (renderSeq !== productsTableRenderSeq) return;
+    } else {
+      productsTableBody.innerHTML = rowsHtml.join('');
+    }
 
     productsTableBody.querySelectorAll('.edit-product-btn').forEach(btn => {
       btn.addEventListener('click', () => startEditProduct(btn.getAttribute('data-id')));
@@ -886,9 +943,11 @@ document.addEventListener('DOMContentLoaded', () => {
     applyPriceAdjustmentBtn.disabled = false;
   }
 
+  let isApplyingPriceAdjustment = false;
+
   async function applyPriceAdjustment() {
     updatePriceAdjustmentPreview();
-    if (!applyPriceAdjustmentBtn || applyPriceAdjustmentBtn.disabled) return;
+    if (!applyPriceAdjustmentBtn || applyPriceAdjustmentBtn.disabled || isApplyingPriceAdjustment) return;
 
     const adjustment = Number(priceAdjustmentValue.value);
     const type = priceAdjustmentType.value;
@@ -901,37 +960,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!confirm(`¿${action === 'increase' ? 'Aumentar' : 'Disminuir'} ${adjustmentLabel} los precios de ${scopeLabel}?`)) return;
 
-    const updatedProducts = products.map(product => {
-      if (!targets.some(target => target.id === product.id)) return product;
-      const updated = { ...product };
-      ['price', 'originalPrice', 'wholesalePrice'].forEach(field => {
-        if (typeof product[field] === 'number' && Number.isFinite(product[field])) {
-          updated[field] = calculateAdjustedPrice(product[field], adjustment, type, action);
-        }
+    // Anti-congelamiento (móvil): bloqueamos reentrada y cedemos el hilo principal
+    // para que el navegador pinte el cierre del diálogo antes de procesar.
+    isApplyingPriceAdjustment = true;
+    const originalBtnLabel = applyPriceAdjustmentBtn.innerHTML;
+    applyPriceAdjustmentBtn.disabled = true;
+    applyPriceAdjustmentBtn.innerHTML = '⏳ Aplicando cambios...';
+
+    try {
+      await nextAnimationFrames(2);
+
+      // Set de IDs: evita el bucle anidado O(n×m) al recorrer el catálogo completo
+      const targetIds = new Set(targets.map(target => target.id));
+      const updatedProducts = products.map(product => {
+        if (!targetIds.has(product.id)) return product;
+        const updated = { ...product };
+        ['price', 'originalPrice', 'wholesalePrice'].forEach(field => {
+          if (typeof product[field] === 'number' && Number.isFinite(product[field])) {
+            updated[field] = calculateAdjustedPrice(product[field], adjustment, type, action);
+          }
+        });
+        return updated;
       });
-      return updated;
-    });
 
-    products = updatedProducts;
-    if (typeof saveActiveProducts === 'function') {
-      saveActiveProducts(products);
-    } else {
-      localStorage.setItem('alcosto_custom_products', JSON.stringify(products));
-    }
-    renderProductsTable();
-    showToast(`✅ Precios actualizados en ${targets.length} producto(s)`, 'success');
+      products = updatedProducts;
+      if (typeof saveActiveProducts === 'function') {
+        saveActiveProducts(products);
+      } else {
+        localStorage.setItem('alcosto_custom_products', JSON.stringify(products));
+      }
 
-    if (typeof SupabaseService !== 'undefined') {
-      const sbConfig = SupabaseService.getConfig();
-      if (sbConfig && sbConfig.connected) {
-        try {
-          const syncResult = await SupabaseService.syncProductsToSupabase(products);
-          notifyBarcodeSyncWarning(syncResult);
-        } catch (err) {
-          console.error('No se pudieron sincronizar los precios con Supabase:', err);
-          showToast('⚠️ Los precios se guardaron localmente, pero no se pudieron publicar en Supabase.', 'warning');
+      // Repintamos en el siguiente frame para no bloquear el hilo de UI
+      await nextAnimationFrames(2);
+      renderProductsTable();
+      showToast(`✅ Precios actualizados en ${targets.length} producto(s)`, 'success');
+
+      // La sincronización con Supabase es asíncrona: no detiene la interfaz
+      if (typeof SupabaseService !== 'undefined') {
+        const sbConfig = SupabaseService.getConfig();
+        if (sbConfig && sbConfig.connected) {
+          try {
+            const syncResult = await SupabaseService.syncProductsToSupabase(products);
+            notifyBarcodeSyncWarning(syncResult);
+          } catch (err) {
+            console.error('No se pudieron sincronizar los precios con Supabase:', err);
+            showToast('⚠️ Los precios se guardaron localmente, pero no se pudieron publicar en Supabase.', 'warning');
+          }
         }
       }
+    } catch (err) {
+      console.error('Error al aplicar el ajuste masivo de precios:', err);
+      showToast('⚠️ No se pudo completar el ajuste de precios', 'error');
+    } finally {
+      isApplyingPriceAdjustment = false;
+      applyPriceAdjustmentBtn.innerHTML = originalBtnLabel;
+      updatePriceAdjustmentPreview(); // re-habilita el botón solo si el ajuste sigue siendo válido
     }
   }
 
@@ -1349,6 +1432,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (priceAdjustmentValue) priceAdjustmentValue.addEventListener('input', updatePriceAdjustmentPreview);
     if (applyPriceAdjustmentBtn) applyPriceAdjustmentBtn.addEventListener('click', applyPriceAdjustment);
 
+    // Calculadora de precios desplegable (accordion) dentro del Catálogo:
+    // oculta por defecto para no consumir espacio vertical en móvil.
+    const priceCalculatorToggleBtn = document.getElementById('priceCalculatorToggleBtn');
+    const priceCalculatorPanel = document.getElementById('priceCalculatorPanel');
+    if (priceCalculatorToggleBtn && priceCalculatorPanel) {
+      priceCalculatorToggleBtn.addEventListener('click', () => {
+        const isOpen = priceCalculatorToggleBtn.getAttribute('aria-expanded') === 'true';
+        priceCalculatorToggleBtn.setAttribute('aria-expanded', String(!isOpen));
+        priceCalculatorPanel.hidden = isOpen;
+        if (!isOpen) updatePriceAdjustmentPreview();
+      });
+    }
+
     const startBarcodeScannerBtn = document.getElementById('startBarcodeScannerBtn');
     const stopBarcodeScannerBtn = document.getElementById('stopBarcodeScannerBtn');
     const barcodeScannerPanel = document.getElementById('barcodeScannerPanel');
@@ -1505,7 +1601,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Búsqueda en tabla
-    if (tableSearchInput) tableSearchInput.addEventListener('input', renderProductsTable);
+    // Debounce: al escribir en el buscador no se repinta la tabla en cada tecla
+    // (en móvil eso provoca saltos y "congelamiento" con catálogos grandes).
+    if (tableSearchInput) tableSearchInput.addEventListener('input', debounce(renderProductsTable, 180));
     if (tableCategoryFilter) tableCategoryFilter.addEventListener('change', renderProductsTable);
 
     // --- MANEJO DE UPLOAD DE IMÁGENES DE PRODUCTOS ---

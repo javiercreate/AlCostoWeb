@@ -174,6 +174,63 @@
       }
     }
 
+    /* ==========================================================================
+       CALCULADORA DE PRECIOS: ACCORDION DESPLEGABLE EN EL CATÁLOGO
+       Oculta por defecto para no ocupar espacio vertical (sobre todo en móvil)
+       ========================================================================== */
+    .calc-accordion {
+      margin-bottom: 24px;
+    }
+
+    .calc-accordion-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: white;
+      border: 1px solid #BFDBFE;
+      border-radius: var(--radius-xl);
+      padding: 16px 20px;
+      font-family: inherit;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      cursor: pointer;
+      box-shadow: var(--shadow-card);
+      transition: background var(--transition-fast);
+    }
+
+    .calc-accordion-toggle:hover {
+      background: #F8FAFF;
+    }
+
+    .calc-accordion-icon {
+      font-size: 1rem;
+      color: #2563EB;
+      transition: transform 0.2s ease;
+    }
+
+    .calc-accordion-toggle[aria-expanded="true"] .calc-accordion-icon {
+      transform: rotate(180deg);
+    }
+
+    .calc-accordion-panel[hidden] {
+      display: none; /* sin espacio vertical hasta pulsar el botón */
+    }
+
+    .calc-accordion-panel .admin-card {
+      margin-bottom: 0;
+    }
+
+    @media (max-width: 768px) {
+      .calc-accordion-toggle {
+        min-height: 48px;
+        padding: 14px 16px;
+        font-size: 0.98rem;
+      }
+    }
+
     /* Tarjetas de Estadísticas */
     .stats-dashboard-grid {
       display: grid;
@@ -1200,6 +1257,34 @@
       </div>
     </div>
 
+    <!-- ========================================================================
+         BLOQUE DE INVENTARIO / COPIAS / SUPABASE
+         (trasladado desde la pestaña Catálogo para centralizar la configuración)
+         ======================================================================== -->
+    <div class="catalog-actions" style="background: white; border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 18px 22px; box-shadow: var(--shadow-card); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <div>
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--color-primary); margin-bottom: 4px;">
+          💾 Inventario y Copias de Seguridad
+        </h3>
+        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 0; line-height: 1.5;">
+          Publica el catálogo en Supabase o descarga/importa una copia en JSON.
+        </p>
+      </div>
+
+      <div class="catalog-actions-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn-checkout-primary" id="publishToSupabaseBtn" style="padding: 8px 16px; font-size: 0.88rem; height: auto;">
+          🚀 Publicar en Supabase
+        </button>
+        <button class="btn-hero-cta" id="exportBackupJsonBtn" style="padding: 8px 16px; font-size: 0.88rem; background: #F8F9FA; border: 1px solid var(--color-border); color: #333;">
+          📥 Descargar Copia JSON
+        </button>
+        <button type="button" class="btn-hero-cta" id="importBackupJsonBtn" style="padding: 8px 16px; font-size: 0.88rem; background: #EFF6FF; border: 1px solid #BFDBFE; color: #1D4ED8;">
+          📤 Importar JSON
+        </button>
+        <input type="file" id="importBackupJsonInput" accept=".json,application/json" hidden>
+      </div>
+    </div>
+
     </div><!-- /cierre pestaña tab-settings -->
 
     <!-- ========================================================================
@@ -1315,33 +1400,19 @@
          ======================================================================== -->
     <div class="tab-pane" id="tab-catalog">
       
-      <!-- Barra de Acciones del Catálogo -->
-      <div class="catalog-actions" style="background: white; border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
-        <div>
-          <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--color-primary); margin-bottom: 2px;">
-            Inventario de Productos Al Costo
-          </h2>
-          <p style="font-size: 0.82rem; color: var(--color-text-secondary); margin: 0;">
-            Charcutería, víveres, limpieza, confitería, lácteos, bebidas y ventas al mayor.
-          </p>
-        </div>
+      <!-- ========================================================================
+           CALCULADORA DE PRECIOS (ACCORDION / DESPLEGABLE)
+           Oculta por defecto: no consume espacio vertical en el Catálogo
+           hasta que el usuario pulsa el botón para desplegarla.
+           ======================================================================== -->
+      <div class="calc-accordion">
+        <button type="button" id="priceCalculatorToggleBtn" class="calc-accordion-toggle" aria-expanded="false" aria-controls="priceCalculatorPanel">
+          <span>🧮 Calculadora de precios</span>
+          <span class="calc-accordion-icon" aria-hidden="true">▾</span>
+        </button>
 
-        <div class="catalog-actions-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;">
-          <button class="btn-checkout-primary" id="publishToSupabaseBtn" style="padding: 8px 16px; font-size: 0.88rem; height: auto;">
-            🚀 Publicar en Supabase
-          </button>
-          <button class="btn-hero-cta" id="exportBackupJsonBtn" style="padding: 8px 16px; font-size: 0.88rem; background: #F8F9FA; border: 1px solid var(--color-border); color: #333;">
-            📥 Descargar Copia JSON
-          </button>
-          <button type="button" class="btn-hero-cta" id="importBackupJsonBtn" style="padding: 8px 16px; font-size: 0.88rem; background: #EFF6FF; border: 1px solid #BFDBFE; color: #1D4ED8;">
-            📤 Importar JSON
-          </button>
-          <input type="file" id="importBackupJsonInput" accept=".json,application/json" hidden>
-        </div>
-      </div>
-
-      <section class="admin-card" style="margin-bottom: 24px; border-color: #BFDBFE;">
-        <h3 class="admin-card-title">🧮 Calculadora de precios</h3>
+        <div id="priceCalculatorPanel" class="calc-accordion-panel" hidden>
+      <section class="admin-card" style="margin-bottom: 0; border-color: #BFDBFE;">
         <p class="admin-card-subtitle">
           Sube o baja los precios por porcentaje o monto fijo. Puedes aplicarlo a todo el catálogo o a un solo producto.
           Se actualizarán los precios detal, mayorista y tachado que tenga cada producto.
@@ -1386,6 +1457,8 @@
           Aplicar cambio de precios
         </button>
       </section>
+        </div><!-- /priceCalculatorPanel -->
+      </div><!-- /calc-accordion -->
 
       <!-- Formulario para Añadir o Modificar Producto -->
       <section class="admin-card" style="margin-bottom: 24px;">
