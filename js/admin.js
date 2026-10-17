@@ -1403,6 +1403,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startBarcodeScannerBtn) {
       startBarcodeScannerBtn.addEventListener('click', async () => {
         if (!barcodeScannerPanel || !barcodeScannerStatus || !barcodeScannerVideo) return;
+        stopProductCamera(); // solo una cámara activa a la vez
         barcodeScannerPanel.hidden = false;
 
         if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -1456,7 +1457,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (stopBarcodeScannerBtn) stopBarcodeScannerBtn.addEventListener('click', stopBarcodeScanner);
     tabButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        if (btn.getAttribute('data-tab') !== 'tab-catalog') stopBarcodeScanner();
+        if (btn.getAttribute('data-tab') !== 'tab-catalog') {
+          stopBarcodeScanner();
+          stopProductCamera();
+        }
       });
     });
     window.addEventListener('pagehide', stopBarcodeScanner);
@@ -1597,6 +1601,226 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     }
+
+    // ==========================================================================
+    // FOTO DE PRODUCTO CON IA: CÁMARA -> REMOCIÓN DE FONDO -> COMPRESIÓN -> USO
+    // Reaprovecha la cámara del panel y añade el procesamiento automático con IA
+    // (el lector de código de barras se mantiene intacto).
+    // ==========================================================================
+    const takeProductPhotoBtn = document.getElementById('takeProductPhotoBtn');
+    const productPhotoCaptureInput = document.getElementById('productPhotoCaptureInput');
+    const productCameraPanel = document.getElementById('productCameraPanel');
+    const productCameraVideo = document.getElementById('productCameraVideo');
+    const productCameraStatus = document.getElementById('productCameraStatus');
+    const capturePhotoBtn = document.getElementById('capturePhotoBtn');
+    const closeProductCameraBtn = document.getElementById('closeProductCameraBtn');
+    const aiPhotoPanel = document.getElementById('aiPhotoPanel');
+    const aiPhotoProcessing = document.getElementById('aiPhotoProcessing');
+    const aiPhotoProgressText = document.getElementById('aiPhotoProgressText');
+    const aiPhotoResult = document.getElementById('aiPhotoResult');
+    const aiPhotoPreview = document.getElementById('aiPhotoPreview');
+    const aiPhotoEngineBadge = document.getElementById('aiPhotoEngineBadge');
+    const aiPhotoSizeBadge = document.getElementById('aiPhotoSizeBadge');
+    const aiPhotoDimsBadge = document.getElementById('aiPhotoDimsBadge');
+    const aiPhotoHint = document.getElementById('aiPhotoHint');
+    const useAiPhotoBtn = document.getElementById('useAiPhotoBtn');
+    const retryAiPhotoBtn = document.getElementById('retryAiPhotoBtn');
+    const discardAiPhotoBtn = document.getElementById('discardAiPhotoBtn');
+    const cancelAiPhotoBtn = document.getElementById('cancelAiPhotoBtn');
+
+    let productCameraStream = null;
+    let aiJobId = 0;
+    let aiRawSource = null;
+    let aiResultDataUrl = '';
+
+    function stopProductCamera() {
+      if (productCameraStream) {
+        productCameraStream.getTracks().forEach(track => track.stop());
+        productCameraStream = null;
+      }
+      if (productCameraVideo) productCameraVideo.srcObject = null;
+      if (capturePhotoBtn) capturePhotoBtn.disabled = true;
+      if (productCameraPanel) productCameraPanel.hidden = true;
+    }
+
+    function openNativePhotoCapture(reason) {
+      if (reason) showToast(reason);
+      if (productPhotoCaptureInput) {
+        productPhotoCaptureInput.value = '';
+        productPhotoCaptureInput.click();
+      }
+    }
+
+    async function openProductCamera() {
+      if (typeof stopBarcodeScanner === 'function') stopBarcodeScanner();
+
+      if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        openNativePhotoCapture('ℹ️ Este navegador no permite la cámara en vivo: abrimos la cámara de tu sistema.');
+        return;
+      }
+
+      if (productCameraPanel) productCameraPanel.hidden = false;
+      if (productCameraStatus) productCameraStatus.textContent = 'Abriendo cámara...';
+      if (capturePhotoBtn) capturePhotoBtn.disabled = true;
+
+      try {
+        productCameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false
+        });
+        if (productCameraVideo) {
+          productCameraVideo.srcObject = productCameraStream;
+          await productCameraVideo.play();
+        }
+        if (productCameraStatus) productCameraStatus.textContent = 'Coloca el producto dentro del encuadre y pulsa "Capturar foto".';
+        if (capturePhotoBtn) capturePhotoBtn.disabled = false;
+      } catch (err) {
+        console.warn('No se pudo abrir la cámara del producto:', err);
+        stopProductCamera();
+        openNativePhotoCapture(err && err.name === 'NotAllowedError'
+          ? '📵 Sin permiso para la cámara en vivo: usamos la cámara de tu sistema.'
+          : 'ℹ️ Cámara en vivo no disponible: abrimos la cámara de tu sistema.');
+      }
+    }
+
+    function captureProductPhoto() {
+      const video = productCameraVideo;
+      if (!video || !video.videoWidth || !video.videoHeight) {
+        if (productCameraStatus) productCameraStatus.textContent = 'La cámara aún no está lista, intenta de nuevo.';
+        return;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      stopProductCamera();
+      startAiPhotoProcessing(canvas);
+    }
+
+    function showAiPanelState(state) {
+      if (!aiPhotoPanel) return;
+      aiPhotoPanel.hidden = false;
+      const processing = state === 'processing';
+      if (aiPhotoProcessing) aiPhotoProcessing.hidden = !processing;
+      if (aiPhotoResult) aiPhotoResult.hidden = processing;
+    }
+
+    function hideAiPhotoPanel() {
+      aiJobId += 1; // invalida cualquier proceso en curso
+      aiRawSource = null;
+      aiResultDataUrl = '';
+      if (aiPhotoPanel) aiPhotoPanel.hidden = true;
+    }
+
+    async function startAiPhotoProcessing(source) {
+      if (!source) return;
+      aiRawSource = source;
+      aiResultDataUrl = '';
+      const jobId = ++aiJobId;
+
+      showAiPanelState('processing');
+      if (aiPhotoProgressText) aiPhotoProgressText.textContent = 'Preparando el motor de inteligencia artificial en tu navegador';
+      if (aiPhotoPanel && typeof aiPhotoPanel.scrollIntoView === 'function') {
+        aiPhotoPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      if (typeof AIPhoto === 'undefined' || typeof AIPhoto.processImage !== 'function') {
+        if (aiPhotoPanel) aiPhotoPanel.hidden = true;
+        showToast('❌ El motor de fotos con IA no está disponible (no se cargó js/ai-photo.js)', 'error');
+        return;
+      }
+
+      try {
+        const result = await AIPhoto.processImage(source, {
+          onProgress: (text) => {
+            if (jobId === aiJobId && aiPhotoProgressText) aiPhotoProgressText.textContent = text;
+          }
+        });
+        if (jobId !== aiJobId) return; // cancelado o reemplazado por otra captura
+
+        aiResultDataUrl = result.dataUrl;
+        if (aiPhotoPreview) {
+          aiPhotoPreview.src = result.dataUrl;
+          aiPhotoPreview.alt = 'Producto recortado sin fondo';
+        }
+        if (aiPhotoEngineBadge) {
+          aiPhotoEngineBadge.textContent = result.engine === 'ia' ? '✂️ Recortado con IA' : '✂️ Recorte básico (IA sin conexión)';
+        }
+        if (aiPhotoSizeBadge) {
+          aiPhotoSizeBadge.textContent = `${Math.round(result.bytes / 1024)} KB`;
+          aiPhotoSizeBadge.title = `${result.bytes} bytes`;
+        }
+        if (aiPhotoDimsBadge) aiPhotoDimsBadge.textContent = `${result.width} x ${result.height} px`;
+        if (aiPhotoHint) {
+          aiPhotoHint.textContent = result.bytes <= 200 * 1024
+            ? 'Fondo transparente y peso liviano (< 200 KB) listo para publicar'
+            : '⚠️ La imagen pesa más de 200 KB; se conservó el menor tamaño posible';
+        }
+        showAiPanelState('result');
+
+        if (result.engine === 'ia') {
+          showToast('✂️ Fondo eliminado con IA y foto optimizada', 'success');
+        } else {
+          showToast('⚠️ La IA no estuvo disponible: se aplicó recorte básico de respaldo');
+        }
+        if (result.bytes > 200 * 1024) {
+          showToast(`⚠️ La foto pesa ${Math.round(result.bytes / 1024)} KB (objetivo: menos de 200 KB)`, 'error');
+        }
+      } catch (err) {
+        if (jobId !== aiJobId) return;
+        console.error('Error al procesar la foto con IA:', err);
+        if (aiPhotoPanel) aiPhotoPanel.hidden = true;
+        showToast(`❌ No se pudo procesar la foto: ${err && err.message ? err.message : err}`, 'error');
+      }
+    }
+
+    function useAiPhotoResult() {
+      if (!aiResultDataUrl) return;
+      if (prodImageInput) {
+        prodImageInput.value = aiResultDataUrl;
+        prodImageInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      if (imagePreview) {
+        imagePreview.style.background = 'repeating-conic-gradient(#E5E7EB 0% 25%, #FFFFFF 0% 50%) 50% / 12px 12px';
+      }
+      if (imagePreviewName) imagePreviewName.textContent = 'Foto con IA (fondo transparente)';
+      if (imagePreviewContainer) imagePreviewContainer.style.display = 'flex';
+      hideAiPhotoPanel();
+      showToast('✅ Imagen con fondo transparente asignada al campo del producto', 'success');
+    }
+
+    if (takeProductPhotoBtn) takeProductPhotoBtn.addEventListener('click', openProductCamera);
+    if (closeProductCameraBtn) closeProductCameraBtn.addEventListener('click', stopProductCamera);
+    if (capturePhotoBtn) capturePhotoBtn.addEventListener('click', captureProductPhoto);
+
+    if (productPhotoCaptureInput) {
+      productPhotoCaptureInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        productPhotoCaptureInput.value = '';
+        startAiPhotoProcessing(file);
+      });
+    }
+
+    if (useAiPhotoBtn) useAiPhotoBtn.addEventListener('click', useAiPhotoResult);
+    if (retryAiPhotoBtn) {
+      retryAiPhotoBtn.addEventListener('click', () => {
+        if (aiRawSource) startAiPhotoProcessing(aiRawSource);
+      });
+    }
+    if (discardAiPhotoBtn) {
+      discardAiPhotoBtn.addEventListener('click', () => {
+        hideAiPhotoPanel();
+        showToast('🗑️ Foto descartada');
+      });
+    }
+    if (cancelAiPhotoBtn) {
+      cancelAiPhotoBtn.addEventListener('click', () => {
+        hideAiPhotoPanel();
+        showToast('✖️ Proceso de recorte cancelado');
+      });
+    }
+    window.addEventListener('pagehide', stopProductCamera);
 
     // --- MANEJO DE TASAS DE CAMBIO DIARIAS Y SINCRONIZACIÓN API ---
     const inputAdminRateBs = document.getElementById('inputAdminRateBs');
