@@ -50,24 +50,6 @@
       margin: 0 auto;
     }
 
-    .owner-badge-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: #108910;
-      color: white;
-      text-decoration: none;
-      padding: 6px 12px;
-      border-radius: var(--radius-pill);
-      font-size: 0.8rem;
-      font-weight: 700;
-      transition: background var(--transition-fast);
-    }
-
-    .owner-badge-link:hover {
-      background: #0d700d;
-    }
-
     /* Pestañas de Navegación */
     .admin-tabs-nav {
       background: white;
@@ -1048,13 +1030,7 @@
         </span>
       </div>
 
-      <!-- Teléfono del Dueño con Enlace Directo a WhatsApp -->
       <div style="display: flex; align-items: center; gap: 10px;">
-        <a href="https://wa.me/34602070846" target="_blank" class="owner-badge-link" title="Contactar dueño por WhatsApp">
-          <span>💬</span>
-          <span>+34 602 07 08 46</span>
-        </a>
-
         <a href="index.html" class="header-btn hide-on-mobile" style="background: rgba(255,255,255,0.15); color: white; padding: 6px 12px; font-size: 0.85rem; border-radius: 9999px;">
           🏪 Ver Tienda
         </a>
@@ -1422,8 +1398,8 @@
                   <span>📁</span> Subir Imagen
                   <input type="file" id="prodImageUpload" accept="image/*" style="display: none;">
                 </label>
-                <button type="button" id="takeProductPhotoBtn" class="btn-checkout-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; height: 42px; font-size: 0.85rem; white-space: nowrap; background: #108910; border: none; border-radius: var(--radius-md); cursor: pointer;" title="Abre la cámara, recorta el fondo con IA y optimiza el peso">
-                  <span>📷</span> Tomar Foto (IA)
+                <button type="button" id="takeProductPhotoBtn" class="btn-checkout-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; height: 42px; font-size: 0.85rem; white-space: nowrap; background: #108910; border: none; border-radius: var(--radius-md); cursor: pointer;" title="Abre la cámara en vivo: recorta el fondo con IA y optimiza el peso">
+                  <span>📷</span> Tomar Foto
                 </button>
                 <!-- Respaldo nativo: abre la cámara del sistema si no hay cámara en vivo -->
                 <input type="file" id="productPhotoCaptureInput" accept="image/*" capture="environment" hidden>
@@ -1479,11 +1455,6 @@
                 </div>
                 <button type="button" id="removeUploadedImageBtn" style="background: none; border: none; color: #DC2626; font-size: 1.1rem; cursor: pointer;" title="Quitar imagen">✕</button>
               </div>
-            </div>
-
-            <div class="form-group span-full">
-              <label for="prodDescription">Descripción del Producto</label>
-              <textarea id="prodDescription" class="form-input" style="height: 60px; padding: 10px;" placeholder="Detalles de calidad, sabor, rendimiento..."></textarea>
             </div>
 
           </div>
@@ -1830,10 +1801,6 @@ CREATE POLICY "Actualización de usuarios" ON usuarios FOR UPDATE USING (true);
         <span>Tienda</span>
       </a>
 
-      <a href="https://wa.me/34602070846" target="_blank" class="mobile-nav-btn" style="text-decoration: none; color: #25D366;">
-        <span class="icon">💬</span>
-        <span>WhatsApp</span>
-      </a>
     </div>
   </nav>
 

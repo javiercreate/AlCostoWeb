@@ -962,7 +962,7 @@ document.addEventListener('DOMContentLoaded', () => {
     prodUnitInput.value = prod.unit;
     prodImageInput.value = prod.image;
     prodBadgeInput.value = prod.badge || '';
-    prodDescriptionInput.value = prod.description || '';
+    if (prodDescriptionInput) prodDescriptionInput.value = prod.description || '';
 
     // Vista previa de imagen del producto al editar
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
@@ -1026,7 +1026,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const unit = prodUnitInput.value.trim();
       const image = prodImageInput.value.trim() || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80';
       const badge = prodBadgeInput.value.trim();
-      const description = prodDescriptionInput.value.trim();
+      // El textarea de descripción fue retirado del formulario: al editar se conserva la descripción existente
+      const description = prodDescriptionInput
+        ? prodDescriptionInput.value.trim()
+        : ((editingProductId && products.find(p => p.id === editingProductId)?.description) || '');
 
       const payload = {
         id,
@@ -1641,6 +1644,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (productCameraVideo) productCameraVideo.srcObject = null;
       if (capturePhotoBtn) capturePhotoBtn.disabled = true;
       if (productCameraPanel) productCameraPanel.hidden = true;
+      // Botón principal de cámara visible de nuevo al cerrar el visor (un solo botón de captura a la vez)
+      if (takeProductPhotoBtn) takeProductPhotoBtn.style.display = 'inline-flex';
     }
 
     function openNativePhotoCapture(reason) {
@@ -1660,6 +1665,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (productCameraPanel) productCameraPanel.hidden = false;
+      // Se oculta el botón principal mientras el visor está abierto: queda un único botón de captura ("Capturar foto")
+      if (takeProductPhotoBtn) takeProductPhotoBtn.style.display = 'none';
       if (productCameraStatus) productCameraStatus.textContent = 'Abriendo cámara...';
       if (capturePhotoBtn) capturePhotoBtn.disabled = true;
 
