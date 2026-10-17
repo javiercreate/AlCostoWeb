@@ -711,6 +711,11 @@
         font-size: 0.78rem !important;
         white-space: normal;
       }
+      /* Quedan 3 botones: el último ocupa el ancho completo para que la
+         cuadrícula (2 + 1) quede simétrica y sin celdas vacías. */
+      .catalog-actions-buttons > #importBackupJsonBtn {
+        grid-column: 1 / -1;
+      }
       .admin-card {
         padding: 16px;
       }
@@ -1324,9 +1329,6 @@
         <div class="catalog-actions-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;">
           <button class="btn-checkout-primary" id="publishToSupabaseBtn" style="padding: 8px 16px; font-size: 0.88rem; height: auto;">
             🚀 Publicar en Supabase
-          </button>
-          <button class="btn-hero-cta" id="resetDefaultProductsBtn" disabled style="opacity: 0.55; padding: 8px 16px; font-size: 0.88rem; background: #EBF8FF; border: 1px solid #90CDF4; color: #2B6CB0;" title="Botón desactivado: los 24 productos demo fueron eliminados y bloqueados permanentemente">
-            🚫 Catálogo demo eliminado (bloqueado)
           </button>
           <button class="btn-hero-cta" id="exportBackupJsonBtn" style="padding: 8px 16px; font-size: 0.88rem; background: #F8F9FA; border: 1px solid var(--color-border); color: #333;">
             📥 Descargar Copia JSON
