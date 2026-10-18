@@ -225,7 +225,14 @@ if (typeof window !== 'undefined') {
 function isLegacyDefaultProduct(product) {
   if (!product) return false;
   const id = (typeof product === 'string') ? product : product.id;
-  return typeof id === 'string' && LEGACY_DEFAULT_PRODUCT_IDS.indexOf(id) !== -1;
+  if (typeof id === 'string' && LEGACY_DEFAULT_PRODUCT_IDS.indexOf(id) !== -1) return true;
+
+  // BLOQUEO 2: los 400 "Producto de prueba" (IDs test-XXXX) fueron sembrados por
+  // una prueba automatizada y borrados de Supabase el 2026-10-18. Nunca deben
+  // mostrarse ni republicarse aunque reaparezcan en la base de datos.
+  if (typeof id === 'string' && /^test-\d+$/i.test(id)) return true;
+  const name = (product && typeof product === 'object' && typeof product.name === 'string') ? product.name : '';
+  return /^producto de prueba\b/i.test(name);
 }
 
 // Filtra una lista eliminando cualquier producto demo predeterminado
