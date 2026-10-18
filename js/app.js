@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // --- ELEMENTOS DEL DOM ---
-  const deptRailIconsListEl = document.getElementById('deptRailIconsList');
   const productsGridEl = document.getElementById('productsGrid');
   const sectionTitleEl = document.getElementById('catalogSectionTitle');
   const sectionCountEl = document.getElementById('catalogSectionCount');
@@ -145,12 +144,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   async function init() {
     updateAuthUI();
-    renderCategoryPills();
     PRODUCTS_DATA = [];
     await loadCatalogProductsFromDatabase();
     updateCartUI();
     updateWishlistBadge();
-    initHeroCarousel();
     setupEventListeners();
 
     // Reabrir el seguimiento del pedido activo (si el cliente recargó la página)
@@ -230,190 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     renderProducts();
-  }
-
-  // ==========================================================================
-  // CARRUSEL HERO INTERACTIVO DE 3 PARTES (PUBLICIDAD Y PROMOS)
-  // ==========================================================================
-  function initHeroCarousel() {
-    const track = document.getElementById('heroCarouselTrack');
-    const container = document.getElementById('heroCarousel');
-    const prevBtn = document.getElementById('heroPrevBtn');
-    const nextBtn = document.getElementById('heroNextBtn');
-    const dots = document.querySelectorAll('.hero-dot');
-    const slides = document.querySelectorAll('.hero-slide');
-
-    if (!track || slides.length === 0) return;
-
-    let currentIndex = 0;
-    const totalSlides = slides.length;
-    let autoPlayTimer = null;
-
-    function goToSlide(index) {
-      if (index < 0) {
-        currentIndex = totalSlides - 1;
-      } else if (index >= totalSlides) {
-        currentIndex = 0;
-      } else {
-        currentIndex = index;
-      }
-
-      track.style.transform = `translateX(-${currentIndex * 100}%)`;
-
-      slides.forEach((slide, idx) => {
-        slide.classList.toggle('active', idx === currentIndex);
-      });
-
-      dots.forEach((dot, idx) => {
-        dot.classList.toggle('active', idx === currentIndex);
-      });
-    }
-
-    function startAutoPlay() {
-      stopAutoPlay();
-      autoPlayTimer = setInterval(() => {
-        goToSlide(currentIndex + 1);
-      }, 5000);
-    }
-
-    function stopAutoPlay() {
-      if (autoPlayTimer) {
-        clearInterval(autoPlayTimer);
-        autoPlayTimer = null;
-      }
-    }
-
-    if (prevBtn) {
-      prevBtn.addEventListener('click', () => {
-        goToSlide(currentIndex - 1);
-        startAutoPlay();
-      });
-    }
-
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
-        goToSlide(currentIndex + 1);
-        startAutoPlay();
-      });
-    }
-
-    dots.forEach(dot => {
-      dot.addEventListener('click', () => {
-        const target = parseInt(dot.getAttribute('data-slide-to'), 10);
-        if (!isNaN(target)) {
-          goToSlide(target);
-          startAutoPlay();
-        }
-      });
-    });
-
-    if (container) {
-      container.addEventListener('mouseenter', stopAutoPlay);
-      container.addEventListener('mouseleave', startAutoPlay);
-
-      // Soporte táctil / Swipe para teléfonos móviles
-      let touchStartX = 0;
-      let touchEndX = 0;
-
-      container.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-        stopAutoPlay();
-      }, { passive: true });
-
-      container.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        const diff = touchStartX - touchEndX;
-        if (Math.abs(diff) > 40) {
-          if (diff > 0) {
-            goToSlide(currentIndex + 1);
-          } else {
-            goToSlide(currentIndex - 1);
-          }
-        }
-        startAutoPlay();
-      }, { passive: true });
-    }
-
-    // Botones de copiar cupones en los slides
-    document.querySelectorAll('.hero-copy-coupon-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const code = btn.getAttribute('data-coupon');
-        if (code) {
-          if (navigator.clipboard) {
-            navigator.clipboard.writeText(code).catch(() => {});
-          }
-          if (couponInputEl) couponInputEl.value = code;
-          showToast(`📋 Cupón ${code} copiado`, 'success');
-        }
-      });
-    });
-
-    // Filtros rápidos de categoría desde cualquier banner o tarjeta
-    document.querySelectorAll('[data-filter-category]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const cat = btn.getAttribute('data-filter-category');
-        if (cat) {
-          setActiveCategory(cat);
-          const target = document.getElementById('catalogo');
-          if (target) {
-            target.scrollIntoView({ behavior: 'smooth' });
-          }
-        }
-      });
-    });
-
-    startAutoPlay();
-  }
-
-  // ==========================================================================
-  // CATEGORÍAS Y NAVEGACIÓN (BARRA VERTICAL SOLO ICONOS FONT AWESOME)
-  // ==========================================================================
-  function renderCategoryPills() {
-    renderVerticalDeptRail();
-  }
-
-  function renderVerticalDeptRail() {
-    if (!deptRailIconsListEl) return;
-    deptRailIconsListEl.innerHTML = CATEGORIES.map(cat => {
-      const iconClass = cat.icon.startsWith('fa-') ? cat.icon : `fa-solid ${cat.icon}`;
-      return `
-        <button type="button" 
-                class="dept-rail-icon-btn ${cat.id === state.activeCategory ? 'active' : ''}" 
-                data-cat-id="${cat.id}" 
-                data-dept-name="${cat.name}" 
-                title="${cat.name}">
-          <i class="${iconClass}"></i>
-        </button>
-      `;
-    }).join('');
-
-    deptRailIconsListEl.querySelectorAll('.dept-rail-icon-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const catId = btn.getAttribute('data-cat-id');
-        setActiveCategory(catId);
-        const target = document.getElementById('catalogo');
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth' });
-        }
-      });
-    });
-  }
-
-  function setActiveCategory(catId) {
-    state.activeCategory = catId;
-    state.searchQuery = '';
-    if (searchInputEl) searchInputEl.value = '';
-    if (searchClearBtnEl) searchClearBtnEl.style.display = 'none';
-
-    renderCategoryPills();
-    renderProducts();
-
-    const categoryObj = CATEGORIES.find(c => c.id === catId);
-    if (sectionTitleEl && categoryObj) {
-      const iconClass = categoryObj.icon.startsWith('fa-') ? categoryObj.icon : `fa-solid ${categoryObj.icon}`;
-      sectionTitleEl.innerHTML = `<i class="${iconClass}" style="color: #108910; margin-right: 8px;"></i> ${categoryObj.name}`;
-    }
   }
 
   // ==========================================================================
@@ -531,7 +344,6 @@ document.addEventListener('DOMContentLoaded', () => {
           state.searchQuery = '';
           if (searchInputEl) searchInputEl.value = '';
           filterTagChips.forEach(chip => chip.classList.toggle('active', chip.dataset.tag === 'all'));
-          renderCategoryPills();
           renderProducts();
         });
       }
@@ -2787,16 +2599,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Copiar cupón desde el banner superior
-    const copyPromoBtn = document.getElementById('copyPromoBtn');
-    if (copyPromoBtn) {
-      copyPromoBtn.addEventListener('click', () => {
-        const code = copyPromoBtn.textContent.trim();
-        if (couponInputEl) couponInputEl.value = code;
-        showToast(`📋 Cupón ${code} copiado`, 'success');
-        openCartDrawer();
-      });
-    }
+
 
     // Botón de wishlist en header (filtra productos en favoritos)
     if (wishlistHeaderBtn) {
@@ -2807,7 +2610,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         state.activeCategory = 'todos';
         state.activeFilterTag = 'all';
-        renderCategoryPills();
         
         // Filtrar solo los productos en favoritos
         if (sectionTitleEl) sectionTitleEl.innerHTML = '❤️ Mis Productos Favoritos';

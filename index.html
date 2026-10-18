@@ -18,21 +18,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <!-- Estilos CSS -->
-  <link rel="stylesheet" href="css/styles.css?v=20261018-calidad">
+  <link rel="stylesheet" href="css/styles.css?v=20261018-redesign">
 </head>
 <body>
-
-  <!-- ==========================================================================
-       BARRA DE ANUNCIOS SUPERIOR (PROMOS Y TASAS DE CAMBIO)
-       ========================================================================== -->
-  <div class="top-announcement-bar">
-    <div class="top-promo-content">
-      <span class="badge-promo">OFERTA ESPECIAL</span>
-      <span>🎉 ¡Envío GRATIS en tu primer pedido superior a $35! Usa el código:</span>
-      <button class="copy-code-btn" id="copyPromoBtn" title="Copiar cupón">ENVIOGRATIS</button>
-    </div>
-
-  </div>
 
   <!-- ==========================================================================
        HEADER PRINCIPAL
@@ -41,12 +29,12 @@
     <div class="container">
       <div class="header-main">
         
-        <!-- Logo Al Costo con logo.png -->
+        <!-- Logo AlCosto Minimarket (disposición horizontal compacta) -->
         <a href="#" class="brand-logo" id="homeLogoBtn">
-          <img src="logo.png" alt="Al Costo" class="brand-logo-img">
+          <img src="logo.png" alt="AlCosto Minimarket" class="brand-logo-img">
           <div class="brand-name">
-            <span class="logo-top">al<span>costo</span></span>
-            <span class="logo-sub">Supermercado</span>
+            <span class="logo-top">Al<span>Costo</span></span>
+            <span class="logo-sub">Minimarket</span>
           </div>
         </a>
 
@@ -158,255 +146,12 @@
   <main>
     <div class="container">
 
-      <!-- Banner Hero Promocional Carrusel Interactivo de 3 Partes -->
-      <section class="hero-section">
-        <div class="hero-carousel-container" id="heroCarousel">
-          
-          <div class="hero-carousel-track" id="heroCarouselTrack">
-            
-            <!-- Slide 1: Ventas al Mayor y Detal -->
-            <div class="hero-slide active" data-slide="0">
-              <div class="hero-banner slide-mayor">
-                <!-- Fondo de emojis repetidos estilo Emojipedia -->
-                <div class="banner-emoji-pattern" aria-hidden="true">
-                  <div class="emoji-pattern-row">
-                    <span>📦</span><span>🛒</span><span>🏷️</span><span>🚛</span><span>💰</span><span>🏪</span><span>🛍️</span><span>📦</span><span>🛒</span><span>🏷️</span><span>🚛</span><span>💰</span><span>🏪</span><span>🛍️</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🏪</span><span>💰</span><span>🚛</span><span>🏷️</span><span>🛒</span><span>📦</span><span>🛍️</span><span>🏪</span><span>💰</span><span>🚛</span><span>🏷️</span><span>🛒</span><span>📦</span><span>🛍️</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🛒</span><span>📦</span><span>🛍️</span><span>💰</span><span>🏪</span><span>🏷️</span><span>🚛</span><span>🛒</span><span>📦</span><span>🛍️</span><span>💰</span><span>🏪</span><span>🏷️</span><span>🚛</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🏷️</span><span>🚛</span><span>🏪</span><span>📦</span><span>💰</span><span>🛒</span><span>🛍️</span><span>🏷️</span><span>🚛</span><span>🏪</span><span>📦</span><span>💰</span><span>🛒</span><span>🛍️</span>
-                  </div>
-                </div>
-
-                <div class="hero-content">
-                  <div class="hero-tag">⚡ Entrega en 45 Minutos</div>
-                  <h1 class="hero-title">Charcutería, víveres y <span>ventas al mayor</span> al mejor costo.</h1>
-                  <p class="hero-subtitle">
-                    Surtido completo en embutidos finos, confitería, abarrotes y bultos mayoristas con precios de distribuidor y entrega express en tu puerta.
-                  </p>
-                  <div class="hero-cta-group">
-                    <a href="#catalogo" class="btn-hero-cta" data-filter-category="al-mayor">Explorar Bultos y Mayor</a>
-                    <button class="btn-hero-cta btn-hero-secondary hero-copy-coupon-btn" data-coupon="MAYORISTA">
-                      <span>Cupón Mayorista:</span> <strong>MAYORISTA</strong> 📋
-                    </button>
-                  </div>
-                </div>
-
-                <div class="hero-graphic">
-                  <div class="hero-graphic-badge">
-                    <div class="badge-row">
-                      <span class="icon">📦</span>
-                      <span>Precios por Bulto y al Detal</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">🥓</span>
-                      <span>Charcutería y Lácteos Frescos</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">🛵</span>
-                      <span>Entrega Rápida en 45 min</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Slide 2: Envío Gratis y Primera Compra -->
-            <div class="hero-slide" data-slide="1">
-              <div class="hero-banner slide-envio">
-                <!-- Fondo de emojis repetidos estilo Emojipedia -->
-                <div class="banner-emoji-pattern" aria-hidden="true">
-                  <div class="emoji-pattern-row">
-                    <span>🛵</span><span>⚡</span><span>🎁</span><span>🚚</span><span>📦</span><span>⏱️</span><span>🏷️</span><span>💨</span><span>🛵</span><span>⚡</span><span>🎁</span><span>🚚</span><span>📦</span><span>⏱️</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🎁</span><span>🚚</span><span>🛵</span><span>⚡</span><span>⏱️</span><span>💨</span><span>📦</span><span>🏷️</span><span>🎁</span><span>🚚</span><span>🛵</span><span>⚡</span><span>⏱️</span><span>💨</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>⚡</span><span>🛵</span><span>💨</span><span>🎁</span><span>🚚</span><span>📦</span><span>🏷️</span><span>⏱️</span><span>⚡</span><span>🛵</span><span>💨</span><span>🎁</span><span>🚚</span><span>📦</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>📦</span><span>⏱️</span><span>🏷️</span><span>🛵</span><span>⚡</span><span>🎁</span><span>🚚</span><span>💨</span><span>📦</span><span>⏱️</span><span>🏷️</span><span>🛵</span><span>⚡</span><span>🎁</span>
-                  </div>
-                </div>
-
-                <div class="hero-content">
-                  <div class="hero-tag">🎉 Oferta de Bienvenida</div>
-                  <h1 class="hero-title">¡Tu primer pedido con <span>Envío GRATIS</span> y 10% OFF!</h1>
-                  <p class="hero-subtitle">
-                    Aprovecha nuestras promociones exclusivas. Usa el código ENVIOGRATIS en compras mayores a $35 y te lo llevamos sin costo de entrega.
-                  </p>
-                  <div class="hero-cta-group">
-                    <a href="#catalogo" class="btn-hero-cta">Comprar con Envío Gratis</a>
-                    <button class="btn-hero-cta btn-hero-secondary hero-copy-coupon-btn" data-coupon="ENVIOGRATIS">
-                      <span>Cupón:</span> <strong>ENVIOGRATIS</strong> 📋
-                    </button>
-                  </div>
-                </div>
-
-                <div class="hero-graphic">
-                  <div class="hero-graphic-badge badge-accent">
-                    <div class="badge-row">
-                      <span class="icon">🚚</span>
-                      <span>Flete 100% Bonificado</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">🎁</span>
-                      <span>10% OFF Código ALCOSTO10</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">⏱️</span>
-                      <span>Garantía de Puntualidad</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Slide 3: Charcutería Selecta & Quesos Criollos -->
-            <div class="hero-slide" data-slide="2">
-              <div class="hero-banner slide-charcuteria">
-                <!-- Fondo de emojis repetidos estilo Emojipedia -->
-                <div class="banner-emoji-pattern" aria-hidden="true">
-                  <div class="emoji-pattern-row">
-                    <span>🥓</span><span>🧀</span><span>🥩</span><span>🥖</span><span>🍷</span><span>🥪</span><span>🧈</span><span>🥓</span><span>🧀</span><span>🥩</span><span>🥖</span><span>🍷</span><span>🥪</span><span>🧈</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🧀</span><span>🧈</span><span>🥓</span><span>🥪</span><span>🥩</span><span>🥖</span><span>🍷</span><span>🧀</span><span>🧈</span><span>🥓</span><span>🥪</span><span>🥩</span><span>🥖</span><span>🍷</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🥩</span><span>🥖</span><span>🍷</span><span>🥓</span><span>🧀</span><span>🧈</span><span>🥪</span><span>🥩</span><span>🥖</span><span>🍷</span><span>🥓</span><span>🧀</span><span>🧈</span><span>🥪</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🥪</span><span>🥓</span><span>🧀</span><span>🥩</span><span>🥖</span><span>🍷</span><span>🧈</span><span>🥪</span><span>🥓</span><span>🧀</span><span>🥩</span><span>🥖</span><span>🍷</span><span>🧈</span>
-                  </div>
-                </div>
-
-                <div class="hero-content">
-                  <div class="hero-tag">🥩 Calidad y Frescura Garantizada</div>
-                  <h1 class="hero-title">Quesos criollos, jamones y <span>cortes selectos</span>.</h1>
-                  <p class="hero-subtitle">
-                    Rebanados al momento y seleccionados con los más estrictos estándares de higiene. Los mejores sabores para tu hogar o negocio.
-                  </p>
-                  <div class="hero-cta-group">
-                    <a href="#catalogo" class="btn-hero-cta" data-filter-category="charcuteria">Ver Charcutería y Quesos</a>
-                    <a href="https://wa.me/34602070846?text=Hola,%20quisiera%20consultar%20sobre%20pedidos%20de%20charcuteria" target="_blank" class="btn-hero-cta btn-hero-secondary">
-                      <span>💬 Pedir por WhatsApp</span>
-                    </a>
-                  </div>
-                </div>
-
-                <div class="hero-graphic">
-                  <div class="hero-graphic-badge badge-fresh">
-                    <div class="badge-row">
-                      <span class="icon">🧀</span>
-                      <span>Queso Llanero y Costeño</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">🥩</span>
-                      <span>Cortes Vacunos y Aves</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">❄️</span>
-                      <span>Cadena de Frío Certificada</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Slide 4: Bebidas Frías, Refrescos y Confitería -->
-            <div class="hero-slide" data-slide="3">
-              <div class="hero-banner slide-bebidas">
-                <!-- Fondo de emojis repetidos estilo Emojipedia -->
-                <div class="banner-emoji-pattern" aria-hidden="true">
-                  <div class="emoji-pattern-row">
-                    <span>🥤</span><span>🍬</span><span>🍫</span><span>🍿</span><span>🧃</span><span>🍭</span><span>🥨</span><span>🍩</span><span>🍪</span><span>🥤</span><span>🍬</span><span>🍫</span><span>🍿</span><span>🧃</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🧃</span><span>🍿</span><span>🍩</span><span>🍪</span><span>🥤</span><span>🍬</span><span>🍫</span><span>🍭</span><span>🥨</span><span>🧃</span><span>🍿</span><span>🍩</span><span>🍪</span><span>🥤</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🍫</span><span>🍭</span><span>🥤</span><span>🍬</span><span>🧃</span><span>🍿</span><span>🥨</span><span>🍩</span><span>🍪</span><span>🍫</span><span>🍭</span><span>🥤</span><span>🍬</span><span>🧃</span>
-                  </div>
-                  <div class="emoji-pattern-row">
-                    <span>🍬</span><span>🍩</span><span>🍪</span><span>🥨</span><span>🥤</span><span>🍫</span><span>🧃</span><span>🍿</span><span>🍭</span><span>🍬</span><span>🍩</span><span>🍪</span><span>🥨</span><span>🥤</span>
-                  </div>
-                </div>
-
-                <div class="hero-content">
-                  <div class="hero-tag">🥤 Bebidas, Fiesta y Dulces</div>
-                  <h1 class="hero-title">Refrescos fríos, <span>snacks y dulces</span> al mejor precio.</h1>
-                  <p class="hero-subtitle">
-                    Surtido en refrescos de 2L, maltas familiares, chocolates Savoy y golosinas al detal y al mayor para compartir en familia o surtir tu negocio.
-                  </p>
-                  <div class="hero-cta-group">
-                    <a href="#catalogo" class="btn-hero-cta" data-filter-category="bebidas">Ver Bebidas y Snacks</a>
-                    <button class="btn-hero-cta btn-hero-secondary hero-copy-coupon-btn" data-coupon="ALCOSTO10">
-                      <span>Cupón 10% OFF:</span> <strong>ALCOSTO10</strong> 📋
-                    </button>
-                  </div>
-                </div>
-
-                <div class="hero-graphic">
-                  <div class="hero-graphic-badge badge-purple">
-                    <div class="badge-row">
-                      <span class="icon">🥤</span>
-                      <span>Refrescos 2L y Maltas Frías</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">🍫</span>
-                      <span>Chocolates & Galletas Pack</span>
-                    </div>
-                    <div class="badge-row">
-                      <span class="icon">🎉</span>
-                      <span>Precios Especiales para Eventos</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <!-- Flechas de navegación interactiva del carrusel -->
-          <button class="hero-carousel-arrow prev" id="heroPrevBtn" aria-label="Anterior slide">‹</button>
-          <button class="hero-carousel-arrow next" id="heroNextBtn" aria-label="Siguiente slide">›</button>
-
-          <!-- Puntos / Dots de paginación interactivos (4 slides) -->
-          <div class="hero-carousel-dots" id="heroCarouselDots">
-            <button class="hero-dot active" data-slide-to="0" aria-label="Ir a Slide 1"></button>
-            <button class="hero-dot" data-slide-to="1" aria-label="Ir a Slide 2"></button>
-            <button class="hero-dot" data-slide-to="2" aria-label="Ir a Slide 3"></button>
-            <button class="hero-dot" data-slide-to="3" aria-label="Ir a Slide 4"></button>
-          </div>
-
-        </div>
-      </section>
 
       <!-- Sección del Catálogo con Barra Vertical Icon-Only de Departamentos -->
       <section id="catalogo" class="catalog-section">
-        
-        <div class="catalog-with-sidebar-layout">
           <!-- Barra Vertical de Departamentos (Solo Iconos Font Awesome, sin texto) -->
-          <aside class="vertical-dept-rail" id="verticalDeptRail" aria-label="Departamentos">
-            <div class="dept-rail-header">
-              <span class="dept-rail-indicator" title="Pasillos Al Costo">
-                <i class="fa-solid fa-layer-group"></i>
-              </span>
-            </div>
-            <div class="dept-rail-icons-list" id="deptRailIconsList">
-              <!-- Inyectado dinámicamente con iconos puros de Font Awesome -->
-            </div>
-          </aside>
 
           <!-- Contenido Principal del Catálogo -->
-          <div class="catalog-main-content">
             <!-- Controles y Filtros del Catálogo -->
             <div class="catalog-controls-bar">
               <!-- Filtros Rápidos (Chips) -->
@@ -438,11 +183,7 @@
             <!-- Grid de Productos -->
             <div class="products-grid" id="productsGrid">
               <!-- Renderizado dinámico vía app.js -->
-            </div>
-          </div>
-        </div>
-
-      </section>
+            </div></section>
 
     </div>
   </main>
@@ -1124,8 +865,8 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <script src="js/supabase-config.js?v=20261018-calidad"></script>
+  <script src="js/supabase-config.js?v=20261018-redesign"></script>
   <script src="js/products.js?v=20261018-bloqueo-test"></script>
-  <script src="js/app.js?v=20261018-calidad"></script>
+  <script src="js/app.js?v=20261018-redesign"></script>
 </body>
 </html>
