@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <!-- Estilos CSS -->
-  <link rel="stylesheet" href="css/styles.css?v=20261018-nobadge">
+  <link rel="stylesheet" href="css/styles.css?v=20261018-header2row">
 </head>
 <body>
 
@@ -28,17 +28,19 @@
   <header class="site-header">
     <div class="container">
       <div class="header-main">
-        
-        <!-- Logo AlCosto Minimarket (disposición horizontal compacta) -->
-        <a href="#" class="brand-logo" id="homeLogoBtn">
-          <img src="logo.png" alt="AlCosto Minimarket" class="brand-logo-img">
-          <div class="brand-name">
-            <span class="logo-top">Al<span>Costo</span></span>
-            <span class="logo-sub">Minimarket</span>
-          </div>
-        </a>
 
-        <!-- Barra de Búsqueda Grande Central (Aprovecha todo el ancho disponible) -->
+        <!-- Contenedor 1: Marca (logo + AlCosto Minimarket, a lo largo) -->
+        <div class="header-brand-zone">
+          <a href="#" class="brand-logo" id="homeLogoBtn">
+            <img src="logo.png" alt="AlCosto Minimarket" class="brand-logo-img">
+            <div class="brand-name">
+              <span class="logo-top">Al<span>Costo</span></span>
+              <span class="logo-sub">Minimarket</span>
+            </div>
+          </a>
+        </div>
+
+        <!-- Buscador en fila 2, a todo el ancho (estilo responsive) -->
         <div class="search-container">
           <div class="search-input-wrapper">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
@@ -58,7 +60,7 @@
           <div class="search-suggestions-dropdown" id="searchDropdown"></div>
         </div>
 
-        <!-- Botones de Acción de Cabecera Limpios y Modernos -->
+        <!-- Contenedor 2: resto de acciones de cabecera (cuenta, tema, carrito) -->
         <div class="header-actions">
           <!-- Menú Desplegable de Usuario / Mi Cuenta -->
           <div class="user-account-dropdown-wrapper" id="userAccountDropdownWrapper">
@@ -843,8 +845,8 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <script src="js/supabase-config.js?v=20261018-nobadge"></script>
+  <script src="js/supabase-config.js?v=20261018-header2row"></script>
   <script src="js/products.js?v=20261018-bloqueo-test"></script>
-  <script src="js/app.js?v=20261018-nobadge"></script>
+  <script src="js/app.js?v=20261018-header2row"></script>
 </body>
 </html>

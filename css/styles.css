@@ -179,12 +179,21 @@ body {
 }
 .header-main {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 12px 0;
+  gap: 8px 14px;
+  padding: 10px 0;
   width: 100%;
-}/* Brand Logo (disposición horizontal compacta AlCosto Minimarket) */
+}
+/* Contenedor 1: Marca (logo + AlCosto Minimarket) a lo largo de la izquierda */
+.header-brand-zone {
+  display: flex;
+  align-items: center;
+  order: 1;
+  min-width: 0;
+}
+/* Brand Logo (disposición horizontal compacta AlCosto Minimarket) */
 .brand-logo {
   display: flex;
   align-items: center;
@@ -234,13 +243,14 @@ body {
   margin-top: 2px;
   text-shadow: 0 1px 3px rgba(0,0,0,0.7);
 }
-/* Barra de Búsqueda Grande - Ahora se expande limpiamente aprovechando todo el ancho */
+/* Fila 2: Barra de Búsqueda a todo el ancho (estilo responsive) */
 .search-container {
-  flex: 1;
-  max-width: 760px;
-  min-width: 260px;
+  order: 3;
   position: relative;
-  margin: 0 20px;
+  flex: 0 0 100%;
+  width: 100%;
+  max-width: 100%;
+  margin: 2px 0 0 0;
 }
 .search-input-wrapper {
   position: relative;
@@ -345,11 +355,13 @@ body {
   color: var(--color-brand-green);
   font-size: 0.92rem;
 }
-/* Acciones de Cabecera */
+/* Fila 1 derecha: Acciones de Cabecera (cuenta, tema, carrito) */
 .header-actions {
   display: flex;
   align-items: center;
   gap: 12px;
+  order: 2;
+  margin-left: auto;
 }
 /* Dropdown de Usuario / Mi Cuenta */
 .user-account-dropdown-wrapper {
@@ -2611,9 +2623,6 @@ to {
   }
 .brand-name .logo-top {
     font-size: 1.25rem;
-  }
-.brand-name .logo-sub {
-    display: none;
   }
 /* Fila 1: Botones de Acción a la derecha */
   .header-actions {
