@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- ESTADO DE LA APLICACIÓN ---
   const state = {
     cart: JSON.parse(localStorage.getItem('alcosto_cart')) || {},
-    wishlist: JSON.parse(localStorage.getItem('alcosto_wishlist')) || [],
     activeCategory: 'todos',
     activeFilterTag: 'all',
     searchQuery: '',
@@ -72,8 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const cartHeaderBtn = document.getElementById('cartHeaderBtn');
   const cartBadgeCountEl = document.getElementById('cartBadgeCount');
   const cartTotalPreviewEl = document.getElementById('cartTotalPreview');
-  const wishlistHeaderBtn = document.getElementById('wishlistHeaderBtn');
-  const wishlistBadgeCountEl = document.getElementById('wishlistBadgeCount');
 
   // Drawer Carrito
   const cartDrawerEl = document.getElementById('cartDrawer');
@@ -144,7 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
     PRODUCTS_DATA = [];
     await loadCatalogProductsFromDatabase();
     updateCartUI();
-    updateWishlistBadge();
     initDeptBarLoop();
     setupEventListeners();
 
@@ -394,7 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     productsGridEl.innerHTML = filtered.map(product => {
       const inCartQty = state.cart[product.id] ? state.cart[product.id].quantity : 0;
-      const isWishlisted = state.wishlist.includes(product.id);
 
       // Icono y Categoría con soporte Font Awesome
       const catObj = (typeof CATEGORIES !== 'undefined') ? CATEGORIES.find(c => c.id === product.category) : null;
@@ -447,10 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return `
         <article class="product-card" data-product-id="${product.id}">
           ${badgeHtml}
-          <button class="btn-wishlist ${isWishlisted ? 'active' : ''}" data-id="${product.id}" title="${isWishlisted ? 'Quitar de favoritos' : 'Guardar en favoritos'}">
-            ${isWishlisted ? '❤️' : '🤍'}
-          </button>
-          
           <div class="product-image-wrap open-detail-trigger" data-id="${product.id}">
             <img src="${product.image}" alt="${product.name}" class="product-image" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80'">
             <span class="quick-view-hint">🔍 Vista rápida</span>
@@ -569,14 +560,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Wishlist Toggle
-    document.querySelectorAll('.btn-wishlist').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const id = btn.getAttribute('data-id');
-        toggleWishlist(id);
-      });
-    });
   }
 
   // ==========================================================================
@@ -2167,32 +2150,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
-  // WISHLIST (FAVORITOS)
-  // ==========================================================================
-  function toggleWishlist(productId) {
-    const idx = state.wishlist.indexOf(productId);
-    const prod = PRODUCTS_DATA.find(p => p.id === productId);
-
-    if (idx > -1) {
-      state.wishlist.splice(idx, 1);
-      showToast(`🤍 "${prod.name}" eliminado de favoritos`);
-    } else {
-      state.wishlist.push(productId);
-      showToast(`❤️ "${prod.name}" guardado en favoritos`, 'success');
-    }
-
-    localStorage.setItem('alcosto_wishlist', JSON.stringify(state.wishlist));
-    renderProducts();
-    updateWishlistBadge();
-  }
-
-  function updateWishlistBadge() {
-    if (wishlistBadgeCountEl) {
-      wishlistBadgeCountEl.textContent = state.wishlist.length;
-    }
-  }
-
-  // ==========================================================================
   // TOASTS DE NOTIFICACIÓN
   // ==========================================================================
   function showToast(message, type = 'normal') {
@@ -2646,54 +2603,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-    // Botón de wishlist en header (filtra productos en favoritos)
-    if (wishlistHeaderBtn) {
-      wishlistHeaderBtn.addEventListener('click', () => {
-        if (state.wishlist.length === 0) {
-          showToast('❤️ Aún no tienes productos en tu lista de favoritos');
-          return;
-        }
-        state.activeCategory = 'todos';
-        state.activeFilterTag = 'all';
-        syncDeptBarActive();
-
-        // Filtrar solo los productos en favoritos
-        const filtered = PRODUCTS_DATA.filter(p => state.wishlist.includes(p.id));
-
-        // Renderizar estos favoritos
-        if (productsGridEl) {
-          productsGridEl.innerHTML = filtered.map(product => {
-            const inCartQty = state.cart[product.id] ? state.cart[product.id].quantity : 0;
-            return `
-              <article class="product-card" data-product-id="${product.id}">
-                <button class="btn-wishlist active" data-id="${product.id}" title="Favorito">❤️</button>
-                <div class="product-image-wrap open-detail-trigger" data-id="${product.id}">
-                  <img src="${product.image}" alt="${product.name}" class="product-image" loading="lazy">
-                </div>
-                <div class="product-info open-detail-trigger" data-id="${product.id}">
-                  <div class="product-price-row">
-                    <span class="product-current-price">$${product.price.toFixed(2)}</span>
-                  </div>
-                  <div class="product-unit">${product.unit}</div>
-                  <h3 class="product-title">${product.name}</h3>
-                </div>
-                <div class="product-card-actions">
-                  ${inCartQty === 0 
-                    ? `<button class="btn-add-instacart" data-id="${product.id}">+ Agregar</button>` 
-                    : `<div class="quantity-stepper" data-id="${product.id}">
-                         <button class="stepper-btn btn-stepper-minus" data-id="${product.id}">−</button>
-                         <span class="stepper-count">${inCartQty}</span>
-                         <button class="stepper-btn btn-stepper-plus" data-id="${product.id}">+</button>
-                       </div>`
-                  }
-                </div>
-              </article>
-            `;
-          }).join('');
-          bindProductCardEvents();
-        }
-      });
-    }
 
     // Escuchar actualizaciones de tasas en vivo desde la API o admin
     // (el indicador de tasas del header fue retirado; solo se re-renderiza catálogo y carrito)
@@ -2730,7 +2639,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileNavHome = document.getElementById('mobileNavHome');
     const mobileNavSearch = document.getElementById('mobileNavSearch');
     const mobileNavDeals = document.getElementById('mobileNavDeals');
-    const mobileNavWishlist = document.getElementById('mobileNavWishlist');
     const mobileNavCart = document.getElementById('mobileNavCart');
 
     if (mobileNavHome) {
@@ -2765,15 +2673,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
         mobileNavDeals.classList.add('active');
-      });
-    }
-
-    if (mobileNavWishlist) {
-      mobileNavWishlist.addEventListener('click', () => {
-        // Reutiliza la lógica del botón de favoritos del header (no existía #wishlistBtn)
-        if (wishlistHeaderBtn) wishlistHeaderBtn.click();
-        document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
-        mobileNavWishlist.classList.add('active');
       });
     }
 
