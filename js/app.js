@@ -35,13 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- ELEMENTOS DEL DOM ---
   const productsGridEl = document.getElementById('productsGrid');
-  const sectionTitleEl = document.getElementById('catalogSectionTitle');
-  const sectionCountEl = document.getElementById('catalogSectionCount');
   const searchInputEl = document.getElementById('searchInput');
   const searchClearBtnEl = document.getElementById('searchClearBtn');
   const searchDropdownEl = document.getElementById('searchDropdown');
-  const sortSelectEl = document.getElementById('sortSelect');
-  const filterTagChips = document.querySelectorAll('.filter-tag-chip');
+  const deptBarEl = document.getElementById('deptBar');
 
   // Header & Profile & Auth Elements
   const userAccountDropdownWrapper = document.getElementById('userAccountDropdownWrapper');
@@ -234,9 +231,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   function getFilteredProducts() {
     return PRODUCTS_DATA.filter(prod => {
-      // Filtro por categoría
-      if (state.activeCategory !== 'todos' && prod.category !== state.activeCategory) {
-        return false;
+      // Filtro por categoría ("Al Mayor" incluye también productos mayoristas, como el chip anterior)
+      if (state.activeCategory !== 'todos') {
+        const matchesCategory = prod.category === state.activeCategory ||
+          (state.activeCategory === 'al-mayor' && (prod.isWholesale || prod.category === 'al-mayor'));
+        if (!matchesCategory) {
+          return false;
+        }
       }
 
       // Filtro por etiquetas / tags
@@ -272,13 +273,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Sincroniza el chip activo de la barra de departamentos con el estado del filtro
+  // (exclusivo: si hay un filtro de etiqueta activo, no se marca "Todos")
+  function syncDeptBarActive() {
+    if (!deptBarEl) return;
+    deptBarEl.querySelectorAll('.dept-chip').forEach(chip => {
+      const type = chip.getAttribute('data-filter-type');
+      const value = chip.getAttribute('data-value');
+      const isActive = type === 'dept'
+        ? (state.activeFilterTag === 'all' && value === state.activeCategory)
+        : (value === state.activeFilterTag);
+      chip.classList.toggle('active', isActive);
+    });
+  }
+
   function renderProducts() {
     const filtered = getFilteredProducts();
     
-    if (sectionCountEl) {
-      sectionCountEl.textContent = `${filtered.length} productos`;
-    }
-
     if (!productsGridEl) return;
 
     if (filtered.length === 0) {
@@ -331,9 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
             : ''}
         </div>
       `;
-      if (sectionCountEl) {
-        sectionCountEl.textContent = catalogLoadState === 'loading' ? 'Cargando catálogo...' : '0 productos';
-      }
       const retryBtn = document.getElementById('retryCatalogLoadBtn');
       if (retryBtn) retryBtn.addEventListener('click', loadCatalogProductsFromDatabase);
       const resetBtn = document.getElementById('resetFilterBtn');
@@ -343,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
           state.activeFilterTag = 'all';
           state.searchQuery = '';
           if (searchInputEl) searchInputEl.value = '';
-          filterTagChips.forEach(chip => chip.classList.toggle('active', chip.dataset.tag === 'all'));
+          syncDeptBarActive();
           renderProducts();
         });
       }
@@ -2546,21 +2554,24 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Filtros por chips
-    filterTagChips.forEach(chip => {
-      chip.addEventListener('click', () => {
-        filterTagChips.forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
-        state.activeFilterTag = chip.getAttribute('data-tag');
+    // Barra directa de departamentos (filtro inmediato al hacer clic)
+    if (deptBarEl) {
+      deptBarEl.addEventListener('click', (e) => {
+        const chip = e.target.closest('.dept-chip');
+        if (!chip) return;
+        const type = chip.getAttribute('data-filter-type');
+        const value = chip.getAttribute('data-value');
+        if (type === 'dept') {
+          state.activeCategory = value;
+          state.activeFilterTag = 'all';
+        } else {
+          state.activeCategory = 'todos';
+          state.activeFilterTag = value;
+        }
+        syncDeptBarActive();
         renderProducts();
-      });
-    });
-
-    // Ordenamiento
-    if (sortSelectEl) {
-      sortSelectEl.addEventListener('change', (e) => {
-        state.sortBy = e.target.value;
-        renderProducts();
+        const target = document.getElementById('catalogo');
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     }
 
@@ -2610,11 +2621,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         state.activeCategory = 'todos';
         state.activeFilterTag = 'all';
-        
+        syncDeptBarActive();
+
         // Filtrar solo los productos en favoritos
-        if (sectionTitleEl) sectionTitleEl.innerHTML = '❤️ Mis Productos Favoritos';
         const filtered = PRODUCTS_DATA.filter(p => state.wishlist.includes(p.id));
-        if (sectionCountEl) sectionCountEl.textContent = `${filtered.length} productos`;
 
         // Renderizar estos favoritos
         if (productsGridEl) {
@@ -2711,7 +2721,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mobileNavDeals) {
       mobileNavDeals.addEventListener('click', () => {
         // El chip real del catálogo usa data-tag="oferta" (antes nunca coincidía y el botón no filtraba)
-        const promoFilter = document.querySelector('.filter-tag-chip[data-tag="oferta"]');
+        const promoFilter = document.querySelector('.dept-chip[data-filter-type="tag"][data-value="oferta"]');
         if (promoFilter) {
           promoFilter.click();
         }

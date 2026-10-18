@@ -545,22 +545,9 @@ body {
   0% { transform: translateX(-50%); }
 100% { transform: translateX(0); }}@media (prefers-reduced-motion: reduce){}@media (max-width: 768px){}
 /* ==========================================================================
-   BARRA DE FILTROS Y CONTROLES DEL CATÁLOGO
+   BARRA DIRECTA DE DEPARTAMENTOS (CHIPS CON SCROLL HORIZONTAL)
    ========================================================================== */
-.catalog-controls-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 0;
-  flex-wrap: wrap;
-}
-.filter-tags-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+/* Chips genéricos (usados también en el panel admin para filtros de pedidos) */
 .filter-tag-chip {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -585,50 +572,46 @@ body {
   border-color: var(--color-brand-green);
   font-weight: 700;
 }
-.catalog-sort-group {
+.dept-bar {
   display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.catalog-sort-group label {
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
-  font-weight: 600;
-}
-.sort-select {
-  padding: 7px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: 0.85rem;
-  font-family: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  outline: none;
-}
-.sort-select:focus {
-  border-color: var(--color-brand-green);
-}
-/* Encabezado de Sección de Catálogo */
-.section-heading-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 18px;
-}
-.section-title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--color-text-primary);
-  display: flex;
-  align-items: center;
   gap: 8px;
+  padding: 10px 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  position: sticky;
+  top: 0;
+  z-index: 300;
+  background-color: var(--color-bg, #ffffff);
 }
-.section-count {
-  font-size: 0.88rem;
-  color: var(--color-text-muted);
-  font-weight: 500;
+.dept-bar::-webkit-scrollbar {
+  display: none;
+}
+.dept-chip {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.dept-chip:hover {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+}
+.dept-chip.active {
+  background-color: var(--color-brand-soft);
+  color: var(--color-brand-green);
+  border-color: var(--color-brand-green);
+  font-weight: 700;
 }
 /* ==========================================================================
    GRID DE PRODUCTOS (ESTILO INSTACART CARDS)
@@ -2711,9 +2694,6 @@ to {
     font-size: 0.95rem;
   }
 /* Catálogo y Cuadrícula de Productos */
-  .section-title {
-    font-size: 1.25rem;
-  }
 .products-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
