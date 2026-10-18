@@ -16,11 +16,14 @@
   'use strict';
 
   const IMGLY_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm';
-  const DEFAULT_MAX_DIMENSION = 800;
-  const DEFAULT_MAX_BYTES = 200 * 1024; // 200 KB
+  // 900px de lado máximo (ajustado a las tarjetas Retina del catálogo); antes 800px
+  // con escalados agresivos provocaba fotos pixeladas en la tienda.
+  const DEFAULT_MAX_DIMENSION = 900;
+  const DEFAULT_MAX_BYTES = 260 * 1024; // 260 KB
   const AI_MODEL = 'isnet_quint8'; // modelo ligero (~42 MB) tras la primera descarga
-  const QUALITY_STEPS = [0.92, 0.85, 0.78, 0.7, 0.62, 0.54, 0.46, 0.4];
-  const SCALE_STEPS = [1, 0.85, 0.7, 0.58, 0.48];
+  // Calidad mínima 0.66 y escala mínima 0.72: antes bajaba a 0.40 / 0.48 y la foto salía borrosa
+  const QUALITY_STEPS = [0.92, 0.86, 0.8, 0.74, 0.7, 0.66];
+  const SCALE_STEPS = [1, 0.9, 0.82, 0.72];
 
   let bgRemovalModulePromise = null;
 

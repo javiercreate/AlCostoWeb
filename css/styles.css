@@ -128,9 +128,7 @@ html {
 
 /* Scrollbar en contenedores internos (modales, carrito, pills) */
 .cart-items-scroll-area,
-.modal-box,
-.categories-nav-bar,
-.admin-table-wrapper {
+.modal-box {
   scrollbar-width: thin;
   scrollbar-color: #108910 rgba(0, 0, 0, 0.05);
 }
@@ -276,19 +274,6 @@ body {
   display: block;
   border-radius: 8px;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
-}
-
-.brand-icon-wrapper {
-  background: linear-gradient(135deg, #108910, #003D29);
-  color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.3rem;
-  box-shadow: 0 2px 8px rgba(16, 137, 16, 0.3);
 }
 
 .brand-name {
@@ -653,278 +638,6 @@ body {
 }
 
 /* ==========================================================================
-   BARRA DE NAVEGACIÓN DE CATEGORÍAS Y MENÚ DESPLEGABLE ESTILO INSTACART
-   ========================================================================== */
-.categories-nav-bar {
-  background: rgba(18, 9, 4, 0.55);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 2px solid rgba(0, 0, 0, 0.4);
-  padding: 8px 0;
-  position: relative;
-  z-index: 120;
-}
-
-.categories-nav-container {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* Wrapper del Menú Desplegable de Departamentos */
-.departments-dropdown-wrapper {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.btn-departments-menu {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(135deg, #108910 0%, #003D29 100%);
-  color: #FFFFFF;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  padding: 8px 18px;
-  border-radius: var(--radius-pill);
-  font-size: 0.9rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: 0 4px 14px rgba(16, 137, 16, 0.35);
-  white-space: nowrap;
-}
-
-.btn-departments-menu:hover,
-.btn-departments-menu.active {
-  background: linear-gradient(135deg, #139c13 0%, #024b33 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(16, 137, 16, 0.45);
-}
-
-.dropdown-arrow {
-  font-size: 0.75rem;
-  transition: transform 0.25s ease;
-}
-
-.btn-departments-menu.active .dropdown-arrow {
-  transform: rotate(180deg);
-}
-
-/* Menú Flotante Desplegable Estilo Instacart */
-.departments-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  width: 420px;
-  max-width: 92vw;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 20px;
-  box-shadow: var(--shadow-modal);
-  padding: 18px;
-  z-index: 200;
-  display: none;
-  animation: dropdownFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.departments-dropdown-menu.active {
-  display: block;
-}
-
-@keyframes dropdownFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.dropdown-header {
-  border-bottom: 1px solid var(--color-border);
-  padding-bottom: 10px;
-  margin-bottom: 12px;
-}
-
-.dropdown-title {
-  display: block;
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: var(--color-text-primary);
-}
-
-.dropdown-subtitle {
-  display: block;
-  font-size: 0.76rem;
-  color: var(--color-text-muted);
-  margin-top: 2px;
-}
-
-/* Grid de Departamentos */
-.departments-grid-menu {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  max-height: 380px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.dept-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--color-bg-body);
-  border: 1px solid var(--color-border);
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  color: var(--color-text-primary);
-}
-
-.dept-menu-item:hover {
-  background: var(--color-surface-hover);
-  border-color: var(--color-brand-green);
-  transform: translateX(2px);
-}
-
-.dept-menu-item.active {
-  background: var(--color-brand-green);
-  color: #FFFFFF;
-}
-
-.dept-item-icon {
-  font-size: 1.35rem;
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-surface);
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  flex-shrink: 0;
-  color: var(--color-brand-green);
-}
-
-.dept-menu-item.active .dept-item-icon {
-  background: rgba(255, 255, 255, 0.2);
-  color: #FFFFFF;
-}
-
-.dept-item-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.dept-item-name {
-  font-size: 0.82rem;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: inherit;
-}
-
-.dept-item-badge {
-  font-size: 0.68rem;
-  color: var(--color-brand-green);
-  font-weight: 600;
-}
-
-.dept-menu-item.active .dept-item-badge {
-  color: #E8F5E9;
-}
-
-.dropdown-footer {
-  border-top: 1px solid var(--color-border);
-  padding-top: 10px;
-  margin-top: 12px;
-  text-align: center;
-}
-
-.btn-dropdown-view-all {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: var(--color-surface-hover);
-  color: var(--color-text-primary);
-  font-size: 0.82rem;
-  font-weight: 700;
-  text-decoration: none;
-  transition: all 0.2s ease;
-}
-
-.btn-dropdown-view-all:hover {
-  background: var(--color-brand-green);
-  color: #FFFFFF;
-}
-
-/* Lista Horizontal Deslizable de Pills */
-.categories-pills-list {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  list-style: none;
-  white-space: nowrap;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  flex: 1;
-  padding: 2px 0;
-}
-
-.categories-pills-list::-webkit-scrollbar {
-  height: 4px;
-}
-
-.categories-pills-list::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
-
-.category-pill-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 15px;
-  border-radius: var(--radius-pill);
-  background-color: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #f3f4f6;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  backdrop-filter: blur(4px);
-  transition: all var(--transition-fast);
-}
-
-.category-pill-btn:hover {
-  background-color: rgba(255, 255, 255, 0.24);
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.35);
-}
-
-.category-pill-btn.active {
-  background-color: #108910;
-  color: #FFFFFF;
-  border-color: #108910;
-  box-shadow: 0 2px 8px rgba(16, 137, 16, 0.45);
-}
-
-.category-pill-icon {
-  font-size: 1.1rem;
-}
-
-/* ==========================================================================
    BANNER HERO Y PROMOS - CARRUSEL INTERACTIVO DE 3 PARTES
    ========================================================================== */
 .hero-section {
@@ -1189,26 +902,6 @@ body {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
 }
 
-.hero-coupon-badge {
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px dashed rgba(255, 255, 255, 0.5);
-  padding: 10px 16px;
-  border-radius: var(--radius-pill);
-  font-size: 0.88rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.hero-coupon-badge strong {
-  color: #FFF3EB;
-  font-family: monospace;
-  font-size: 1rem;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
 .hero-graphic {
   position: relative;
   z-index: 2;
@@ -1278,9 +971,7 @@ body {
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
 }
 
-.hero-banner:hover .banner-emoji-pattern,
-.promo-strip-banner:hover .banner-emoji-pattern,
-.mini-promo-card:hover .banner-emoji-pattern {
+.hero-banner:hover .banner-emoji-pattern {
   opacity: 0.34;
   transform: rotate(-4.5deg) scale(1.14);
 }
@@ -1320,291 +1011,6 @@ body {
   .emoji-pattern-row {
     animation: none !important;
   }
-}
-
-/* ==========================================================================
-   MINI-BANNERS DESTACADOS DEPARTAMENTALES
-   ========================================================================== */
-.mini-promos-section {
-  padding: 6px 0 18px 0;
-}
-
-.mini-promos-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-.mini-promo-card {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-  padding: 22px 24px;
-  color: white;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 155px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.mini-promo-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
-}
-
-.mini-promo-card.card-mayor {
-  background: linear-gradient(135deg, #003D29 0%, #064E3B 55%, #047857 100%);
-}
-
-.mini-promo-card.card-charcuteria {
-  background: linear-gradient(135deg, #7C2D12 0%, #C2410C 50%, #EA580C 100%);
-}
-
-.mini-promo-card.card-express {
-  background: linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4338CA 100%);
-}
-
-.mini-promo-content {
-  position: relative;
-  z-index: 2;
-}
-
-.mini-promo-pill {
-  display: inline-block;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(6px);
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
-}
-
-.mini-promo-card h3 {
-  font-size: 1.25rem;
-  font-weight: 800;
-  margin-bottom: 4px;
-  line-height: 1.25;
-}
-
-.mini-promo-card p {
-  font-size: 0.84rem;
-  color: rgba(255, 255, 255, 0.9);
-  line-height: 1.38;
-  margin-bottom: 12px;
-}
-
-.mini-promo-action {
-  position: relative;
-  z-index: 2;
-  font-size: 0.85rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #FFFFFF;
-}
-
-.mini-promo-action span {
-  transition: transform var(--transition-fast);
-}
-
-.mini-promo-card:hover .mini-promo-action span {
-  transform: translateX(4px);
-}
-
-/* ==========================================================================
-   BANNER PROMO STRIP HORIZONTAL (SUPER OFERTAS DE LA SEMANA)
-   ========================================================================== */
-.promo-strip-section {
-  padding: 10px 0 24px 0;
-}
-
-.promo-strip-banner {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(135deg, #1E1B4B 0%, #2E1065 40%, #581C87 100%);
-  color: white;
-  padding: 26px 36px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  box-shadow: 0 8px 24px rgba(46, 16, 101, 0.25);
-}
-
-.promo-strip-content {
-  position: relative;
-  z-index: 2;
-  max-width: 660px;
-}
-
-.promo-strip-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #F59E0B;
-  color: #78350F;
-  font-size: 0.74rem;
-  font-weight: 800;
-  padding: 4px 12px;
-  border-radius: var(--radius-pill);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 10px;
-}
-
-.promo-strip-title {
-  font-size: 1.45rem;
-  font-weight: 800;
-  line-height: 1.25;
-  margin-bottom: 6px;
-}
-
-.promo-strip-title strong {
-  color: #38BDF8;
-}
-
-.promo-strip-sub {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.88);
-  margin: 0;
-  line-height: 1.4;
-}
-
-.promo-strip-actions {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-
-.btn-promo-strip {
-  background: #FFFFFF;
-  color: #312E81;
-  font-size: 0.88rem;
-  font-weight: 800;
-  padding: 10px 18px;
-  border-radius: var(--radius-pill);
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn-promo-strip:hover {
-  background: #EEF2FF;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-}
-
-.btn-promo-strip-secondary {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  font-size: 0.88rem;
-  font-weight: 700;
-  padding: 10px 18px;
-  border-radius: var(--radius-pill);
-  text-decoration: none;
-  transition: all var(--transition-fast);
-  display: inline-flex;
-  align-items: center;
-}
-
-.btn-promo-strip-secondary:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
-}
-
-@media (max-width: 900px) {
-  .mini-promos-grid {
-    grid-template-columns: 1fr;
-  }
-  .promo-strip-banner {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 22px 18px;
-  }
-}
-
-/* ==========================================================================
-   TARJETAS DE BENEFICIOS (VALUE PROPS)
-   ========================================================================== */
-.value-props-section {
-  padding: 12px 0 24px 0;
-}
-
-.value-props-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-.value-prop-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 16px 18px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--transition-fast);
-}
-
-.value-prop-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--color-border-hover);
-}
-
-.value-prop-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--color-brand-soft);
-  color: var(--color-brand-green);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.4rem;
-  flex-shrink: 0;
-}
-
-.value-prop-card:nth-child(2) .value-prop-icon {
-  background: var(--color-accent-orange-soft);
-  color: var(--color-accent-orange);
-}
-
-.value-prop-card:nth-child(3) .value-prop-icon {
-  background: #EBF8FF;
-  color: #0284C7;
-}
-
-.value-prop-text h4 {
-  font-size: 0.95rem;
-  font-weight: 700;
-  margin-bottom: 2px;
-  color: var(--color-text-primary);
-}
-
-.value-prop-text p {
-  font-size: 0.8rem;
-  color: var(--color-text-secondary);
 }
 
 /* ==========================================================================
@@ -3101,10 +2507,6 @@ body {
   margin-bottom: 20px;
 }
 
-.form-field-full {
-  grid-column: 1 / -1;
-}
-
 .form-group label {
   display: block;
   font-size: 0.82rem;
@@ -3862,22 +3264,6 @@ body {
 .map-pin.store { left: 9%; }
 .map-pin.home { right: 9%; }
 
-.map-pin-pulse {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #10B981;
-  bottom: 24px;
-  animation: pinPulse 1.8s infinite;
-}
-
-@keyframes pinPulse {
-  0% { transform: scale(0.9); opacity: 0.9; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
-  70% { transform: scale(1.4); opacity: 0; box-shadow: 0 0 0 14px rgba(16, 185, 129, 0); }
-  100% { transform: scale(0.9); opacity: 0; }
-}
-
 /* ==========================================================================
    TOAST NOTIFICACIONES
    ========================================================================== */
@@ -4118,9 +3504,6 @@ body {
   .hero-graphic {
     margin-top: 20px;
   }
-  .value-props-grid {
-    grid-template-columns: 1fr;
-  }
   .footer-top-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -4243,37 +3626,6 @@ body {
     font-size: 0.95rem;
   }
 
-  /* Barra de Categorías y Menú Desplegable Móvil */
-  .categories-nav-bar {
-    padding: 6px 0;
-    -webkit-overflow-scrolling: touch;
-  }
-  .btn-departments-menu {
-    padding: 6px 12px;
-    font-size: 0.78rem;
-    gap: 6px;
-  }
-  .departments-dropdown-menu {
-    position: fixed;
-    top: auto;
-    bottom: 60px;
-    left: 8px;
-    right: 8px;
-    width: auto;
-    max-width: none;
-    border-radius: 20px 20px 0 0;
-    max-height: 75vh;
-  }
-  .departments-grid-menu {
-    grid-template-columns: 1fr;
-    max-height: 50vh;
-  }
-  .category-pill-btn {
-    padding: 5px 11px;
-    font-size: 0.78rem;
-    gap: 5px;
-  }
-
   /* Banner Hero y Carrusel en Celulares */
   .hero-section {
     padding: 12px 0 8px 0;
@@ -4332,12 +3684,6 @@ body {
   }
 
   /* Catálogo y Cuadrícula de Productos */
-  .section-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    margin-bottom: 14px;
-  }
   .section-title {
     font-size: 1.25rem;
   }
@@ -4361,29 +3707,10 @@ body {
     min-height: 32px !important;
     margin-bottom: 4px !important;
   }
-  .product-meta-row {
-    font-size: 0.68rem !important;
-    margin-bottom: 6px !important;
-    gap: 4px !important;
-  }
-  .product-price-primary {
-    font-size: 1.05rem !important;
-  }
-  .product-price-bs {
-    font-size: 0.72rem !important;
-  }
-  .product-price-cop {
-    font-size: 0.68rem !important;
-  }
   .product-wholesale-tag {
     font-size: 0.66rem !important;
     padding: 2px 6px !important;
     margin-top: 4px !important;
-  }
-  .btn-add-cart {
-    padding: 7px 10px !important;
-    font-size: 0.82rem !important;
-    border-radius: var(--radius-pill) !important;
   }
   .product-badge-pill {
     top: 8px !important;

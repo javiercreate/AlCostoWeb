@@ -135,7 +135,6 @@ const SupabaseService = {
           needTables: true
         };
       } else {
-        const errorText = await res.text();
         return { success: false, message: `Error (${res.status}): Revisa tu Anon Key o URL.` };
       }
     } catch (err) {
@@ -422,7 +421,6 @@ const SupabaseService = {
       // Sin conexión: estado desconocido (undefined). NO se limpia la sesión.
       return undefined;
     }
-    return null;
   },
 
   // Configuración predeterminada de métodos de pago (Pago Móvil, Zelle, Binance Pay, Efectivo)

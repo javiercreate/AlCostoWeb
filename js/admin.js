@@ -818,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <tr>
           <td>
             <div style="display: flex; align-items: center; gap: 10px;">
-              <img src="${p.image}" class="admin-thumb" alt="${p.name}" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80'">
+              <img src="${p.image}" class="admin-thumb" alt="${p.name}" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80'">
               <div>
                 <strong>${p.name}</strong>
                 <div style="font-size: 0.72rem; color: #888;">ID: ${p.id}</div>
@@ -1107,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const wholesalePrice = prodWholesalePriceInput.value ? parseFloat(prodWholesalePriceInput.value) : null;
       const wholesaleMin = prodWholesaleMinInput.value ? parseInt(prodWholesaleMinInput.value, 10) : 1;
       const unit = prodUnitInput.value.trim();
-      const image = prodImageInput.value.trim() || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80';
+      const image = prodImageInput.value.trim() || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80';
       const badge = prodBadgeInput.value.trim();
       // El textarea de descripción fue retirado del formulario: al editar se conserva la descripción existente
       const description = prodDescriptionInput
@@ -1622,7 +1622,9 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = (event) => {
           const img = new Image();
           img.onload = () => {
-            const maxDim = 500;
+            // 900px en el lado largo: suficiente para tarjetas Retina/HiDPI y el
+            // modal de vista rápida sin verse pixelado (antes 500px se veía borroso)
+            const maxDim = 900;
             let width = img.width;
             let height = img.height;
             if (width > height && width > maxDim) {
@@ -1640,6 +1642,11 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.drawImage(img, 0, 0, width, height);
 
             const isPng = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png') || file.type === 'image/webp';
+            // WebP comprime mucho mejor que PNG/JPEG manteniendo la transparencia
+            let webpSupported = false;
+            try {
+              webpSupported = canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+            } catch (err) { webpSupported = false; }
             
             // Si la imagen es PNG o subida, limpiar fondos oscuros/negros artificiales
             if (isPng) {
@@ -1665,8 +1672,8 @@ document.addEventListener('DOMContentLoaded', () => {
               }
             }
 
-            const outputMime = isPng ? 'image/png' : 'image/jpeg';
-            const outputQuality = isPng ? undefined : 0.85;
+            const outputMime = webpSupported ? 'image/webp' : (isPng ? 'image/png' : 'image/jpeg');
+            const outputQuality = (outputMime === 'image/png') ? undefined : 0.86;
 
             const compressedDataUrl = canvas.toDataURL(outputMime, outputQuality);
             prodImageInput.value = compressedDataUrl;
@@ -1857,9 +1864,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (aiPhotoDimsBadge) aiPhotoDimsBadge.textContent = `${result.width} x ${result.height} px`;
         if (aiPhotoHint) {
-          aiPhotoHint.textContent = result.bytes <= 200 * 1024
-            ? 'Fondo transparente y peso liviano (< 200 KB) listo para publicar'
-            : '⚠️ La imagen pesa más de 200 KB; se conservó el menor tamaño posible';
+          const maxBytes = (typeof AIPhoto !== 'undefined' && AIPhoto.DEFAULT_MAX_BYTES) || 260 * 1024;
+          const maxKb = Math.round(maxBytes / 1024);
+          aiPhotoHint.textContent = result.bytes <= maxBytes
+            ? `Fondo transparente y peso liviano (< ${maxKb} KB) listo para publicar`
+            : `⚠️ La imagen pesa más de ${maxKb} KB; se conservó el menor tamaño posible`;
         }
         showAiPanelState('result');
 
@@ -1868,8 +1877,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           showToast('⚠️ La IA no estuvo disponible: se aplicó recorte básico de respaldo');
         }
-        if (result.bytes > 200 * 1024) {
-          showToast(`⚠️ La foto pesa ${Math.round(result.bytes / 1024)} KB (objetivo: menos de 200 KB)`, 'error');
+        const maxBytes = (typeof AIPhoto !== 'undefined' && AIPhoto.DEFAULT_MAX_BYTES) || 260 * 1024;
+        if (result.bytes > maxBytes) {
+          showToast(`⚠️ La foto pesa ${Math.round(result.bytes / 1024)} KB (objetivo: menos de ${Math.round(maxBytes / 1024)} KB)`, 'error');
         }
       } catch (err) {
         if (jobId !== aiJobId) return;

@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // --- ELEMENTOS DEL DOM ---
-  const categoriesListEl = document.getElementById('categoriesPillsList');
   const deptRailIconsListEl = document.getElementById('deptRailIconsList');
   const productsGridEl = document.getElementById('productsGrid');
   const sectionTitleEl = document.getElementById('catalogSectionTitle');
@@ -118,6 +117,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const toastContainerEl = document.getElementById('toastContainer');
   let catalogLoadState = 'loading';
   let catalogLoadRequest = 0;
+  // Caché local del último catálogo conocido: pinta la tienda al instante en cargas
+  // siguientes mientras Supabase responde (evita la pantalla "Cargando catálogo...")
+  const CATALOG_CACHE_KEY = 'alcosto_catalog_cache';
 
   // ==========================================================================
   // ESTADO Y UI DE AUTENTICACIÓN (LOGIN / REGISTRO / PERFIL)
@@ -159,18 +161,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
   }
 
+  // Lee el último catálogo guardado en este navegador (pintado instantáneo)
+  function loadCatalogCacheSnapshot() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) || 'null');
+      if (Array.isArray(cached) && cached.length > 0) {
+        return (typeof stripLegacyDefaultProducts === 'function')
+          ? stripLegacyDefaultProducts(cached)
+          : cached;
+      }
+    } catch (e) {
+      // Caché corrupta: se ignora y se consulta la nube
+    }
+    return null;
+  }
+
   async function loadCatalogProductsFromDatabase() {
     const requestId = ++catalogLoadRequest;
+
+    // Pintado instantáneo desde la caché local (si la hay) mientras la nube responde
+    if (PRODUCTS_DATA.length === 0) {
+      const snapshot = loadCatalogCacheSnapshot();
+      if (snapshot) {
+        PRODUCTS_DATA = snapshot;
+        catalogLoadState = 'ready';
+        renderProducts();
+      }
+    }
+
     const config = typeof SupabaseService !== 'undefined' ? SupabaseService.getConfig() : null;
     if (!config || !config.connected || !config.url || !config.anonKey) {
-      PRODUCTS_DATA = [];
-      catalogLoadState = 'missing-config';
-      renderProducts();
+      if (PRODUCTS_DATA.length === 0) {
+        PRODUCTS_DATA = [];
+        catalogLoadState = 'missing-config';
+        renderProducts();
+      }
       return;
     }
 
-    catalogLoadState = 'loading';
-    renderProducts();
+    // Solo muestra el estado "Cargando" si no hay nada pintado aún (sin caché)
+    if (PRODUCTS_DATA.length === 0) {
+      catalogLoadState = 'loading';
+      renderProducts();
+    }
     try {
       const databaseProducts = await SupabaseService.fetchProductsFromSupabase();
       if (requestId !== catalogLoadRequest) return;
@@ -182,11 +215,19 @@ document.addEventListener('DOMContentLoaded', () => {
         ? stripLegacyDefaultProducts(databaseProducts)
         : databaseProducts;
       catalogLoadState = 'ready';
+      try {
+        localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify(PRODUCTS_DATA));
+      } catch (e) {
+        // Cuota llena: la caché local es solo un acelerador, no esencial
+      }
     } catch (error) {
       if (requestId !== catalogLoadRequest) return;
       console.error('No se pudo cargar el catálogo desde Supabase:', error);
-      PRODUCTS_DATA = [];
-      catalogLoadState = 'error';
+      // Si hay caché previa se conserva para que la tienda siga siendo navegable
+      if (PRODUCTS_DATA.length === 0) {
+        PRODUCTS_DATA = [];
+        catalogLoadState = 'error';
+      }
     }
     renderProducts();
   }
@@ -309,9 +350,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Filtros rápidos de categoría desde cualquier banner o tarjeta
-    document.querySelectorAll('[data-filter-category], .hero-filter-charcuteria-btn').forEach(btn => {
+    document.querySelectorAll('[data-filter-category]').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const cat = btn.getAttribute('data-filter-category') || 'charcuteria';
+        const cat = btn.getAttribute('data-filter-category');
         if (cat) {
           setActiveCategory(cat);
           const target = document.getElementById('catalogo');
@@ -330,7 +371,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   function renderCategoryPills() {
     renderVerticalDeptRail();
-    renderDepartmentsDropdown();
   }
 
   function renderVerticalDeptRail() {
@@ -358,79 +398,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     });
-  }
-
-  function renderDepartmentsDropdown() {
-    const gridMenuEl = document.getElementById('departmentsGridMenu');
-    const dropdownMenuEl = document.getElementById('departmentsDropdownMenu');
-    const btnMenu = document.getElementById('btnDepartmentsMenu');
-    const btnViewAll = document.getElementById('btnViewAllFromDropdown');
-
-    if (!gridMenuEl) return;
-
-    gridMenuEl.innerHTML = CATEGORIES.map(cat => {
-      const iconClass = cat.icon.startsWith('fa-') ? cat.icon : `fa-solid ${cat.icon}`;
-      return `
-        <div class="dept-menu-item ${cat.id === state.activeCategory ? 'active' : ''}" data-cat-id="${cat.id}" role="menuitem">
-          <span class="dept-item-icon"><i class="${iconClass}"></i></span>
-          <div class="dept-item-info">
-            <span class="dept-item-name">${cat.name}</span>
-            <span class="dept-item-badge">${cat.badge || 'Pasillo'}</span>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    gridMenuEl.querySelectorAll('.dept-menu-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const catId = item.getAttribute('data-cat-id');
-        setActiveCategory(catId);
-        if (dropdownMenuEl) dropdownMenuEl.classList.remove('active');
-        if (btnMenu) {
-          btnMenu.classList.remove('active');
-          btnMenu.setAttribute('aria-expanded', 'false');
-        }
-        const target = document.getElementById('catalogo');
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth' });
-        }
-      });
-    });
-
-    if (btnViewAll) {
-      btnViewAll.onclick = (e) => {
-        e.preventDefault();
-        setActiveCategory('todos');
-        if (dropdownMenuEl) dropdownMenuEl.classList.remove('active');
-        if (btnMenu) {
-          btnMenu.classList.remove('active');
-          btnMenu.setAttribute('aria-expanded', 'false');
-        }
-        const target = document.getElementById('catalogo');
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth' });
-        }
-      };
-    }
-
-    if (btnMenu && !btnMenu.dataset.listenerAttached) {
-      btnMenu.dataset.listenerAttached = 'true';
-      btnMenu.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isOpen = dropdownMenuEl.classList.toggle('active');
-        btnMenu.classList.toggle('active', isOpen);
-        btnMenu.setAttribute('aria-expanded', String(isOpen));
-      });
-
-      // Cerrar al hacer clic fuera
-      document.addEventListener('click', (e) => {
-        if (!e.target.closest('#departmentsDropdownWrapper')) {
-          if (dropdownMenuEl) dropdownMenuEl.classList.remove('active');
-          btnMenu.classList.remove('active');
-          btnMenu.setAttribute('aria-expanded', 'false');
-        }
-      });
-    }
   }
 
   function setActiveCategory(catId) {
@@ -475,9 +442,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Filtro por búsqueda
       if (state.searchQuery.trim() !== '') {
         const query = state.searchQuery.toLowerCase();
-        const matchName = prod.name.toLowerCase().includes(query);
-        const matchDesc = prod.description.toLowerCase().includes(query);
-        const matchCategory = prod.category.toLowerCase().includes(query);
+        const matchName = (prod.name || '').toLowerCase().includes(query);
+        const matchDesc = (prod.description || '').toLowerCase().includes(query);
+        const matchCategory = (prod.category || '').toLowerCase().includes(query);
         if (!matchName && !matchDesc && !matchCategory) {
           return false;
         }
@@ -631,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </button>
           
           <div class="product-image-wrap open-detail-trigger" data-id="${product.id}">
-            <img src="${product.image}" alt="${product.name}" class="product-image" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80'">
+            <img src="${product.image}" alt="${product.name}" class="product-image" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80'">
             <span class="quick-view-hint">🔍 Vista rápida</span>
           </div>
 
@@ -941,7 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const itemSubtotal = (activePrice * item.quantity).toFixed(2);
       return `
         <div class="cart-item-row" data-id="${item.product.id}">
-          <img src="${item.product.image}" alt="${item.product.name}" class="cart-item-thumb">
+          <img src="${item.product.image}" alt="${item.product.name}" class="cart-item-thumb" loading="lazy" decoding="async">
           
           <div class="cart-item-info">
             <h4 class="cart-item-title">${item.product.name}</h4>
@@ -1023,7 +990,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modalBody.innerHTML = `
       <div class="product-detail-layout">
         <div class="modal-img-container">
-          <img src="${product.image}" alt="${product.name}">
+          <img src="${product.image}" alt="${product.name}" decoding="async">
         </div>
 
         <div class="modal-product-content">
@@ -2292,8 +2259,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
-  // BÚSQUEDA EN TIEMPO REAL CON SUGERENCIAS
+  // BÚSQUEDA EN TIEMPO CON SUGERENCIAS (grid con debounce ligero)
   // ==========================================================================
+  let searchGridRenderTimer = null;
   function handleSearchInput(e) {
     const val = e.target.value;
     state.searchQuery = val;
@@ -2304,13 +2272,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!val.trim()) {
       if (searchDropdownEl) searchDropdownEl.classList.remove('active');
+      clearTimeout(searchGridRenderTimer);
       renderProducts();
       return;
     }
 
-    const matches = PRODUCTS_DATA.filter(p => 
-      p.name.toLowerCase().includes(val.toLowerCase()) || 
-      p.category.toLowerCase().includes(val.toLowerCase())
+    const matches = PRODUCTS_DATA.filter(p =>
+      (p.name || '').toLowerCase().includes(val.toLowerCase()) ||
+      (p.category || '').toLowerCase().includes(val.toLowerCase())
     ).slice(0, 5);
 
     if (matches.length > 0 && searchDropdownEl) {
@@ -2338,7 +2307,9 @@ document.addEventListener('DOMContentLoaded', () => {
       searchDropdownEl.classList.remove('active');
     }
 
-    renderProducts();
+    // Repinta el grid tras una pausa de tecleo (evita repintar en cada pulsación)
+    clearTimeout(searchGridRenderTimer);
+    searchGridRenderTimer = setTimeout(renderProducts, 150);
   }
 
   // ==========================================================================
@@ -2881,8 +2852,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Escuchar actualizaciones de tasas en vivo desde la API o admin
     // (el indicador de tasas del header fue retirado; solo se re-renderiza catálogo y carrito)
     window.addEventListener('alcosto:rates-updated', () => {
-      if (typeof renderProducts === 'function') renderProducts();
-      if (typeof renderCart === 'function') renderCart();
+      renderProducts();
+      updateCartUI();
     });
 
     // Escuchar cambios en productos en tiempo real (creados, editados o eliminados desde admin.html)
@@ -2937,13 +2908,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (mobileNavDeals) {
       mobileNavDeals.addEventListener('click', () => {
-        const promoFilter = document.querySelector('.filter-tag-chip[data-filter="ofertas"]');
+        // El chip real del catálogo usa data-tag="oferta" (antes nunca coincidía y el botón no filtraba)
+        const promoFilter = document.querySelector('.filter-tag-chip[data-tag="oferta"]');
         if (promoFilter) {
           promoFilter.click();
         }
-        const productsGridEl = document.getElementById('productsGrid');
-        if (productsGridEl) {
-          productsGridEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const catalogSection = document.getElementById('catalogo');
+        if (catalogSection) {
+          catalogSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
         mobileNavDeals.classList.add('active');
@@ -2952,8 +2924,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (mobileNavWishlist) {
       mobileNavWishlist.addEventListener('click', () => {
-        const wishlistBtn = document.getElementById('wishlistBtn');
-        if (wishlistBtn) wishlistBtn.click();
+        // Reutiliza la lógica del botón de favoritos del header (no existía #wishlistBtn)
+        if (wishlistHeaderBtn) wishlistHeaderBtn.click();
         document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
         mobileNavWishlist.classList.add('active');
       });

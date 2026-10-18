@@ -149,20 +149,6 @@ if (typeof window !== 'undefined') {
   }, 1000);
 }
 
-function formatMultiPrice(priceInUSD) {
-  const usd = parseFloat(priceInUSD || 0);
-  const bs = (usd * CURRENCY_RATES.BS).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const cop = Math.round(usd * CURRENCY_RATES.COP).toLocaleString('es-CO');
-  return {
-    usd: `$${usd.toFixed(2)}`,
-    bs: `${bs} Bs`,
-    cop: `${cop} COP`,
-    rawUsd: usd,
-    rawBs: usd * CURRENCY_RATES.BS,
-    rawCop: usd * CURRENCY_RATES.COP
-  };
-}
-
 const CATEGORIES = [
   { id: 'todos', name: 'Todos', icon: 'fa-solid fa-border-all', badge: 'CatÃ¡logo' },
   { id: 'al-mayor', name: 'Al Mayor', icon: 'fa-solid fa-boxes-stacked', badge: 'Ahorro Bulto' },
@@ -313,24 +299,3 @@ PRODUCTS_DATA = [];
 
 // UbicaciÃ³n y Coordenadas del Local Al Costo
 const STORE_COORDINATES = '7Âº48\'25.6"N 71Âº11\'12.3"W';
-const STORE_MAPS_URL = 'https://www.google.com/maps?q=7.807111,-71.186750';
-
-// Direcciones preconfiguradas para entrega rÃ¡pida
-const PRESET_ADDRESSES = [
-  { 
-    id: 'addr-delivery', 
-    label: 'Entrega a Domicilio', 
-    address: 'Configura tu direcciÃ³n en "Mis Datos"', 
-    zip: '5101', 
-    timeEst: '25-45 min' 
-  },
-  { 
-    id: 'addr-pickup', 
-    label: 'Recoger en Tienda Al Costo (Gratis)', 
-    address: `Sede Al Costo (Coords: ${STORE_COORDINATES})`, 
-    zip: '5101', 
-    timeEst: 'Listo en 15 min',
-    coords: STORE_COORDINATES,
-    mapsUrl: STORE_MAPS_URL
-  }
-];
