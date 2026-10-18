@@ -402,12 +402,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // Badge flotante moderno
+      // Badge flotante moderno (sin etiqueta de descuento % OFF)
       let badgeHtml = '';
-      if (product.originalPrice) {
-        const discountPct = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
-        badgeHtml = `<span class="product-badge-pill badge-offer">🔥 -${discountPct}% OFF</span>`;
-      } else if (product.wholesalePrice || product.category === 'al-mayor') {
+      if (product.wholesalePrice || product.category === 'al-mayor') {
         badgeHtml = `<span class="product-badge-pill badge-wholesale">📦 Al Mayor</span>`;
       } else if (product.badge) {
         badgeHtml = `<span class="product-badge-pill badge-custom">${product.badge}</span>`;
