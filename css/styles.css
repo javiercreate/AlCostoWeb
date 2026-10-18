@@ -588,6 +588,30 @@ body {
 .dept-bar::-webkit-scrollbar {
   display: none;
 }
+/* Pista del bucle continuo: dos copias idénticas de los chips en fila */
+.dept-bar-track {
+  display: flex;
+  width: max-content;
+  animation: dept-bar-marquee 30s linear infinite;
+}
+.dept-bar-group {
+  display: flex;
+  gap: 8px;
+  padding-right: 8px; /* iguala el pitch para que -50% sea un bucle sin saltos */
+  flex-shrink: 0;
+}
+.dept-bar-track.dept-track-paused,
+.dept-bar:hover .dept-bar-track,
+.dept-bar:focus-within .dept-bar-track {
+  animation-play-state: paused;
+}
+@keyframes dept-bar-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dept-bar-track { animation: none !important; }
+}
 .dept-chip {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);

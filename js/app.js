@@ -145,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     await loadCatalogProductsFromDatabase();
     updateCartUI();
     updateWishlistBadge();
+    initDeptBarLoop();
     setupEventListeners();
 
     // Reabrir el seguimiento del pedido activo (si el cliente recargó la página)
@@ -285,6 +286,39 @@ document.addEventListener('DOMContentLoaded', () => {
         : (value === state.activeFilterTag);
       chip.classList.toggle('active', isActive);
     });
+  }
+
+  // Duplica los chips para crear el bucle continuo y configura la velocidad
+  function initDeptBarLoop() {
+    if (!deptBarEl) return;
+    const track = document.getElementById('deptBarTrack');
+    const group = track ? track.querySelector('.dept-bar-group') : null;
+    if (!track || !group) return;
+
+    // Solo clonar una vez (idempotente)
+    if (!track.querySelector('.dept-bar-group[data-clone]')) {
+      const clone = group.cloneNode(true);
+      clone.setAttribute('data-clone', 'true');
+      clone.setAttribute('aria-hidden', 'true');
+      clone.querySelectorAll('.dept-chip').forEach(btn => btn.setAttribute('tabindex', '-1'));
+      // Los clones siguen siendo clicables (el listener está delegado en deptBar)
+      track.appendChild(clone);
+    }
+
+    // Velocidad constante (~45 px/s) proporcional al ancho de una vuelta
+    const halfWidth = track.scrollWidth / 2;
+    if (halfWidth > 0) {
+      track.style.animationDuration = Math.max(18, Math.round(halfWidth / 45)) + 's';
+    }
+
+    // Pausar mientras el usuario toca/arrastra para poder pulsar con precisión
+    const pause = () => track.classList.add('dept-track-paused');
+    const resume = () => track.classList.remove('dept-track-paused');
+    deptBarEl.addEventListener('touchstart', pause, { passive: true });
+    deptBarEl.addEventListener('touchend', resume);
+    deptBarEl.addEventListener('pointerdown', pause);
+    deptBarEl.addEventListener('pointerup', resume);
+    deptBarEl.addEventListener('pointerleave', resume);
   }
 
   function renderProducts() {
