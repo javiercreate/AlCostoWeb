@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Producto sin foto">
+  <rect width="400" height="400" fill="#F1F5F3"/>
+  <rect x="60" y="60" width="280" height="280" rx="24" fill="#FFFFFF" stroke="#D8E0DB" stroke-width="4" stroke-dasharray="14 10"/>
+  <g fill="none" stroke="#9AA7A0" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M132 168h136l-14 112a16 16 0 0 1-16 14H162a16 16 0 0 1-16-14z"/>
+    <path d="M164 168a36 36 0 0 1 72 0"/>
+  </g>
+  <text x="200" y="330" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" fill="#7A857F">Sin foto</text>
+</svg>

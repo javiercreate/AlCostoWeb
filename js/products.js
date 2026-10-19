@@ -241,6 +241,38 @@ function stripLegacyDefaultProducts(list) {
   return list.filter(p => !isLegacyDefaultProduct(p));
 }
 
+// ==========================================================================
+// FOTO GENÉRICA ANTIGUA DE PRODUCTO (ELIMINADA DEL CÓDIGO)
+// La imagen de mercado de Unsplash se usaba en la plantilla original como
+// foto predeterminada y de respaldo de los productos. Ya no se usa en ninguna
+// parte: los productos sin foto (o guardados con esa imagen) se muestran con
+// el placeholder local img/producto-sin-foto.svg.
+// ==========================================================================
+const LEGACY_DEFAULT_IMAGE_PATTERN = /images\.unsplash\.com\/photo-1542838132-92c53300491e/i;
+const PRODUCT_IMAGE_PLACEHOLDER = 'img/producto-sin-foto.svg';
+
+// Devuelve '' cuando la imagen falta o es la foto genérica antigua
+function sanitizeProductImage(url) {
+  if (typeof url !== 'string') return '';
+  const clean = url.trim();
+  if (!clean || LEGACY_DEFAULT_IMAGE_PATTERN.test(clean)) return '';
+  return clean;
+}
+
+// Limpia las fotos genéricas antiguas de una lista completa de productos
+function sanitizeProductImages(list) {
+  if (!Array.isArray(list)) return [];
+  return list.map(p => {
+    if (!p || typeof p !== 'object') return p;
+    return { ...p, image: sanitizeProductImage(p.image) };
+  });
+}
+
+// URL a pintar en la interfaz: placeholder local si no hay foto válida
+function getProductImageSrc(url) {
+  return sanitizeProductImage(url) || PRODUCT_IMAGE_PLACEHOLDER;
+}
+
 var PRODUCTS_DATA = [];
 
 // FunciÃ³n para obtener productos activos (carga de localStorage si tiene datos vÃ¡lidos, y si no, carga products.js)
@@ -251,7 +283,7 @@ function getActiveProducts() {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
         // Bloqueo: si en este navegador aÃºn quedan productos demo guardados, se descartan
-        PRODUCTS_DATA = stripLegacyDefaultProducts(parsed);
+        PRODUCTS_DATA = sanitizeProductImages(stripLegacyDefaultProducts(parsed));
         if (PRODUCTS_DATA.length > 0) return PRODUCTS_DATA;
       }
     }
@@ -260,7 +292,7 @@ function getActiveProducts() {
   }
 
   // Cargar catÃ¡logo base de products.js (hoy vacÃ­o: solo existen productos cargados manualmente por el dueÃ±o)
-  PRODUCTS_DATA = stripLegacyDefaultProducts(DEFAULT_PRODUCTS);
+  PRODUCTS_DATA = sanitizeProductImages(stripLegacyDefaultProducts(DEFAULT_PRODUCTS));
   return PRODUCTS_DATA;
 }
 
@@ -268,7 +300,7 @@ function getActiveProducts() {
 function saveActiveProducts(productsList) {
   if (!Array.isArray(productsList)) return;
   // Bloqueo: jamÃ¡s permitir que productos demo predeterminados se guarden o republicuen
-  productsList = stripLegacyDefaultProducts(productsList);
+  productsList = sanitizeProductImages(stripLegacyDefaultProducts(productsList));
   try {
     localStorage.setItem('alcosto_custom_products', JSON.stringify(productsList));
   } catch (quotaError) {
@@ -276,7 +308,7 @@ function saveActiveProducts(productsList) {
     // Si la cuota de localStorage se llena por fotos pesadas, aseguramos que los datos se guarden
     const optimized = productsList.map(p => {
       if (p.image && p.image.length > 200000 && p.image.startsWith('data:image')) {
-        return { ...p, image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80' };
+        return { ...p, image: '' };
       }
       return p;
     });

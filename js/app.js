@@ -440,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <article class="product-card" data-product-id="${product.id}">
           ${badgeHtml}
           <div class="product-image-wrap open-detail-trigger" data-id="${product.id}">
-            <img src="${product.image}" alt="${product.name}" class="product-image" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80'">
+            <img src="${getProductImageSrc(product.image)}" alt="${product.name}" class="product-image" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='${PRODUCT_IMAGE_PLACEHOLDER}'">
             <span class="quick-view-hint">🔍 Vista rápida</span>
           </div>
 
@@ -742,7 +742,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const itemSubtotal = (activePrice * item.quantity).toFixed(2);
       return `
         <div class="cart-item-row" data-id="${item.product.id}">
-          <img src="${item.product.image}" alt="${item.product.name}" class="cart-item-thumb" loading="lazy" decoding="async">
+          <img src="${getProductImageSrc(item.product.image)}" alt="${item.product.name}" class="cart-item-thumb" loading="lazy" decoding="async">
           
           <div class="cart-item-info">
             <h4 class="cart-item-title">${item.product.name}</h4>
@@ -824,7 +824,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modalBody.innerHTML = `
       <div class="product-detail-layout">
         <div class="modal-img-container">
-          <img src="${product.image}" alt="${product.name}" decoding="async">
+          <img src="${getProductImageSrc(product.image)}" alt="${product.name}" decoding="async">
         </div>
 
         <div class="modal-product-content">
@@ -2119,7 +2119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (matches.length > 0 && searchDropdownEl) {
       searchDropdownEl.innerHTML = matches.map(p => `
         <div class="suggestion-item" data-id="${p.id}">
-          <img src="${p.image}" class="suggestion-thumb" alt="${p.name}">
+          <img src="${getProductImageSrc(p.image)}" class="suggestion-thumb" alt="${p.name}">
           <div class="suggestion-details">
             <div class="suggestion-name">${p.name}</div>
             <div class="suggestion-meta">${p.unit}</div>

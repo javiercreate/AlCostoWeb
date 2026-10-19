@@ -208,6 +208,22 @@ const SupabaseService = {
     }
   },
 
+  // Elimina un producto del catálogo publicado (la tienda deja de mostrarlo)
+  async deleteProductFromSupabase(productId) {
+    const config = this.getConfig();
+    if (!config.url || !config.anonKey) return { ok: false, skipped: true };
+    try {
+      const res = await fetch(`${config.url}/rest/v1/productos?id=eq.${encodeURIComponent(productId)}`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+      return { ok: res.ok, status: res.status };
+    } catch (err) {
+      console.warn('No se pudo eliminar el producto de Supabase:', err);
+      return { ok: false, error: err };
+    }
+  },
+
   // Obtener productos desde Supabase
   async fetchProductsFromSupabase() {
     const config = this.getConfig();
@@ -238,7 +254,7 @@ const SupabaseService = {
         wholesalePrice: item.wholesale_price ? parseFloat(item.wholesale_price) : null,
         wholesaleMin: item.wholesale_min || 1,
         unit: item.unit,
-        image: item.image,
+        image: (typeof sanitizeProductImage === 'function') ? sanitizeProductImage(item.image) : item.image,
         badge: item.badge,
         tag: item.original_price ? 'oferta' : 'popular',
         description: item.description,

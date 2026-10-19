@@ -736,9 +736,30 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error cargando catálogo:', e);
       products = (typeof DEFAULT_PRODUCTS !== 'undefined') ? [...DEFAULT_PRODUCTS] : [];
     }
+    // LA NUBE COMO FUENTE DE VERDAD: si Supabase tiene catálogo publicado (los
+    // productos cargados manualmente viven ahí), el panel lo muestra aunque el
+    // localStorage de este equipo esté vacío, borrado o corrupto.
+    try {
+      if (typeof SupabaseService !== 'undefined') {
+        const cloudProducts = await SupabaseService.fetchProductsFromSupabase();
+        if (Array.isArray(cloudProducts) && cloudProducts.length > 0) {
+          const cloudIds = new Set(cloudProducts.map(p => p.id));
+          const localDrafts = (Array.isArray(products) ? products : [])
+            .filter(p => p && p.id && !cloudIds.has(p.id));
+          products = [...cloudProducts, ...localDrafts];
+          // Caché local: permite seguir editando si la nube no responde después
+          if (typeof saveActiveProducts === 'function') {
+            saveActiveProducts(products);
+          }
+        }
+      }
+    } catch (cloudError) {
+      console.warn('No se pudo consultar el catálogo publicado en Supabase:', cloudError);
+    }
+
     // BLOQUEO: descartar productos demo predeterminados arrastrados desde localStorage o copias viejas
     if (typeof stripLegacyDefaultProducts === 'function') {
-      products = stripLegacyDefaultProducts(products);
+      products = sanitizeProductImages(stripLegacyDefaultProducts(products));
     }
     renderProductsTable();
   }
@@ -818,7 +839,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <tr>
           <td>
             <div style="display: flex; align-items: center; gap: 10px;">
-              <img src="${p.image}" class="admin-thumb" alt="${p.name}" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80'">
+              <img src="${getProductImageSrc(p.image)}" class="admin-thumb" alt="${p.name}" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='${PRODUCT_IMAGE_PLACEHOLDER}'">
               <div>
                 <strong>${p.name}</strong>
                 <div style="font-size: 0.72rem; color: #888;">ID: ${p.id}</div>
@@ -1091,6 +1112,19 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       renderProductsTable();
       showToast(`🗑️ "${prod.name}" eliminado del catálogo`);
+
+      // El borrado también se baja del catálogo publicado para que la tienda deje de mostrarlo
+      if (typeof SupabaseService !== 'undefined' && SupabaseService.getConfig().connected) {
+        SupabaseService.deleteProductFromSupabase(id)
+          .then(res => {
+            if (res && res.ok) {
+              showToast('☁️ También se eliminó del catálogo publicado (Supabase)', 'success');
+            } else {
+              showToast('⚠️ Se borró en este dispositivo; pulsa "Publicar en Supabase" para borrarlo también de la nube', 'warning');
+            }
+          })
+          .catch(() => {});
+      }
     }
   }
 
@@ -1107,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const wholesalePrice = prodWholesalePriceInput.value ? parseFloat(prodWholesalePriceInput.value) : null;
       const wholesaleMin = prodWholesaleMinInput.value ? parseInt(prodWholesaleMinInput.value, 10) : 1;
       const unit = prodUnitInput.value.trim();
-      const image = prodImageInput.value.trim() || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80';
+      const image = (typeof sanitizeProductImage === 'function') ? sanitizeProductImage(prodImageInput.value.trim()) : prodImageInput.value.trim();
       const badge = prodBadgeInput.value.trim();
       // El textarea de descripción fue retirado del formulario: al editar se conserva la descripción existente
       const description = prodDescriptionInput
