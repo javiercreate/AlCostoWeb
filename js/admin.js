@@ -833,7 +833,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const rowsHtml = filtered.map(p => {
       const catObj = CATEGORIES.find(c => c.id === p.category);
-      const catLabel = catObj ? `${catObj.icon} ${catObj.name}` : p.category;
+      // El ícono de FontAwesome se renderiza como <i>, nunca como texto:
+      // antes la clase "fa-solid fa-wheat-awn" aparecía escrita dentro del badge.
+      const catLabel = catObj ? `<i class="${catObj.icon}" aria-hidden="true"></i> ${catObj.name}` : p.category;
 
       return `
         <tr>

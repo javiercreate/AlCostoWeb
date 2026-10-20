@@ -5,7 +5,7 @@ let CURRENCY_RATES = {
   COP: 3800     // Tasa actual de COP
 };
 
-// Cargar tasas dinÃ¡micas guardadas en localStorage
+// Cargar tasas dinámicas guardadas en localStorage
 (function loadSavedRates() {
   try {
     const saved = localStorage.getItem('alcosto_rates');
@@ -57,7 +57,7 @@ async function fetchWithTimeout(url, timeoutMs = 4000) {
 /**
  * Consulta las tasas de cambio de Venezuela (Bs / VES) y Colombia (COP)
  * Prioriza Open Exchange API (con soporte oficial para VES y COP sin bloqueos)
- * y cuenta con fuentes de contingencia automÃ¡ticas.
+ * y cuenta con fuentes de contingencia automáticas.
  */
 async function syncDailyExchangeRates(force = false) {
   const today = new Date().toISOString().slice(0, 10);
@@ -137,12 +137,12 @@ async function syncDailyExchangeRates(force = false) {
   } else {
     return {
       success: false,
-      message: 'No se pudo contactar con los servidores de tasa del dÃ­a, se mantuvieron las tasas actuales.'
+      message: 'No se pudo contactar con los servidores de tasa del día, se mantuvieron las tasas actuales.'
     };
   }
 }
 
-// Iniciar sincronizaciÃ³n automÃ¡tica diaria al cargar la pÃ¡gina
+// Iniciar sincronización automática diaria al cargar la página
 if (typeof window !== 'undefined') {
   setTimeout(() => {
     syncDailyExchangeRates(false).catch(() => {});
@@ -150,13 +150,13 @@ if (typeof window !== 'undefined') {
 }
 
 const CATEGORIES = [
-  { id: 'todos', name: 'Todos', icon: 'fa-solid fa-border-all', badge: 'CatÃ¡logo' },
+  { id: 'todos', name: 'Todos', icon: 'fa-solid fa-border-all', badge: 'Catálogo' },
   { id: 'al-mayor', name: 'Al Mayor', icon: 'fa-solid fa-boxes-stacked', badge: 'Ahorro Bulto' },
-  { id: 'charcuteria', name: 'CharcuterÃ­a', icon: 'fa-solid fa-bacon', badge: 'Fresco' },
-  { id: 'viveres', name: 'VÃ­veres', icon: 'fa-solid fa-wheat-awn', badge: 'BÃ¡sicos' },
-  { id: 'lacteos', name: 'LÃ¡cteos', icon: 'fa-solid fa-cheese', badge: 'Frescura' },
-  { id: 'bebidas', name: 'Bebidas', icon: 'fa-solid fa-bottle-water', badge: 'FrÃ­as' },
-  { id: 'confiteria', name: 'ConfiterÃ­a', icon: 'fa-solid fa-candy-cane', badge: 'Snacks' },
+  { id: 'charcuteria', name: 'Charcutería', icon: 'fa-solid fa-bacon', badge: 'Fresco' },
+  { id: 'viveres', name: 'Víveres', icon: 'fa-solid fa-wheat-awn', badge: 'Básicos' },
+  { id: 'lacteos', name: 'Lácteos', icon: 'fa-solid fa-cheese', badge: 'Frescura' },
+  { id: 'bebidas', name: 'Bebidas', icon: 'fa-solid fa-bottle-water', badge: 'Frías' },
+  { id: 'confiteria', name: 'Confitería', icon: 'fa-solid fa-candy-cane', badge: 'Snacks' },
   { id: 'limpieza', name: 'Limpieza', icon: 'fa-solid fa-pump-soap', badge: 'Aseo' }
 ];
 
@@ -166,34 +166,34 @@ const PROMOS = [
     discount: 10,
     type: 'percent',
     minOrder: 25,
-    description: '10% de descuento en tu primera compra (mÃ­nimo $25)'
+    description: '10% de descuento en tu primera compra (mínimo $25)'
   },
   {
     code: 'ENVIOGRATIS',
     discount: 3.99,
     type: 'shipping',
     minOrder: 35,
-    description: 'EnvÃ­o gratis en compras mayores a $35'
+    description: 'Envío gratis en compras mayores a $35'
   },
   {
     code: 'MAYORISTA',
     discount: 15,
     type: 'percent',
     minOrder: 60,
-    description: '15% de descuento adicional en pedidos mayoristas de mÃ¡s de $60'
+    description: '15% de descuento adicional en pedidos mayoristas de más de $60'
   }
 ];
 
 // ==========================================================================
-// CATÃLOGO BASE MAESTRO Y ALMACENAMIENTO DINÃMICO
-// CatÃ¡logo predeterminado cargado directamente en products.js.
+// CATÁLOGO BASE MAESTRO Y ALMACENAMIENTO DINÁMICO
+// Catálogo predeterminado cargado directamente en products.js.
 // Si el usuario edita o agrega productos en el panel admin (admin.html),
 // se guardan en localStorage y se sincronizan en tiempo real.
 // ==========================================================================
 
 const DEFAULT_PRODUCTS = [];
 
-// Hacer disponible DEFAULT_PRODUCTS globalmente para sincronizaciÃ³n o restauraciÃ³n
+// Hacer disponible DEFAULT_PRODUCTS globalmente para sincronización o restauración
 if (typeof window !== 'undefined') {
   window.DEFAULT_PRODUCTS = DEFAULT_PRODUCTS;
 }
@@ -202,9 +202,9 @@ if (typeof window !== 'undefined') {
 // LISTA NEGRA DE PRODUCTOS PREDETERMINADOS (DEMO) ELIMINADOS
 // Estos 24 productos fueron creados por una IA anterior, sembrados en
 // Supabase y borrados definitivamente el 2026-10-12. Este bloqueo evita
-// que reaparezcan por cualquier vÃ­a: localStorage del admin, catÃ¡logo base,
+// que reaparezcan por cualquier vía: localStorage del admin, catálogo base,
 // respaldos JSON importados o sincronizaciones con Supabase.
-// Solo existirÃ¡n los productos cargados manualmente por el dueÃ±o (prod-XXXX).
+// Solo existirán los productos cargados manualmente por el dueño (prod-XXXX).
 // ==========================================================================
 const LEGACY_DEFAULT_PRODUCT_IDS = [
   'viv-01', 'viv-02', 'viv-03', 'viv-04', 'viv-05',
@@ -275,14 +275,14 @@ function getProductImageSrc(url) {
 
 var PRODUCTS_DATA = [];
 
-// FunciÃ³n para obtener productos activos (carga de localStorage si tiene datos vÃ¡lidos, y si no, carga products.js)
+// Función para obtener productos activos (carga de localStorage si tiene datos válidos, y si no, carga products.js)
 function getActiveProducts() {
   try {
     const saved = localStorage.getItem('alcosto_custom_products');
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Bloqueo: si en este navegador aÃºn quedan productos demo guardados, se descartan
+        // Bloqueo: si en este navegador aún quedan productos demo guardados, se descartan
         PRODUCTS_DATA = sanitizeProductImages(stripLegacyDefaultProducts(parsed));
         if (PRODUCTS_DATA.length > 0) return PRODUCTS_DATA;
       }
@@ -291,20 +291,20 @@ function getActiveProducts() {
     console.warn('Error al leer productos de localStorage:', e);
   }
 
-  // Cargar catÃ¡logo base de products.js (hoy vacÃ­o: solo existen productos cargados manualmente por el dueÃ±o)
+  // Cargar catálogo base de products.js (hoy vacío: solo existen productos cargados manualmente por el dueño)
   PRODUCTS_DATA = sanitizeProductImages(stripLegacyDefaultProducts(DEFAULT_PRODUCTS));
   return PRODUCTS_DATA;
 }
 
-// Guardar productos y sincronizar instantÃ¡neamente con todas las pestaÃ±as de index.html
+// Guardar productos y sincronizar instantáneamente con todas las pestañas de index.html
 function saveActiveProducts(productsList) {
   if (!Array.isArray(productsList)) return;
-  // Bloqueo: jamÃ¡s permitir que productos demo predeterminados se guarden o republicuen
+  // Bloqueo: jamás permitir que productos demo predeterminados se guarden o republicuen
   productsList = sanitizeProductImages(stripLegacyDefaultProducts(productsList));
   try {
     localStorage.setItem('alcosto_custom_products', JSON.stringify(productsList));
   } catch (quotaError) {
-    console.warn('Alcanzado lÃ­mite de localStorage, optimizando imÃ¡genes...', quotaError);
+    console.warn('Alcanzado límite de localStorage, optimizando imágenes...', quotaError);
     // Si la cuota de localStorage se llena por fotos pesadas, aseguramos que los datos se guarden
     const optimized = productsList.map(p => {
       if (p.image && p.image.length > 200000 && p.image.startsWith('data:image')) {
@@ -315,12 +315,12 @@ function saveActiveProducts(productsList) {
     try {
       localStorage.setItem('alcosto_custom_products', JSON.stringify(optimized));
     } catch (e2) {
-      console.error('Error crÃ­tico guardando productos:', e2);
+      console.error('Error crítico guardando productos:', e2);
     }
   }
   PRODUCTS_DATA = productsList;
 
-  // Notificar en la ventana actual y en otras ventanas/pestaÃ±as
+  // Notificar en la ventana actual y en otras ventanas/pestañas
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('alcosto:products-updated', { detail: productsList }));
     try {
@@ -333,8 +333,8 @@ function saveActiveProducts(productsList) {
   }
 }
 
-// La tienda carga su catÃ¡logo desde Supabase; los productos locales quedan para el admin.
+// La tienda carga su catálogo desde Supabase; los productos locales quedan para el admin.
 PRODUCTS_DATA = [];
 
-// UbicaciÃ³n y Coordenadas del Local Al Costo
-const STORE_COORDINATES = '7Âº48\'25.6"N 71Âº11\'12.3"W';
+// Ubicación y Coordenadas del Local Al Costo
+const STORE_COORDINATES = '7º48\'25.6"N 71º11\'12.3"W';
