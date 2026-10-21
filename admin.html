@@ -14,7 +14,7 @@
   <!-- Font Awesome 6.5.1 Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-  <link rel="stylesheet" href="css/styles.css?v=20261018-brandbig">
+  <link rel="stylesheet" href="css/styles.css?v=20261021-views">
   
   <style>
     /* ==========================================================================
@@ -598,7 +598,8 @@
       border: 1px solid var(--color-border);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-card);
-      overflow: hidden;
+      overflow-x: auto; /* scroll horizontal fluido en pantallas pequeñas */
+      -webkit-overflow-scrolling: touch;
       margin-bottom: 30px;
     }
 
@@ -717,67 +718,16 @@
       background: white;
     }
 
-    /* Fila apilada en móvil (cards compactas) */
+    /* EN MÓVIL LA TABLA NO SE TRANSFORMA MÁS EN TARJETAS DE FORMA FORZADA:
+       el administrador elige la vista con el selector Lista/Tarjetas (estilo
+       Google Drive) y su preferencia se guarda en localStorage. La vista de
+       lista se mantiene como tabla compacta con scroll horizontal fluido. */
     @media (max-width: 768px) {
-      .orders-list-table,
-      .orders-list-table tbody {
-        display: block;
-        width: 100%;
-      }
-
-      .orders-list-table thead {
-        display: none;
-      }
-
-      .orders-list-row {
-        display: block;
-        border: 1px solid var(--color-border);
-        border-left-width: 5px;
-        border-radius: 12px;
-        margin: 10px;
-        padding: 2px 0;
-        box-shadow: var(--shadow-sm);
-      }
-
-      .orders-list-row.row-nuevo { border-left-color: #EAB308; }
-      .orders-list-row.row-preparacion { border-left-color: #3B82F6; }
-      .orders-list-row.row-camino { border-left-color: #FF5A00; }
-      .orders-list-row.row-entregado { border-left-color: #108910; }
-      .orders-list-row.row-cancelado { border-left-color: #9CA3AF; }
-
-      .orders-list-row td {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 8px 12px;
-        border-bottom: 1px dashed #F1F3F5;
-        box-shadow: none !important;
-      }
-
-      .orders-list-row td:last-child {
-        border-bottom: none;
-        flex-wrap: wrap;
-      }
-
-      .orders-list-row td::before {
-        content: attr(data-label);
-        font-size: 0.67rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.4px;
-        color: #94A3B8;
-        flex-shrink: 0;
-      }
-
-      .orders-list-actions {
-        justify-content: flex-end;
-        width: 100%;
+      .orders-list-table {
+        min-width: 720px;
       }
 
       .orders-list-actions .order-status-select {
-        max-width: none;
-        flex: 1 1 140px;
         font-size: 16px; /* evita el zoom automático de iOS al enfocar */
       }
     }
@@ -1710,6 +1660,17 @@
         </div>
 
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <!-- Selector de vista de pedidos (estilo Google Drive): Lista / Tarjetas.
+               La preferencia se guarda en localStorage (preferredOrdersView). -->
+          <div class="orders-view-switch" role="group" aria-label="Selector de vista de pedidos">
+            <button type="button" class="orders-view-btn active" data-orders-view="list" aria-pressed="true" title="Vista de Lista (tabla compacta)">
+              <i class="fa-solid fa-list" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="orders-view-btn" data-orders-view="grid" aria-pressed="false" title="Vista de Tarjetas (cuadrícula)">
+              <i class="fa-solid fa-th-large" aria-hidden="true"></i>
+            </button>
+          </div>
+
           <button class="btn-hero-cta" id="archiveDeliveredBtn" style="padding: 6px 12px; font-size: 0.8rem; background: #EFF6FF; border: 1px solid #BFDBFE; color: #1D4ED8; font-weight: 700;" title="Oculta de la vista del día los pedidos en estado Entregado">
             📦 Archivar Pedidos Entregados
           </button>
@@ -1722,9 +1683,10 @@
         </div>
       </div>
 
-      <!-- Lista compacta de pedidos (vista por defecto): filas Nº Pedido, Cliente,
-           Hora/Fecha, Total ($ / Bs.), Estado y Acción. El detalle completo se
-           abre en el modal (orderDetailModal). Renderizado con JavaScript. -->
+      <!-- Contenedor de pedidos: lo renderiza js/admin.js según la vista elegida
+           con el selector Lista/Tarjetas (data-orders-view). Por defecto lista
+           compacta (filas Nº Pedido, Cliente, Hora/Fecha, Total, Estado, Acción);
+           el detalle completo se abre en el modal (orderDetailModal). -->
       <div class="orders-list-wrap" id="ordersCardsContainer">
       </div>
 
@@ -2329,6 +2291,6 @@ CREATE POLICY "Actualización de usuarios" ON usuarios FOR UPDATE USING (true);
   <script src="js/supabase-config.js?v=20261021-orders-realtime"></script>
   <script src="js/products.js?v=20261020-badge-viveres"></script>
   <script src="js/ai-photo.js?v=20261018-brandbig"></script>
-  <script src="js/admin.js?v=20261021-orders-realtime"></script>
+  <script src="js/admin.js?v=20261021-views"></script>
 </body>
 </html>

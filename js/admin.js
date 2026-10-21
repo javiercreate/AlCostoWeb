@@ -10,6 +10,19 @@ document.addEventListener('DOMContentLoaded', () => {
   let editingProductId = null;
   let currentOrderFilter = 'all';
 
+  // --- VISTA DE PEDIDOS (LISTA / TARJETAS) CON PREFERENCIA PERSISTENTE ---
+  // El administrador elige libremente la vista (estilo Google Drive). La
+  // selección se guarda en localStorage (preferredOrdersView = 'list' | 'grid')
+  // y NO se fuerza con media queries: en móvil también respeta la elección.
+  let currentOrdersView = (() => {
+    try {
+      const saved = localStorage.getItem('preferredOrdersView');
+      return saved === 'grid' ? 'grid' : 'list';
+    } catch (e) {
+      return 'list';
+    }
+  })();
+
   // --- ESTADO DEL CENTRO DE DESPACHO EN TIEMPO REAL ---
   // IDs de pedidos entregados archivados (fuera de la vista de operación del día)
   let archivedOrderIds = new Set();
@@ -48,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const statTotalSalesAmount = document.getElementById('statTotalSalesAmount');
   const countAllOrders = document.getElementById('countAllOrders');
   const orderFilterButtons = document.querySelectorAll('[data-order-filter]');
+  const ordersViewButtons = document.querySelectorAll('[data-orders-view]');
   const refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
   const simulateDemoOrderBtn = document.getElementById('simulateDemoOrderBtn');
   const orderDetailModal = document.getElementById('orderDetailModal');
@@ -127,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadOrders();
     setupSalesPercentageEvents();
     setupEventListeners();
+    updateOrdersViewButtons();
     setupNewOrderAlarmListeners();
     setupOrdersRealtime();
   }
@@ -840,8 +855,31 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
-  // Vista PREDETERMINADA: lista compacta de filas (Nº Pedido, Cliente, Hora/Fecha,
-  // Total, Estado, Acción). El detalle completo se abre en el modal.
+  // Aplica la vista elegida por el administrador (lista o tarjetas), la
+  // guarda en localStorage y re-renderiza sin forzar ninguna transformación.
+  function setOrdersView(view) {
+    currentOrdersView = view === 'grid' ? 'grid' : 'list';
+    try {
+      localStorage.setItem('preferredOrdersView', currentOrdersView);
+    } catch (e) {
+      // Modo privado o cuota llena: la vista sigue funcionando en memoria
+    }
+    updateOrdersViewButtons();
+    renderOrdersCards();
+  }
+
+  // Resalta el botón activo del selector de vista (estado estilo Google Drive)
+  function updateOrdersViewButtons() {
+    ordersViewButtons.forEach(btn => {
+      const isActive = btn.getAttribute('data-orders-view') === currentOrdersView;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  }
+
+  // Vista elegida por el administrador: lista compacta (tabla horizontal con
+  // scroll en pantallas pequeñas) o cuadrícula de tarjetas. El detalle completo
+  // se abre en el modal en ambas vistas.
   function renderOrdersCards() {
     if (!ordersCardsContainer) return;
 
@@ -861,6 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const emptyText = currentOrderFilter === 'archivados'
         ? 'Usa el botón "Archivar Pedidos Entregados" para limpiar la vista del día.'
         : 'Los nuevos pedidos que los clientes hagan en la tienda aparecerán aquí al instante, sin refrescar.';
+      ordersCardsContainer.className = 'orders-list-wrap';
       ordersCardsContainer.innerHTML = `
         <div class="orders-list-empty" style="background: white;">
           <div style="font-size: 2.8rem; margin-bottom: 8px;">${emptyIcon}</div>
@@ -912,7 +951,56 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }).join('');
 
-    ordersCardsContainer.innerHTML = `
+    // Tarjetas (vista mosaico) con la misma información de cada pedido
+    const cardsHtml = filtered.map(order => {
+      const orderDate = new Date(order.created_at || Date.now());
+      const timeFormatted = orderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateFormatted = orderDate.toLocaleDateString([], { day: '2-digit', month: 'short', year: '2-digit' });
+      const totalAmount = parseFloat(order.total) || 0;
+      const cleanPhone = (order.customerPhone || '').replace(/\D/g, '');
+      const waMsg = encodeURIComponent(`Hola ${order.customerName}, te escribimos de Al Costo sobre tu pedido #${order.id}. ¿Cómo estás?`);
+      const waCustomerUrl = `https://wa.me/${cleanPhone}?text=${waMsg}`;
+      const archived = isOrderArchived(order);
+      const itemsPreviewHtml = (order.items || []).map(i => `
+          <div class="order-item-line">
+            <span><strong>${getItemQuantity(i)}x</strong> ${getItemName(i)}${getItemUnit(i) ? ` (${getItemUnit(i)})` : ''}</span>
+            <strong>$${getItemLineTotal(i)}</strong>
+          </div>`).join('');
+
+      return `
+        <div class="order-card order-grid-item status-${order.status || 'nuevo'}" data-order-id="${order.id}" tabindex="0" title="Ver detalle completo del pedido #${order.id}">
+          <div class="order-card-header">
+            <div>
+              <div class="order-code">#${order.id}</div>
+              <div class="order-time">${dateFormatted} • ${timeFormatted}</div>
+            </div>
+            ${getOrderStatusBadge(order.status)}
+          </div>
+          <div class="order-customer-info">
+            <div class="order-customer-name">👤 ${order.customerName}</div>
+            <div class="order-customer-details">📞 ${order.customerPhone || 'Sin teléfono'} • ${order.deliveryType === 'pickup' ? '🏪 Retiro en tienda' : '🛵 Delivery'}</div>
+          </div>
+          <div class="order-items-preview">${itemsPreviewHtml || '<em style="color: #94A3B8;">Sin artículos registrados</em>'}</div>
+          <div class="order-card-footer">
+            <div class="order-total-amount">$${totalAmount.toFixed(2)}</div>
+            <div class="orders-list-total-bs">🇻🇪 ${(totalAmount * CURRENCY_RATES.BS).toFixed(2)} Bs</div>
+          </div>
+          <div class="order-actions-row">
+            ${archived ? '' : getStatusSelectHtml(order)}
+            <a href="${waCustomerUrl}" target="_blank" rel="noopener" class="btn-order-action btn-wa-action" title="Chatear por WhatsApp con ${order.customerName}" onclick="event.stopPropagation()">💬 WhatsApp</a>
+            <button class="btn-order-action view-order-modal-btn" data-order-id="${order.id}" style="background: #F8F9FA;" title="Ver detalle completo">🔍 Ver detalle</button>
+            ${archived ? `<button class="btn-order-action unarchive-order-btn" data-order-id="${order.id}" style="background: #FFF7ED; color: #9A3412; border-color: #FED7AA;" title="Restaurar a la vista del día">↩️</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Intercambio dinámico: lista (tabla compacta) o cuadrícula de tarjetas
+    const useGridView = currentOrdersView === 'grid';
+    ordersCardsContainer.className = useGridView ? 'orders-grid' : 'orders-list-wrap';
+    ordersCardsContainer.innerHTML = useGridView
+      ? cardsHtml
+      : `
       <table class="orders-list-table">
         <thead>
           <tr>
@@ -955,8 +1043,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Clic en cualquier fila (o Enter con el teclado) = ver detalle del pedido
-    ordersCardsContainer.querySelectorAll('.orders-list-row').forEach(row => {
+    // Clic en cualquier fila o tarjeta (o Enter con el teclado) = ver detalle
+    ordersCardsContainer.querySelectorAll('.orders-list-row, .order-grid-item').forEach(row => {
       row.addEventListener('click', (e) => {
         if (e.target.closest('button, select, a, input')) return;
         openOrderDetail(row.getAttribute('data-order-id'));
@@ -2037,6 +2125,14 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.add('active');
         currentOrderFilter = btn.getAttribute('data-order-filter');
         renderOrdersCards();
+      });
+    });
+
+    // Selector de vista Lista / Tarjetas (estilo Google Drive): respeta la
+    // elección del administrador y la persiste en localStorage
+    ordersViewButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        setOrdersView(btn.getAttribute('data-orders-view'));
       });
     });
 
