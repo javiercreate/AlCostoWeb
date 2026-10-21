@@ -588,6 +588,336 @@
       background: #1eb956;
     }
 
+    /* ==========================================================================
+       VISTA COMPACTA DE PEDIDOS (LISTA / TABLA DE DESPACHO EN TIEMPO REAL)
+       Filas limpias: Nº Pedido • Cliente • Hora/Fecha • Total • Estado • Acción
+       El detalle completo (artículos, comprobante, GPS, notas) va en el MODAL.
+       ========================================================================== */
+    .orders-list-wrap {
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      margin-bottom: 30px;
+    }
+
+    .orders-list-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+
+    .orders-list-table thead th {
+      background: #F8F9FA;
+      padding: 12px 14px;
+      font-size: 0.71rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #475569;
+      border-bottom: 1px solid var(--color-border);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .orders-list-table thead th:last-child {
+      text-align: right;
+    }
+
+    .orders-list-row {
+      border-bottom: 1px solid #F1F3F5;
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+
+    .orders-list-row:last-child {
+      border-bottom: none;
+    }
+
+    .orders-list-row:hover,
+    .orders-list-row:focus {
+      background: #F9FAFB;
+      outline: none;
+    }
+
+    .orders-list-row td {
+      padding: 11px 14px;
+      vertical-align: middle;
+    }
+
+    /* Franja de color del estado (barra izquierda de la fila) */
+    .orders-list-row.row-nuevo td:first-child { box-shadow: inset 5px 0 0 #EAB308; }
+    .orders-list-row.row-preparacion td:first-child { box-shadow: inset 5px 0 0 #3B82F6; }
+    .orders-list-row.row-camino td:first-child { box-shadow: inset 5px 0 0 #FF5A00; }
+    .orders-list-row.row-entregado td:first-child { box-shadow: inset 5px 0 0 #108910; }
+    .orders-list-row.row-cancelado td:first-child { box-shadow: inset 5px 0 0 #9CA3AF; }
+
+    .orders-list-id {
+      font-weight: 900;
+      color: var(--color-primary);
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+
+    .orders-list-client {
+      font-weight: 700;
+      color: var(--color-text-primary);
+    }
+
+    .orders-list-sub {
+      font-size: 0.72rem;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+
+    .orders-list-date {
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .orders-list-total-usd {
+      font-weight: 900;
+      color: #108910;
+      font-size: 1rem;
+      white-space: nowrap;
+    }
+
+    .orders-list-total-bs {
+      font-size: 0.7rem;
+      color: #C2410C;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .orders-list-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .orders-list-actions .order-status-select {
+      max-width: 150px;
+      height: 36px;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .orders-list-actions .btn-order-action {
+      padding: 7px 11px;
+      white-space: nowrap;
+    }
+
+    .orders-list-empty {
+      text-align: center;
+      padding: 50px 20px;
+      background: white;
+    }
+
+    /* Fila apilada en móvil (cards compactas) */
+    @media (max-width: 768px) {
+      .orders-list-table,
+      .orders-list-table tbody {
+        display: block;
+        width: 100%;
+      }
+
+      .orders-list-table thead {
+        display: none;
+      }
+
+      .orders-list-row {
+        display: block;
+        border: 1px solid var(--color-border);
+        border-left-width: 5px;
+        border-radius: 12px;
+        margin: 10px;
+        padding: 2px 0;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .orders-list-row.row-nuevo { border-left-color: #EAB308; }
+      .orders-list-row.row-preparacion { border-left-color: #3B82F6; }
+      .orders-list-row.row-camino { border-left-color: #FF5A00; }
+      .orders-list-row.row-entregado { border-left-color: #108910; }
+      .orders-list-row.row-cancelado { border-left-color: #9CA3AF; }
+
+      .orders-list-row td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 12px;
+        border-bottom: 1px dashed #F1F3F5;
+        box-shadow: none !important;
+      }
+
+      .orders-list-row td:last-child {
+        border-bottom: none;
+        flex-wrap: wrap;
+      }
+
+      .orders-list-row td::before {
+        content: attr(data-label);
+        font-size: 0.67rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: #94A3B8;
+        flex-shrink: 0;
+      }
+
+      .orders-list-actions {
+        justify-content: flex-end;
+        width: 100%;
+      }
+
+      .orders-list-actions .order-status-select {
+        max-width: none;
+        flex: 1 1 140px;
+        font-size: 16px; /* evita el zoom automático de iOS al enfocar */
+      }
+    }
+
+    /* ==========================================================================
+       BANNER DE ALARMA: "¡NUEVO PEDIDO RECIBIDO!" (NO SE DETIENE HASTA ACEPTAR)
+       ========================================================================== */
+    .new-order-alarm {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      display: none;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+      color: white;
+      border-bottom: 3px solid #FCA5A5;
+      box-shadow: 0 8px 30px rgba(220, 38, 38, 0.5);
+      animation: alarmBannerPulse 1s ease-in-out infinite;
+    }
+
+    .new-order-alarm.show {
+      display: block;
+    }
+
+    @keyframes alarmBannerPulse {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.28); }
+    }
+
+    .new-order-alarm-inner {
+      max-width: var(--container-max);
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .new-order-alarm-icon {
+      font-size: 2.1rem;
+      line-height: 1;
+      animation: alarmBellShake 0.5s ease-in-out infinite;
+    }
+
+    @keyframes alarmBellShake {
+      0%, 100% { transform: rotate(-14deg); }
+      50% { transform: rotate(14deg); }
+    }
+
+    .new-order-alarm-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .new-order-alarm-title {
+      font-size: 1.15rem;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+    }
+
+    .new-order-alarm-info {
+      font-size: 0.85rem;
+      opacity: 0.95;
+    }
+
+    .new-order-alarm-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .new-order-alarm-actions button {
+      height: 44px;
+      padding: 0 18px;
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 900;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform var(--transition-fast);
+    }
+
+    .new-order-alarm-actions button:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-alarm-accept {
+      background: white;
+      color: #B91C1C;
+      border: 2px solid white;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    }
+
+    .btn-alarm-detail {
+      background: rgba(255, 255, 255, 0.16);
+      color: white;
+      border: 1.5px solid rgba(255, 255, 255, 0.7);
+    }
+
+    /* Mientras suena la alarma, el modal de detalle se baja para no quedar
+       tapado por el banner (el botón "X" debe ser siempre accesible).
+       --alarm-banner-height la calcula js/admin.js con la altura real del banner. */
+    body.new-order-alarm-open .modal-overlay {
+      padding-top: calc(var(--alarm-banner-height, 96px) + 14px);
+    }
+
+    body.new-order-alarm-open .modal-box {
+      max-height: calc(90vh - var(--alarm-banner-height, 96px) - 24px);
+    }
+
+    @media (max-width: 768px) {
+      .new-order-alarm {
+        padding: 10px 12px;
+      }
+      body.new-order-alarm-open .modal-overlay {
+        padding-top: 0; /* en móvil el modal es bottom sheet (padding: 0 !important) */
+      }
+      body.new-order-alarm-open .modal-box {
+        max-height: calc(100vh - var(--alarm-banner-height, 180px) - 12px) !important;
+      }
+      .new-order-alarm-title {
+        font-size: 1rem;
+      }
+      .new-order-alarm-actions {
+        width: 100%;
+      }
+      .new-order-alarm-actions button {
+        flex: 1 1 auto;
+        justify-content: center;
+      }
+    }
+
     /* Panel de Supabase */
     .supabase-box {
       background: white;
@@ -1376,9 +1706,13 @@
           <button class="filter-tag-chip" data-order-filter="preparacion">👨‍🌾 En Preparación</button>
           <button class="filter-tag-chip" data-order-filter="camino">🛵 En Camino</button>
           <button class="filter-tag-chip" data-order-filter="entregado">✅ Entregados</button>
+          <button class="filter-tag-chip" data-order-filter="archivados">📦 Archivados (<span id="countArchivedOrders">0</span>)</button>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <button class="btn-hero-cta" id="archiveDeliveredBtn" style="padding: 6px 12px; font-size: 0.8rem; background: #EFF6FF; border: 1px solid #BFDBFE; color: #1D4ED8; font-weight: 700;" title="Oculta de la vista del día los pedidos en estado Entregado">
+            📦 Archivar Pedidos Entregados
+          </button>
           <button class="btn-hero-cta" id="refreshOrdersBtn" style="padding: 6px 12px; font-size: 0.8rem; background: #F3F4F6; border: 1px solid var(--color-border); color: #333;">
             🔄 Refrescar
           </button>
@@ -1388,9 +1722,10 @@
         </div>
       </div>
 
-      <!-- Listado de Tarjetas de Pedidos -->
-      <div class="orders-grid" id="ordersCardsContainer">
-        <!-- Renderizado dinámicamente con JavaScript -->
+      <!-- Lista compacta de pedidos (vista por defecto): filas Nº Pedido, Cliente,
+           Hora/Fecha, Total ($ / Bs.), Estado y Acción. El detalle completo se
+           abre en el modal (orderDetailModal). Renderizado con JavaScript. -->
+      <div class="orders-list-wrap" id="ordersCardsContainer">
       </div>
 
     </div>
@@ -1969,13 +2304,31 @@ CREATE POLICY "Actualización de usuarios" ON usuarios FOR UPDATE USING (true);
     </div>
   </div>
 
+  <!-- Banner de Alarma: ¡NUEVO PEDIDO RECIBIDO! (sonido en bucle hasta "Aceptar") -->
+  <div class="new-order-alarm" id="newOrderAlarmBanner" role="alert" aria-live="assertive">
+    <div class="new-order-alarm-inner">
+      <div class="new-order-alarm-icon" aria-hidden="true">🔔</div>
+      <div class="new-order-alarm-text">
+        <strong class="new-order-alarm-title">¡NUEVO PEDIDO RECIBIDO!</strong>
+        <span class="new-order-alarm-info" id="newOrderAlarmInfo">Un cliente acaba de realizar un pedido.</span>
+      </div>
+      <div class="new-order-alarm-actions">
+        <button type="button" id="newOrderAlarmDetailBtn" class="btn-alarm-detail">🔍 Ver Detalle</button>
+        <button type="button" id="acceptNewOrderBtn" class="btn-alarm-accept">✅ Aceptar / Atender Pedido</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notificaciones -->
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <script src="js/supabase-config.js?v=20261020-badge-viveres"></script>
+  <!-- SDK oficial de Supabase: habilita supabase.channel() para el realtime de pedidos.
+       Si la CDN no carga, el panel sigue en tiempo real con el polling de js/admin.js. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-config.js?v=20261021-orders-realtime"></script>
   <script src="js/products.js?v=20261020-badge-viveres"></script>
   <script src="js/ai-photo.js?v=20261018-brandbig"></script>
-  <script src="js/admin.js?v=20261020-badge-viveres"></script>
+  <script src="js/admin.js?v=20261021-orders-realtime"></script>
 </body>
 </html>

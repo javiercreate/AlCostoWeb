@@ -10,6 +10,29 @@ document.addEventListener('DOMContentLoaded', () => {
   let editingProductId = null;
   let currentOrderFilter = 'all';
 
+  // --- ESTADO DEL CENTRO DE DESPACHO EN TIEMPO REAL ---
+  // IDs de pedidos entregados archivados (fuera de la vista de operación del día)
+  let archivedOrderIds = new Set();
+  // IDs conocidos: se usa para detectar pedidos NUEVOS y disparar la alarma
+  let knownOrderIds = null;
+  // Control de concurrencia de loadOrders (evita pisados con realtime + polling)
+  let ordersLoadInFlight = false;
+  let ordersLoadQueued = false;
+  // Realtime Supabase (canal postgres_changes) + polling de respaldo
+  let ordersRealtimeChannel = null;
+  let ordersPollTimer = null;
+  // Alarma sonora de nuevo pedido (Web Audio API, en bucle hasta "Aceptar")
+  let alarmActive = false;
+  let alarmPendingOrders = [];
+  let audioCtx = null;
+  let alarmOsc = null;
+  let alarmGain = null;
+  let alarmSchedulerId = null;
+  let alarmNextPulseTime = 0;
+  // Pedido abierto en el modal de detalle (para refrescarlo al cambiar el estado)
+  let openOrderId = null;
+  const ORIGINAL_DOCUMENT_TITLE = document.title;
+
   // --- ELEMENTOS DEL DOM ---
   // Pestañas
   const tabButtons = document.querySelectorAll('.tab-btn, .mobile-nav-btn');
@@ -30,6 +53,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const orderDetailModal = document.getElementById('orderDetailModal');
   const closeOrderDetailModalBtn = document.getElementById('closeOrderDetailModalBtn');
   const orderDetailModalBody = document.getElementById('orderDetailModalBody');
+  const archiveDeliveredBtn = document.getElementById('archiveDeliveredBtn');
+  const countArchivedOrders = document.getElementById('countArchivedOrders');
+
+  // Alarma de nuevo pedido (banner + botónAceptar)
+  const newOrderAlarmBanner = document.getElementById('newOrderAlarmBanner');
+  const newOrderAlarmInfo = document.getElementById('newOrderAlarmInfo');
+  const acceptNewOrderBtn = document.getElementById('acceptNewOrderBtn');
+  const newOrderAlarmDetailBtn = document.getElementById('newOrderAlarmDetailBtn');
 
   // Catálogo
   const productsTableBody = document.getElementById('productsTableBody');
@@ -92,9 +123,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initSupabaseConfig();
     initPaymentConfig();
     loadCatalogProducts();
+    loadArchivedOrders();
     loadOrders();
     setupSalesPercentageEvents();
     setupEventListeners();
+    setupNewOrderAlarmListeners();
+    setupOrdersRealtime();
   }
 
   // ==========================================================================
@@ -245,7 +279,26 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   // GESTIÓN DE PEDIDOS / COMPRAS (ORDERS DASHBOARD)
   // ==========================================================================
+  // Carga de pedidos con control de concurrencia: el canal realtime y el polling
+  // pueden solaparse; si una carga ya está en curso se encola otra al terminar.
   async function loadOrders() {
+    if (ordersLoadInFlight) {
+      ordersLoadQueued = true;
+      return;
+    }
+    ordersLoadInFlight = true;
+    try {
+      await fetchAndMergeOrders();
+    } finally {
+      ordersLoadInFlight = false;
+      if (ordersLoadQueued) {
+        ordersLoadQueued = false;
+        loadOrders();
+      }
+    }
+  }
+
+  async function fetchAndMergeOrders() {
     // Convierte una fila de public.pedidos (cualquiera sea el idioma de sus columnas)
     // al formato camelCase que usa el panel. Se aceptan alias en inglés (customer_name,
     // delivery_fee...) y en español (nombre_cliente, telefono, direccion, horario,
@@ -320,6 +373,300 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateOrdersStats();
     renderOrdersCards();
+    detectNewOrdersAndAlarm();
+    scheduleEmptyOrdersRetry();
+  }
+
+  // Si el listado queda vacío con Supabase activo (la primera petición pudo fallar
+  // por red), se reintenta en unos segundos sin esperar al siguiente ciclo de
+  // polling: el panel nunca se queda en "No hay pedidos" si sí que los hay.
+  let emptyOrdersRetryTimer = null;
+  let emptyOrdersRetried = false;
+
+  function scheduleEmptyOrdersRetry() {
+    if (orders.length > 0 || emptyOrdersRetried || emptyOrdersRetryTimer) return;
+    if (!SupabaseService.getConfig().connected) return;
+    emptyOrdersRetryTimer = setTimeout(() => {
+      emptyOrdersRetryTimer = null;
+      emptyOrdersRetried = true;
+      loadOrders();
+    }, 2500);
+  }
+
+  // ==========================================================================
+  // MÓDULO DE ARCHIVO DE PEDIDOS ENTREGADOS
+  // Oculta de la vista de operación (del día) los pedidos entregados archivados
+  // y permite volver a verlos en el filtro "Archivados".
+  // ==========================================================================
+  const ARCHIVED_ORDERS_STORAGE_KEY = 'alcosto_archived_order_ids';
+
+  function loadArchivedOrders() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(ARCHIVED_ORDERS_STORAGE_KEY));
+      archivedOrderIds = new Set(Array.isArray(saved) ? saved.map(String) : []);
+    } catch (e) {
+      archivedOrderIds = new Set();
+    }
+  }
+
+  function persistArchivedOrders() {
+    try {
+      localStorage.setItem(ARCHIVED_ORDERS_STORAGE_KEY, JSON.stringify([...archivedOrderIds]));
+    } catch (e) {
+      console.warn('No se pudo guardar el archivo de pedidos:', e);
+    }
+  }
+
+  function isOrderArchived(order) {
+    return archivedOrderIds.has(String(order.id));
+  }
+
+  function archiveDeliveredOrders() {
+    const pending = orders.filter(o => o.status === 'entregado' && !isOrderArchived(o));
+    if (pending.length === 0) {
+      showToast('📦 No hay pedidos entregados pendientes por archivar');
+      return;
+    }
+    pending.forEach(o => archivedOrderIds.add(String(o.id)));
+    persistArchivedOrders();
+    updateOrdersStats();
+    renderOrdersCards();
+    showToast(`📦 ${pending.length} pedido(s) entregado(s) archivado(s): la vista del día queda limpia`, 'success');
+  }
+
+  function unarchiveOrder(orderId) {
+    archivedOrderIds.delete(String(orderId));
+    persistArchivedOrders();
+    updateOrdersStats();
+    renderOrdersCards();
+    showToast(`↩️ Pedido #${orderId} restaurado en la vista principal`, 'success');
+  }
+
+  // ==========================================================================
+  // REALTIME SUPABASE: CANAL postgres_changes + POLLING ASÍNCRONO DE RESPALDO
+  // Los pedidos nuevos aparecen en pantalla sin refrescar la página.
+  // ==========================================================================
+  const ORDERS_POLL_INTERVAL_MS = 8000;
+
+  function setupOrdersRealtime() {
+    connectSupabaseOrdersChannel();
+    startOrdersPolling();
+  }
+
+  function startOrdersPolling() {
+    if (ordersPollTimer) return;
+    // Polling constante: mantiene el panel vivo aunque el websocket falle
+    ordersPollTimer = setInterval(() => {
+      if (!document.hidden) loadOrders();
+    }, ORDERS_POLL_INTERVAL_MS);
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) loadOrders();
+    });
+  }
+
+  function connectSupabaseOrdersChannel() {
+    try {
+      const config = SupabaseService.getConfig();
+      if (!config.connected) return;
+      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        console.info('SDK de Supabase no cargado: el realtime de pedidos lo cubre el polling.');
+        return;
+      }
+
+      const client = window.supabase.createClient(config.url, config.anonKey);
+      ordersRealtimeChannel = client
+        .channel('admin-pedidos-realtime')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, (payload) => {
+          console.log('🔔 Realtime: nuevo pedido en Supabase', payload.new && payload.new.id);
+          loadOrders();
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pedidos' }, () => {
+          loadOrders();
+        })
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.warn('Realtime de pedidos no disponible: sigue activo el polling de respaldo.');
+          }
+        });
+
+      window.addEventListener('pagehide', () => {
+        try {
+          if (ordersRealtimeChannel && typeof ordersRealtimeChannel.unsubscribe === 'function') {
+            ordersRealtimeChannel.unsubscribe();
+          }
+        } catch (e) {}
+      });
+    } catch (err) {
+      console.warn('No se pudo abrir el canal realtime de pedidos (se usa polling):', err);
+    }
+  }
+
+  // Detecta pedidos que aún no estaban en pantalla y dispara la alarma.
+  // La primera carga (histórico) NUNCA dispara alarma.
+  function detectNewOrdersAndAlarm() {
+    const currentIds = new Set(orders.map(o => String(o.id)));
+    if (knownOrderIds === null) {
+      knownOrderIds = currentIds;
+      return;
+    }
+    const fresh = orders.filter(o => !knownOrderIds.has(String(o.id)) && o.status === 'nuevo');
+    knownOrderIds = currentIds;
+    if (fresh.length) triggerNewOrderAlarm(fresh);
+  }
+
+  // ==========================================================================
+  // ALARMA SONORA ESTILO APP DE DELIVERY (WEB AUDIO API, EN BUCLE)
+  // Suena SIN DETENERSE hasta que el admin pulsa "Aceptar / Atender Pedido".
+  // ==========================================================================
+  function scheduleAlarmPulse(startTime) {
+    if (!alarmGain || !alarmOsc) return;
+    const gain = alarmGain.gain;
+    // Tres pitidos agudos por pulso: patrón inconfundible de "pedido entrante"
+    for (let i = 0; i < 3; i++) {
+      const t = startTime + i * 0.17;
+      alarmOsc.frequency.setValueAtTime(i === 1 ? 940 : 1320, t);
+      gain.setValueAtTime(0, t);
+      gain.linearRampToValueAtTime(0.5, t + 0.02);
+      gain.setValueAtTime(0.5, t + 0.11);
+      gain.linearRampToValueAtTime(0, t + 0.14);
+    }
+  }
+
+  function alarmSchedulerTick() {
+    if (!audioCtx || !alarmGain) return;
+    const now = audioCtx.currentTime;
+    if (alarmNextPulseTime < now) alarmNextPulseTime = now + 0.05;
+    // Programa siempre ~1.5s por delante para que el bucle nunca se interrumpa
+    while (alarmNextPulseTime < now + 1.5) {
+      scheduleAlarmPulse(alarmNextPulseTime);
+      alarmNextPulseTime += 0.95;
+    }
+  }
+
+  function startNewOrderSound() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) {
+        console.warn('Web Audio API no disponible en este navegador.');
+        return;
+      }
+      if (!audioCtx) audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+
+      if (!alarmOsc) {
+        alarmOsc = audioCtx.createOscillator();
+        alarmOsc.type = 'square';
+        alarmGain = audioCtx.createGain();
+        alarmGain.gain.value = 0;
+        alarmOsc.connect(alarmGain);
+        alarmGain.connect(audioCtx.destination);
+        alarmOsc.start();
+      }
+
+      alarmGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      alarmGain.gain.setValueAtTime(0, audioCtx.currentTime);
+      alarmNextPulseTime = 0;
+      alarmSchedulerTick();
+      if (alarmSchedulerId === null) alarmSchedulerId = setInterval(alarmSchedulerTick, 250);
+      if (navigator.vibrate) navigator.vibrate([400, 180, 400, 180, 400]);
+    } catch (err) {
+      console.warn('No se pudo iniciar la alarma sonora:', err);
+    }
+  }
+
+  function stopNewOrderSound() {
+    if (alarmSchedulerId !== null) {
+      clearInterval(alarmSchedulerId);
+      alarmSchedulerId = null;
+    }
+    if (audioCtx && alarmGain) {
+      try {
+        const now = audioCtx.currentTime;
+        alarmGain.gain.cancelScheduledValues(now);
+        alarmGain.gain.setValueAtTime(0, now);
+      } catch (e) {}
+    }
+    if (navigator.vibrate) {
+      try { navigator.vibrate(0); } catch (e) {}
+    }
+  }
+
+  function triggerNewOrderAlarm(newOrders) {
+    if (!Array.isArray(newOrders) || newOrders.length === 0) return;
+    if (knownOrderIds !== null) {
+      newOrders.forEach(o => knownOrderIds.add(String(o.id)));
+    }
+    newOrders.forEach(o => {
+      if (!alarmPendingOrders.some(p => String(p.id) === String(o.id))) alarmPendingOrders.push(o);
+    });
+
+    const latest = alarmPendingOrders[0];
+    if (newOrderAlarmInfo) {
+      newOrderAlarmInfo.textContent = alarmPendingOrders.length === 1
+        ? `Pedido #${latest.id} • ${latest.customerName} • $${(parseFloat(latest.total) || 0).toFixed(2)}`
+        : `${alarmPendingOrders.length} pedidos nuevos: ${alarmPendingOrders.map(o => '#' + o.id).join(' • ')}`;
+    }
+    if (newOrderAlarmBanner) newOrderAlarmBanner.classList.add('show');
+    // Baja el modal y el contenido para que el banner no tape el botón de cierre
+    document.body.classList.add('new-order-alarm-open');
+    syncAlarmBannerOffset();
+    document.title = `🔔 (${alarmPendingOrders.length}) ¡NUEVO PEDIDO! | Al Costo Admin`;
+
+    if (!alarmActive) {
+      alarmActive = true;
+      startNewOrderSound();
+    }
+    showToast(`🔔 ¡NUEVO PEDIDO RECIBIDO! #${latest.id}`, 'success');
+  }
+
+  // Publica la altura REAL del banner de alarma como variable CSS
+  // (--alarm-banner-height): el modal nunca queda tapado por el banner.
+  function syncAlarmBannerOffset() {
+    if (!newOrderAlarmBanner || !newOrderAlarmBanner.classList.contains('show')) return;
+    const height = Math.ceil(newOrderAlarmBanner.getBoundingClientRect().height) || 0;
+    if (height > 0) {
+      document.documentElement.style.setProperty('--alarm-banner-height', `${height}px`);
+    }
+  }
+
+  function setupNewOrderAlarmListeners() {
+    if (acceptNewOrderBtn) acceptNewOrderBtn.addEventListener('click', acceptNewOrderAlarm);
+
+    // El modal se ajusta a la altura REAL del banner (var --alarm-banner-height)
+    window.addEventListener('resize', syncAlarmBannerOffset);
+
+    if (newOrderAlarmDetailBtn) {
+      newOrderAlarmDetailBtn.addEventListener('click', () => {
+        const target = alarmPendingOrders[0];
+        if (target) openOrderDetail(target.id);
+        // Ver el detalle NO detiene la alarma: solo lo hace "Aceptar / Atender"
+      });
+    }
+
+    // Políticas de autoplay: si el navegador bloquea el AudioContext, se reanuda
+    // en el primer gesto del usuario mientras la alarma siga sonando.
+    const resumeAudio = () => {
+      if (alarmActive && audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+    };
+    ['pointerdown', 'keydown', 'touchstart'].forEach(evt => {
+      document.addEventListener(evt, resumeAudio, { passive: true });
+    });
+  }
+
+  function acceptNewOrderAlarm() {
+    const target = alarmPendingOrders[0];
+    alarmActive = false;
+    alarmPendingOrders = [];
+    stopNewOrderSound();
+    if (newOrderAlarmBanner) newOrderAlarmBanner.classList.remove('show');
+    document.body.classList.remove('new-order-alarm-open');
+    document.documentElement.style.removeProperty('--alarm-banner-height');
+    document.title = ORIGINAL_DOCUMENT_TITLE;
+    if (target) openOrderDetail(target.id);
+    showToast('✅ Pedido aceptado y atendido: alarma detenida', 'success');
   }
 
   function createSampleOrder() {
@@ -363,7 +710,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (statPreparingCount) statPreparingCount.textContent = prepCount;
     if (statShippingCount) statShippingCount.textContent = shipCount;
     if (statTotalSalesAmount) statTotalSalesAmount.textContent = `$${totalSales.toFixed(2)}`;
-    if (countAllOrders) countAllOrders.textContent = orders.length;
+    if (countAllOrders) {
+      // "Todos" cuenta solo la vista del día (sin los archivados)
+      countAllOrders.textContent = orders.filter(o => !isOrderArchived(o)).length;
+    }
+    if (countArchivedOrders) countArchivedOrders.textContent = archivedOrderIds.size;
 
     if (tabNewOrdersBadge) {
       tabNewOrdersBadge.textContent = `${newCount} nuevos`;
@@ -468,119 +819,120 @@ document.addEventListener('DOMContentLoaded', () => {
     return (getItemUnitPrice(item) * getItemQuantity(item)).toFixed(2);
   }
 
+  function getOrderStatusBadge(status) {
+    if (status === 'nuevo') return '<span class="status-badge nuevo">🟡 Nuevo</span>';
+    if (status === 'preparacion') return '<span class="status-badge preparacion">👨‍🌾 En Preparación</span>';
+    if (status === 'camino') return '<span class="status-badge camino">🛵 En Camino</span>';
+    if (status === 'entregado') return '<span class="status-badge entregado">✅ Entregado</span>';
+    if (status === 'cancelado') return '<span class="status-badge" style="background:#F3F4F6; color:#4B5569;">❌ Cancelado</span>';
+    return `<span class="status-badge">${status || ''}</span>`;
+  }
+
+  function getStatusSelectHtml(order) {
+    return `
+      <select class="form-select order-status-select" data-order-id="${order.id}" aria-label="Cambiar estado del pedido #${order.id}" title="Cambiar estado">
+        <option value="nuevo" ${order.status === 'nuevo' ? 'selected' : ''}>🟡 Nuevo</option>
+        <option value="preparacion" ${order.status === 'preparacion' ? 'selected' : ''}>👨‍🌾 En Preparación</option>
+        <option value="camino" ${order.status === 'camino' ? 'selected' : ''}>🛵 En Camino</option>
+        <option value="entregado" ${order.status === 'entregado' ? 'selected' : ''}>✅ Entregado</option>
+        <option value="cancelado" ${order.status === 'cancelado' ? 'selected' : ''}>❌ Cancelado</option>
+      </select>
+    `;
+  }
+
+  // Vista PREDETERMINADA: lista compacta de filas (Nº Pedido, Cliente, Hora/Fecha,
+  // Total, Estado, Acción). El detalle completo se abre en el modal.
   function renderOrdersCards() {
     if (!ordersCardsContainer) return;
 
     const filtered = orders.filter(order => {
+      const archived = isOrderArchived(order);
+      if (currentOrderFilter === 'archivados') return archived;
+      if (archived) return false; // archivados quedan fuera de la vista del día
       if (currentOrderFilter === 'all') return true;
       return order.status === currentOrderFilter;
     });
 
     if (filtered.length === 0) {
+      const emptyIcon = currentOrderFilter === 'archivados' ? '📦' : '📭';
+      const emptyTitle = currentOrderFilter === 'archivados'
+        ? 'No hay pedidos archivados'
+        : 'No hay pedidos en este estado';
+      const emptyText = currentOrderFilter === 'archivados'
+        ? 'Usa el botón "Archivar Pedidos Entregados" para limpiar la vista del día.'
+        : 'Los nuevos pedidos que los clientes hagan en la tienda aparecerán aquí al instante, sin refrescar.';
       ordersCardsContainer.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; background: white; border-radius: 16px; border: 1px dashed var(--color-border);">
-          <div style="font-size: 2.8rem; margin-bottom: 8px;">📭</div>
-          <h3 style="font-size: 1.15rem; font-weight: 800; margin-bottom: 4px;">No hay pedidos en este estado</h3>
-          <p style="color: #666; font-size: 0.85rem;">Los nuevos pedidos que los clientes hagan en la tienda aparecerán aquí al instante.</p>
+        <div class="orders-list-empty" style="background: white;">
+          <div style="font-size: 2.8rem; margin-bottom: 8px;">${emptyIcon}</div>
+          <h3 style="font-size: 1.15rem; font-weight: 800; margin-bottom: 4px;">${emptyTitle}</h3>
+          <p style="color: #666; font-size: 0.85rem;">${emptyText}</p>
         </div>
       `;
       return;
     }
 
-    ordersCardsContainer.innerHTML = filtered.map(order => {
-      const dateFormatted = new Date(order.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const rowsHtml = filtered.map(order => {
+      const orderDate = new Date(order.created_at || Date.now());
+      const timeFormatted = orderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateFormatted = orderDate.toLocaleDateString([], { day: '2-digit', month: 'short', year: '2-digit' });
+      const totalAmount = parseFloat(order.total) || 0;
       const cleanPhone = (order.customerPhone || '').replace(/\D/g, '');
       const waMsg = encodeURIComponent(`Hola ${order.customerName}, te escribimos de Al Costo sobre tu pedido #${order.id}. ¿Cómo estás?`);
       const waCustomerUrl = `https://wa.me/${cleanPhone}?text=${waMsg}`;
-
-      let statusBadgeHtml = '';
-      if (order.status === 'nuevo') statusBadgeHtml = '<span class="status-badge nuevo">🟡 Nuevo</span>';
-      else if (order.status === 'preparacion') statusBadgeHtml = '<span class="status-badge preparacion">👨‍🌾 En Preparación</span>';
-      else if (order.status === 'camino') statusBadgeHtml = '<span class="status-badge camino">🛵 En Camino</span>';
-      else if (order.status === 'entregado') statusBadgeHtml = '<span class="status-badge entregado">✅ Entregado</span>';
-      else statusBadgeHtml = `<span class="status-badge">${order.status}</span>`;
+      const archived = isOrderArchived(order);
 
       return `
-        <div class="order-card status-${order.status || 'nuevo'}">
-          
-          <div class="order-card-header">
-            <div>
-              <div class="order-code">Pedido #${order.id}</div>
-              <div class="order-time">Hora: ${dateFormatted} • ${order.deliverySlot || 'Entrega estándar'}</div>
+        <tr class="orders-list-row row-${order.status || 'nuevo'}" data-order-id="${order.id}" tabindex="0" title="Ver detalle completo del pedido #${order.id}">
+          <td data-label="Nº Pedido">
+            <div class="orders-list-id">#${order.id}</div>
+            <div class="orders-list-sub">${order.deliveryType === 'pickup' ? '🏪 Retiro en tienda' : '🛵 Delivery'}</div>
+          </td>
+          <td data-label="Cliente">
+            <div class="orders-list-client">${order.customerName}</div>
+            <div class="orders-list-sub">📞 ${order.customerPhone || 'Sin teléfono'}</div>
+          </td>
+          <td data-label="Hora / Fecha">
+            <div class="orders-list-date">${timeFormatted}</div>
+            <div class="orders-list-sub">${dateFormatted}</div>
+          </td>
+          <td data-label="Total">
+            <div class="orders-list-total-usd">$${totalAmount.toFixed(2)}</div>
+            <div class="orders-list-total-bs">🇻🇪 ${(totalAmount * CURRENCY_RATES.BS).toFixed(2)} Bs</div>
+          </td>
+          <td data-label="Estado">${getOrderStatusBadge(order.status)}</td>
+          <td data-label="Acción">
+            <div class="orders-list-actions">
+              ${archived ? '' : getStatusSelectHtml(order)}
+              <a href="${waCustomerUrl}" target="_blank" rel="noopener" class="btn-order-action btn-wa-action" title="Chatear por WhatsApp con ${order.customerName}" onclick="event.stopPropagation()">💬</a>
+              <button class="btn-order-action view-order-modal-btn" data-order-id="${order.id}" style="background: #F8F9FA;" title="Ver detalle completo">🔍 <span class="btn-label">Ver</span></button>
+              ${archived ? `<button class="btn-order-action unarchive-order-btn" data-order-id="${order.id}" style="background: #FFF7ED; color: #9A3412; border-color: #FED7AA;" title="Restaurar a la vista del día">↩️</button>` : ''}
             </div>
-            ${statusBadgeHtml}
-          </div>
-
-          <div class="order-customer-info">
-            <div class="order-customer-name">👤 ${order.customerName}</div>
-            <div class="order-customer-details">📞 Teléfono: ${order.customerPhone || 'Sin teléfono registrado'}</div>
-            <div class="order-customer-details">📍 ${order.deliveryAddress || (order.deliveryType === 'pickup' ? 'Retiro en Tienda Al Costo' : 'Sin dirección registrada')}</div>
-            <div class="order-customer-details">🕒 Horario: ${order.deliverySlot || 'A coordinar con el shopper'}</div>
-            <div class="order-customer-details">🚚 Modalidad: <strong>${order.deliveryType === 'pickup' ? '🏪 Retiro en Tienda' : '🛵 Delivery a domicilio'}</strong></div>
-            <div class="order-customer-details">💳 Pago: <strong>${order.paymentMethod || 'No especificado'}</strong></div>
-            ${order.paymentProof ? `
-              <div class="order-customer-details" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
-                🧾 Captura de pago:
-                <a href="${order.paymentProof}" target="_blank" title="Ver captura del pago en tamaño completo">
-                  <img src="${order.paymentProof}" alt="Captura del comprobante de pago" class="order-payment-proof-thumb" loading="lazy">
-                </a>
-                <a href="${order.paymentProof}" target="_blank" style="color: #108910; font-weight: 800; font-size: 0.78rem;">Ver comprobante ↗</a>
-              </div>
-            ` : `<div class="order-customer-details">🧾 Pago en efectivo / Sin comprobante</div>`}
-            ${order.instructions ? `<div class="order-customer-details" style="color: #B45309;">📝 Nota: "${order.instructions}"</div>` : ''}
-          </div>
-
-          <div class="order-items-preview">
-            <div style="font-weight: 700; margin-bottom: 6px; color: #333;">Artículos del Pedido (${order.items ? order.items.length : 0}):</div>
-            ${(order.items || []).map(i => `
-              <div class="order-item-line">
-                <span><strong>${getItemQuantity(i)}x</strong> ${getItemName(i)}</span>
-                <span>$${getItemLineTotal(i)}</span>
-              </div>
-            `).join('')}
-          </div>
-
-          <!-- Selector de Estado de la Orden -->
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-            <label style="font-size: 0.8rem; font-weight: 700; color: #555;">Estado:</label>
-            <select class="form-select order-status-select" data-order-id="${order.id}" style="height: 36px; padding: 4px 8px; font-size: 0.82rem; font-weight: 700;">
-              <option value="nuevo" ${order.status === 'nuevo' ? 'selected' : ''}>🟡 Nuevo</option>
-              <option value="preparacion" ${order.status === 'preparacion' ? 'selected' : ''}>👨‍🌾 En Preparación</option>
-              <option value="camino" ${order.status === 'camino' ? 'selected' : ''}>🛵 En Camino</option>
-              <option value="entregado" ${order.status === 'entregado' ? 'selected' : ''}>✅ Entregado</option>
-              <option value="cancelado" ${order.status === 'cancelado' ? 'selected' : ''}>❌ Cancelado</option>
-            </select>
-          </div>
-
-          <!-- Botones de Acción Rápida -->
-          <div class="order-actions-row">
-            <a href="${waCustomerUrl}" target="_blank" class="btn-order-action btn-wa-action" title="Chatear por WhatsApp">
-              <span>💬 WhatsApp</span>
-            </a>
-
-            <button class="btn-order-action view-order-modal-btn" data-order-id="${order.id}" style="background: #F8F9FA;">
-              🔍 Ver Detalle
-            </button>
-          </div>
-
-          <div class="order-card-footer">
-            <div>
-              <span style="font-size: 0.78rem; color: #666; font-weight: 600;">Total a Cobrar:</span>
-              <div class="order-total-amount">$${parseFloat(order.total || 0).toFixed(2)}</div>
-            </div>
-            <div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
-              <span class="badge-currency-bs" style="font-size: 0.75rem;">🇻🇪 ${(parseFloat(order.total || 0) * CURRENCY_RATES.BS).toFixed(2)} Bs</span>
-              <span class="badge-currency-cop" style="font-size: 0.75rem;">🇨🇴 ${(Math.round(parseFloat(order.total || 0) * CURRENCY_RATES.COP)).toLocaleString('es-CO')} COP</span>
-            </div>
-          </div>
-
-        </div>
+          </td>
+        </tr>
       `;
     }).join('');
 
+    ordersCardsContainer.innerHTML = `
+      <table class="orders-list-table">
+        <thead>
+          <tr>
+            <th>Nº Pedido</th>
+            <th>Cliente</th>
+            <th>Hora / Fecha</th>
+            <th>Total ($ / Bs.)</th>
+            <th>Estado</th>
+            <th style="text-align: right;">Acción</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `;
+
     // Eventos de cambio de estado
     ordersCardsContainer.querySelectorAll('.order-status-select').forEach(select => {
+      select.addEventListener('click', (e) => e.stopPropagation());
       select.addEventListener('change', async (e) => {
+        e.stopPropagation();
         const id = select.getAttribute('data-order-id');
         const newStatus = select.value;
         await changeOrderStatus(id, newStatus);
@@ -589,9 +941,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Eventos de modal detalle
     ordersCardsContainer.querySelectorAll('.view-order-modal-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-order-id');
-        openOrderDetail(id);
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openOrderDetail(btn.getAttribute('data-order-id'));
+      });
+    });
+
+    // Restaurar pedido archivado
+    ordersCardsContainer.querySelectorAll('.unarchive-order-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        unarchiveOrder(btn.getAttribute('data-order-id'));
+      });
+    });
+
+    // Clic en cualquier fila (o Enter con el teclado) = ver detalle del pedido
+    ordersCardsContainer.querySelectorAll('.orders-list-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('button, select, a, input')) return;
+        openOrderDetail(row.getAttribute('data-order-id'));
+      });
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.target.closest('button, select, a, input')) {
+          openOrderDetail(row.getAttribute('data-order-id'));
+        }
       });
     });
   }
@@ -624,11 +997,17 @@ document.addEventListener('DOMContentLoaded', () => {
     updateOrdersStats();
     renderOrdersCards();
     showToast(`🔄 Pedido #${orderId} actualizado a "${newStatus}"`, 'success');
+
+    // Si el detalle está abierto en el modal, se refleca el nuevo estado
+    if (openOrderId && String(openOrderId) === String(orderId)) {
+      openOrderDetail(orderId);
+    }
   }
 
   function openOrderDetail(orderId) {
     const order = orders.find(o => o.id === orderId);
     if (!order || !orderDetailModal || !orderDetailModalBody) return;
+    openOrderId = order.id;
 
     // Montos SIEMPRE numéricos: evita "$NaN" en pedidos con envío $0.00,
     // con columna "envio" vacía o de tipo "Retiro en Tienda".
@@ -640,6 +1019,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const deliveryFeeLabel = isPickup
       ? 'GRATIS (Retiro en Tienda)'
       : (deliveryFeeAmount === 0 ? 'GRATIS' : `$${deliveryFeeAmount.toFixed(2)}`);
+    const modalCleanPhone = (order.customerPhone || '').replace(/\D/g, '');
+    const waCustomerUrl = `https://wa.me/${modalCleanPhone}?text=${encodeURIComponent(`Hola ${order.customerName}, te escribimos de Al Costo sobre tu pedido #${order.id}. ¿Cómo estás?`)}`;
+    const archived = isOrderArchived(order);
 
     const itemsHtml = (order.items || []).map(i => `
       <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
@@ -695,8 +1077,56 @@ document.addEventListener('DOMContentLoaded', () => {
           <span>Total:</span>
           <span>$${totalAmount.toFixed(2)}</span>
         </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: #C2410C; font-weight: 700; margin-top: 4px;">
+          <span>Equivalente:</span>
+          <span>🇻🇪 ${(totalAmount * CURRENCY_RATES.BS).toFixed(2)} Bs • 🇨🇴 ${(Math.round(totalAmount * CURRENCY_RATES.COP)).toLocaleString('es-CO')} COP</span>
+        </div>
+      </div>
+
+      <!-- Acciones del pedido: WhatsApp + Estado + Archivar -->
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--color-border);">
+        <a href="${waCustomerUrl}" target="_blank" rel="noopener" class="btn-order-action btn-wa-action" style="flex: 1; min-width: 170px; min-height: 42px;" title="Chatear por WhatsApp con ${order.customerName}">
+          💬 WhatsApp
+        </a>
+        <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 200px;">
+          <label for="modalOrderStatusSelect" style="font-size: 0.8rem; font-weight: 700; color: #555; white-space: nowrap;">Estado:</label>
+          ${getStatusSelectHtml(order).replace('order-status-select', 'order-status-select modal-order-status-select')}
+        </div>
+        ${archived
+          ? `<button type="button" class="btn-order-action modal-unarchive-btn" data-order-id="${order.id}" style="min-height: 42px; background: #FFF7ED; color: #9A3412; border-color: #FED7AA;">↩️ Desarchivar</button>`
+          : (order.status === 'entregado'
+            ? `<button type="button" class="btn-order-action modal-archive-btn" data-order-id="${order.id}" style="min-height: 42px; background: #EFF6FF; color: #1D4ED8; border-color: #BFDBFE;">📦 Archivar</button>`
+            : '')}
       </div>
     `;
+
+    // Acciones del modal: estado, archivo y cierre
+    const modalStatusSelect = orderDetailModalBody.querySelector('.modal-order-status-select');
+    if (modalStatusSelect) {
+      modalStatusSelect.id = 'modalOrderStatusSelect';
+      modalStatusSelect.addEventListener('change', async () => {
+        await changeOrderStatus(order.id, modalStatusSelect.value);
+      });
+    }
+    const modalArchiveBtn = orderDetailModalBody.querySelector('.modal-archive-btn');
+    if (modalArchiveBtn) {
+      modalArchiveBtn.addEventListener('click', () => {
+        archivedOrderIds.add(String(order.id));
+        persistArchivedOrders();
+        updateOrdersStats();
+        renderOrdersCards();
+        orderDetailModal.classList.remove('active');
+        openOrderId = null;
+        showToast(`📦 Pedido #${order.id} archivado: sale de la vista del día`, 'success');
+      });
+    }
+    const modalUnarchiveBtn = orderDetailModalBody.querySelector('.modal-unarchive-btn');
+    if (modalUnarchiveBtn) {
+      modalUnarchiveBtn.addEventListener('click', () => {
+        unarchiveOrder(order.id);
+        openOrderDetail(order.id);
+      });
+    }
 
     orderDetailModal.classList.add('active');
   }
@@ -1617,15 +2047,22 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Archivar pedidos entregados: limpia la vista de operación del día
+    if (archiveDeliveredBtn) {
+      archiveDeliveredBtn.addEventListener('click', archiveDeliveredOrders);
+    }
+
     if (simulateDemoOrderBtn) {
       simulateDemoOrderBtn.addEventListener('click', () => {
         const demo = createSampleOrder();
         demo.customerName = ['Carlos Ruiz', 'Sofía Márquez', 'Alejandro Morales', 'Lucía Fernández'][Math.floor(Math.random() * 4)];
         orders.unshift(demo);
-        localStorage.setItem('alcosto_orders', JSON.stringify(orders));
+        // persistOrdersLocally tolera la cuota llena de localStorage (capturas base64)
+        persistOrdersLocally();
         updateOrdersStats();
         renderOrdersCards();
-        showToast(`🔔 ¡Nuevo pedido #${demo.id} recibido!`, 'success');
+        // Un pedido recién creado también dispara la alarma estilo delivery
+        detectNewOrdersAndAlarm();
       });
     }
 
@@ -1633,8 +2070,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeOrderDetailModalBtn && orderDetailModal) {
       closeOrderDetailModalBtn.addEventListener('click', () => {
         orderDetailModal.classList.remove('active');
+        openOrderId = null;
       });
     }
+    // Clic fuera del modal (overlay) o tecla Escape para cerrar
+    if (orderDetailModal) {
+      orderDetailModal.addEventListener('click', (e) => {
+        if (e.target === orderDetailModal) {
+          orderDetailModal.classList.remove('active');
+          openOrderId = null;
+        }
+      });
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && orderDetailModal && orderDetailModal.classList.contains('active')) {
+        orderDetailModal.classList.remove('active');
+        openOrderId = null;
+      }
+    });
 
     // Búsqueda en tabla
     // Debounce: al escribir en el buscador no se repinta la tabla en cada tecla
