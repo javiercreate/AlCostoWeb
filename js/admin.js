@@ -2412,6 +2412,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const discardAiPhotoBtn = document.getElementById('discardAiPhotoBtn');
     const cancelAiPhotoBtn = document.getElementById('cancelAiPhotoBtn');
 
+    // Deslizadores de retoque manual en el modal de previsualización
+    const aiAdjBrightness = document.getElementById('aiAdjBrightness');
+    const aiAdjSaturation = document.getElementById('aiAdjSaturation');
+    const aiAdjContrast = document.getElementById('aiAdjContrast');
+    const aiAdjBrightnessVal = document.getElementById('aiAdjBrightnessVal');
+    const aiAdjSaturationVal = document.getElementById('aiAdjSaturationVal');
+    const aiAdjContrastVal = document.getElementById('aiAdjContrastVal');
+
     let productCameraStream = null;
     let aiJobId = 0;
     let aiRawSource = null;
@@ -2497,6 +2505,7 @@ document.addEventListener('DOMContentLoaded', () => {
       aiJobId += 1; // invalida cualquier proceso en curso
       aiRawSource = null;
       aiResultDataUrl = '';
+      resetAiAdjustControls();
       if (aiPhotoPanel) aiPhotoPanel.hidden = true;
     }
 
@@ -2527,12 +2536,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (jobId !== aiJobId) return; // cancelado o reemplazado por otra captura
 
         aiResultDataUrl = result.dataUrl;
+        resetAiAdjustControls(); // los deslizadores arrancan en 0 para cada foto
         if (aiPhotoPreview) {
           aiPhotoPreview.src = result.dataUrl;
           aiPhotoPreview.alt = 'Producto recortado sin fondo';
         }
         if (aiPhotoEngineBadge) {
-          aiPhotoEngineBadge.textContent = result.engine === 'ia' ? '✂️ Recortado con IA' : '✂️ Recorte básico (IA sin conexión)';
+          aiPhotoEngineBadge.textContent = result.engine === 'ia'
+            ? `✂️ Recortado con IA${result.enhanced ? ' · 🎨 Color realzado' : ''}`
+            : '✂️ Recorte básico (IA sin conexión)';
         }
         if (aiPhotoSizeBadge) {
           aiPhotoSizeBadge.textContent = `${Math.round(result.bytes / 1024)} KB`;
@@ -2543,13 +2555,13 @@ document.addEventListener('DOMContentLoaded', () => {
           const maxBytes = (typeof AIPhoto !== 'undefined' && AIPhoto.DEFAULT_MAX_BYTES) || 260 * 1024;
           const maxKb = Math.round(maxBytes / 1024);
           aiPhotoHint.textContent = result.bytes <= maxBytes
-            ? `Fondo transparente y peso liviano (< ${maxKb} KB) listo para publicar`
+            ? `Lienzo 600 x 600 px con fondo transparente, color realzado y peso liviano (< ${maxKb} KB)`
             : `⚠️ La imagen pesa más de ${maxKb} KB; se conservó el menor tamaño posible`;
         }
         showAiPanelState('result');
 
         if (result.engine === 'ia') {
-          showToast('✂️ Fondo eliminado con IA y foto optimizada', 'success');
+          showToast('✂️ Fondo eliminado con IA, color realzado estilo iPhone y foto 600 x 600 px', 'success');
         } else {
           showToast('⚠️ La IA no estuvo disponible: se aplicó recorte básico de respaldo');
         }
@@ -2565,19 +2577,121 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // ==========================================================================
+    // RETOQUE MANUAL RÁPIDO (BRILLO / VIVACIDAD / CONTRASTE) EN EL PREVIEW
+    // Los deslizadores son deltas sobre la foto ya realzada automáticamente:
+    // la vista previa se aplica en vivo con CSS filter y el retoque se hornea
+    // en canvas (600 x 600) al pulsar "Usar esta imagen".
+    // ==========================================================================
+    function getAiAdjustments() {
+      return {
+        brightness: (aiAdjBrightness && parseFloat(aiAdjBrightness.value)) || 0,
+        saturation: (aiAdjSaturation && parseFloat(aiAdjSaturation.value)) || 0,
+        contrast: (aiAdjContrast && parseFloat(aiAdjContrast.value)) || 0
+      };
+    }
+
+    function aiAdjustmentsAreNeutral(adj) {
+      return !adj.brightness && !adj.saturation && !adj.contrast;
+    }
+
+    function aiAdjustmentsToFilter(adj) {
+      const parts = [];
+      if (adj.brightness) parts.push(`brightness(${(1 + adj.brightness / 100).toFixed(3)})`);
+      if (adj.saturation) parts.push(`saturate(${(1 + adj.saturation / 100).toFixed(3)})`);
+      if (adj.contrast) parts.push(`contrast(${(1 + adj.contrast / 100).toFixed(3)})`);
+      return parts.join(' ');
+    }
+
+    function formatAdjustLabel(value) {
+      return `${value > 0 ? '+' : ''}${value}%`;
+    }
+
+    function updateAiAdjustPreview() {
+      const adj = getAiAdjustments();
+      if (aiPhotoPreview) aiPhotoPreview.style.filter = aiAdjustmentsToFilter(adj);
+      if (aiAdjBrightnessVal) aiAdjBrightnessVal.textContent = formatAdjustLabel(adj.brightness);
+      if (aiAdjSaturationVal) aiAdjSaturationVal.textContent = formatAdjustLabel(adj.saturation);
+      if (aiAdjContrastVal) aiAdjContrastVal.textContent = formatAdjustLabel(adj.contrast);
+    }
+
+    function resetAiAdjustControls() {
+      if (aiAdjBrightness) aiAdjBrightness.value = '0';
+      if (aiAdjSaturation) aiAdjSaturation.value = '0';
+      if (aiAdjContrast) aiAdjContrast.value = '0';
+      if (aiPhotoPreview) aiPhotoPreview.style.filter = '';
+      if (aiAdjBrightnessVal) aiAdjBrightnessVal.textContent = '0%';
+      if (aiAdjSaturationVal) aiAdjSaturationVal.textContent = '0%';
+      if (aiAdjContrastVal) aiAdjContrastVal.textContent = '0%';
+    }
+
+    function loadImageFromDataUrl(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('No se pudo cargar la foto procesada'));
+        img.src = src;
+      });
+    }
+
+    // Hornea el retoque manual en el lienzo final (conserva 600 x 600 px y
+    // transparencia). Si el navegador no soporta ctx.filter, se usa la foto base.
+    async function bakeAiAdjustments(baseDataUrl, adj) {
+      if (!baseDataUrl || aiAdjustmentsAreNeutral(adj)) return baseDataUrl;
+
+      let img;
+      try {
+        img = await loadImageFromDataUrl(baseDataUrl);
+      } catch (err) {
+        console.warn('No se pudo aplicar el retoque manual, se usa la foto base:', err);
+        return baseDataUrl;
+      }
+
+      const width = img.naturalWidth || img.width;
+      const height = img.naturalHeight || img.height;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx || typeof ctx.filter === 'undefined') return baseDataUrl;
+
+      ctx.filter = aiAdjustmentsToFilter(adj);
+      ctx.drawImage(img, 0, 0, width, height);
+      ctx.filter = 'none';
+
+      try {
+        const webp = canvas.toDataURL('image/webp', 0.92);
+        return webp.indexOf('data:image/webp') === 0 ? webp : canvas.toDataURL('image/png');
+      } catch (err) {
+        console.warn('No se pudo exportar el retoque, se usa la foto base:', err);
+        return baseDataUrl;
+      }
+    }
+
     function useAiPhotoResult() {
       if (!aiResultDataUrl) return;
-      if (prodImageInput) {
-        prodImageInput.value = aiResultDataUrl;
-        prodImageInput.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-      if (imagePreview) {
-        imagePreview.style.background = 'repeating-conic-gradient(#E5E7EB 0% 25%, #FFFFFF 0% 50%) 50% / 12px 12px';
-      }
-      if (imagePreviewName) imagePreviewName.textContent = 'Foto con IA (fondo transparente)';
-      if (imagePreviewContainer) imagePreviewContainer.style.display = 'flex';
-      hideAiPhotoPanel();
-      showToast('✅ Imagen con fondo transparente asignada al campo del producto', 'success');
+      const adj = getAiAdjustments();
+      const commit = (finalDataUrl) => {
+        if (prodImageInput) {
+          prodImageInput.value = finalDataUrl;
+          prodImageInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (imagePreview) {
+          imagePreview.style.background = 'repeating-conic-gradient(#E5E7EB 0% 25%, #FFFFFF 0% 50%) 50% / 12px 12px';
+          imagePreview.style.filter = '';
+        }
+        if (imagePreviewName) {
+          imagePreviewName.textContent = aiAdjustmentsAreNeutral(adj)
+            ? 'Foto con IA (fondo transparente)'
+            : 'Foto con IA (fondo transparente + retoque manual)';
+        }
+        if (imagePreviewContainer) imagePreviewContainer.style.display = 'flex';
+        hideAiPhotoPanel();
+        showToast('✅ Imagen 600 x 600 px con fondo transparente asignada al campo del producto', 'success');
+      };
+
+      // Si hay retoque manual, se hornea antes de asignar; si no, va directo
+      Promise.resolve(bakeAiAdjustments(aiResultDataUrl, adj)).then(commit);
     }
 
     if (takeProductPhotoBtn) takeProductPhotoBtn.addEventListener('click', openProductCamera);
@@ -2594,6 +2708,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (useAiPhotoBtn) useAiPhotoBtn.addEventListener('click', useAiPhotoResult);
+
+    // Deslizadores de retoque: vista previa en vivo al moverlos
+    [aiAdjBrightness, aiAdjSaturation, aiAdjContrast].forEach(input => {
+      if (input) input.addEventListener('input', updateAiAdjustPreview);
+    });
     if (retryAiPhotoBtn) {
       retryAiPhotoBtn.addEventListener('click', () => {
         if (aiRawSource) startAiPhotoProcessing(aiRawSource);

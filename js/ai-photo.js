@@ -8,8 +8,11 @@
 // - Si la IA no está disponible (sin red, navegador antiguo, error de carga)
 //   se aplica automáticamente un recorte básico de fondo oscuro (mismo criterio
 //   que ya usaba el panel para imágenes con fondo negro).
-// - Salida optimizada para e-commerce: máximo 800x800 px, formato WebP (con
-//   transparencia) o PNG como respaldo, siempre que sea posible < 200 KB.
+// - Realce automático de color estilo iPhone inmediatamente después de
+//   remover el fondo: exposición +12%, vivacidad/saturación +28% (con extra
+//   para colores apagados) y contraste +12% (define sombras y punto negro).
+// - Salida optimizada para e-commerce: lienzo cuadrado fijo de 600x600 px,
+//   formato WebP (con transparencia) o PNG como respaldo, < 260 KB.
 // ==========================================================================
 
 (function (global) {
@@ -19,6 +22,16 @@
   // 900px de lado máximo (ajustado a las tarjetas Retina del catálogo); antes 800px
   // con escalados agresivos provocaba fotos pixeladas en la tienda.
   const DEFAULT_MAX_DIMENSION = 900;
+  // Lienzo cuadrado de exportación del editor de fotos: 600 x 600 px HD.
+  const DEFAULT_EXPORT_SIZE = 600;
+  // Realce automático "foto vivo" (estilo iPhone) aplicado tras remover el fondo.
+  // Dentro de los rangos pedidos: brillo +10~15%, vivacidad +25~30%, contraste +10~15%.
+  const AUTO_ENHANCE = {
+    exposure: 1.12, // +12% de exposición: ilumina sin blanquear
+    saturation: 1.28, // +28% de saturación base
+    vibrance: 0.12, // +12% extra SOLO en colores apagados (vivacidad)
+    contrast: 1.12 // +12% de contraste: define bordes, texturas y punto negro
+  };
   const DEFAULT_MAX_BYTES = 260 * 1024; // 260 KB
   const AI_MODEL = 'isnet_quint8'; // modelo ligero (~42 MB) tras la primera descarga
   // Calidad mínima 0.66 y escala mínima 0.72: antes bajaba a 0.40 / 0.48 y la foto salía borrosa
@@ -246,6 +259,93 @@
   }
 
   // --------------------------------------------------------------------------
+  // REALCE AUTOMÁTICO DE COLOR (ESTILO IPHONE) SOBRE EL LIENZO PROCESADO
+  // Exposición +12% -> Contraste +12% -> Vivacidad/Saturación +28%.
+  // Trabaja píxel a píxel respetando la transparencia del fondo eliminado.
+  // --------------------------------------------------------------------------
+  function applyEnhanceToData(data, params) {
+    const p = params || AUTO_ENHANCE;
+    const exposure = typeof p.exposure === 'number' ? p.exposure : 1.12;
+    const contrast = typeof p.contrast === 'number' ? p.contrast : 1.12;
+    const saturation = typeof p.saturation === 'number' ? p.saturation : 1.28;
+    const vibrance = typeof p.vibrance === 'number' ? p.vibrance : 0.12;
+    const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : v);
+
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] === 0) continue; // píxeles transparentes: intactos
+
+      // 1) Exposición / brillo leve (+12%): ilumina sin blanquear
+      let r = data[i] * exposure;
+      let g = data[i + 1] * exposure;
+      let b = data[i + 2] * exposure;
+
+      // 2) Contraste profundo (+12%): define bordes, texturas y punto negro
+      r = (r - 127.5) * contrast + 127.5;
+      g = (g - 127.5) * contrast + 127.5;
+      b = (b - 127.5) * contrast + 127.5;
+
+      // 3) Vivacidad: saturación +28%, con extra proporcional para los colores
+      //    apagados (así se resalta sin quemar los colores ya intensos)
+      const maxC = Math.max(r, g, b);
+      const minC = Math.min(r, g, b);
+      const currentSat = maxC > 0 ? (maxC - minC) / maxC : 0;
+      const satFactor = saturation + vibrance * (1 - Math.min(1, Math.max(0, currentSat)));
+      const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      r = lum + (r - lum) * satFactor;
+      g = lum + (g - lum) * satFactor;
+      b = lum + (b - lum) * satFactor;
+
+      data[i] = clamp(r);
+      data[i + 1] = clamp(g);
+      data[i + 2] = clamp(b);
+    }
+
+    return data;
+  }
+
+  function enhanceCanvasColors(sourceCanvas, params) {
+    const { width, height } = drawableSize(sourceCanvas);
+    if (!width || !height) return sourceCanvas;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(sourceCanvas, 0, 0);
+    try {
+      const imageData = ctx.getImageData(0, 0, width, height);
+      applyEnhanceToData(imageData.data, params);
+      ctx.putImageData(imageData, 0, 0);
+    } catch (err) {
+      console.warn('No se pudo aplicar el realce de color:', err);
+      return sourceCanvas;
+    }
+    return canvas;
+  }
+
+  // --------------------------------------------------------------------------
+  // LIENZO CUADRADO DE EXPORTACIÓN (600 x 600 px): encaja el producto al
+  // centro con proporción conservada y fondo transparente (letterbox).
+  // --------------------------------------------------------------------------
+  function fitToSquareCanvas(sourceCanvas, size) {
+    const target = size || DEFAULT_EXPORT_SIZE;
+    const { width, height } = drawableSize(sourceCanvas);
+    if (!width || !height) throw new Error('La imagen capturada está vacía');
+
+    const canvas = document.createElement('canvas');
+    canvas.width = target;
+    canvas.height = target;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    const scale = Math.min(target / width, target / height);
+    const drawW = Math.max(1, Math.round(width * scale));
+    const drawH = Math.max(1, Math.round(height * scale));
+    ctx.drawImage(sourceCanvas, Math.round((target - drawW) / 2), Math.round((target - drawH) / 2), drawW, drawH);
+    return canvas;
+  }
+
+  // --------------------------------------------------------------------------
   // Compresión y optimización de peso
   // --------------------------------------------------------------------------
   function supportsWebpEncoding(canvas) {
@@ -290,9 +390,11 @@
     return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
   }
 
-  // Ajusta a maxDim y baja calidad/escala hasta respetar maxBytes (< 200 KB)
-  function optimizeCanvas(sourceCanvas, maxDim, maxBytes) {
+  // Ajusta a maxDim y baja calidad/escala hasta respetar maxBytes (< 260 KB).
+  // scaleSteps opcional: el editor pasa [1] para no bajar de 600 x 600 px.
+  function optimizeCanvas(sourceCanvas, maxDim, maxBytes, scaleSteps) {
     const fitted = fitCanvas(sourceCanvas, maxDim);
+    const steps = Array.isArray(scaleSteps) && scaleSteps.length ? scaleSteps : SCALE_STEPS;
     const webpSupported = supportsWebpEncoding(fitted);
     let best = null;
 
@@ -304,8 +406,8 @@
       return bytes <= maxBytes;
     };
 
-    for (let s = 0; s < SCALE_STEPS.length; s++) {
-      const scale = SCALE_STEPS[s];
+    for (let s = 0; s < steps.length; s++) {
+      const scale = steps[s];
       const canvas = scale === 1 ? fitted : scaleCanvas(fitted, scale);
 
       if (webpSupported) {
@@ -323,12 +425,13 @@
   }
 
   // --------------------------------------------------------------------------
-  // Pipeline completo: IA -> fallback básico -> redimensión -> compresión
+  // Pipeline completo: IA -> fallback básico -> realce de color automático
+  // -> lienzo cuadrado 600x600 -> compresión sin bajar de esa resolución
   // --------------------------------------------------------------------------
   async function processImage(source, options) {
     const opts = options || {};
-    const maxDim = opts.maxDimension || DEFAULT_MAX_DIMENSION;
     const maxBytes = opts.maxBytes || DEFAULT_MAX_BYTES;
+    const exportSize = opts.exportSize || DEFAULT_EXPORT_SIZE;
     const onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : null;
     const onFallback = typeof opts.onFallback === 'function' ? opts.onFallback : null;
 
@@ -353,7 +456,17 @@
       }
     }
 
-    const optimized = optimizeCanvas(resultCanvas, maxDim, maxBytes);
+    // Realce automático de color "foto vivo" (estilo iPhone) inmediatamente
+    // después de remover el fondo: brillo +12%, vivacidad +28%, contraste +12%
+    const enhanced = opts.autoEnhance === false
+      ? resultCanvas
+      : enhanceCanvasColors(resultCanvas, opts.enhance || AUTO_ENHANCE);
+
+    // Lienzo cuadrado HD de salida (600 x 600 px) centrado con fondo transparente
+    const square = fitToSquareCanvas(enhanced, exportSize);
+
+    // Compresión respetando 600 x 600: solo se baja la calidad, nunca la escala
+    const optimized = optimizeCanvas(square, exportSize, maxBytes, [1]);
     if (!optimized || !optimized.dataUrl) throw new Error('No se pudo comprimir la imagen');
 
     return {
@@ -362,7 +475,9 @@
       width: optimized.width,
       height: optimized.height,
       format: optimized.format,
-      engine
+      engine,
+      enhanced: opts.autoEnhance !== false,
+      exportSize
     };
   }
 
@@ -371,6 +486,11 @@
     loadBackgroundRemoval,
     describeProgress,
     optimizeCanvas,
+    enhanceCanvasColors,
+    applyEnhanceToData,
+    fitToSquareCanvas,
+    AUTO_ENHANCE,
+    DEFAULT_EXPORT_SIZE,
     DEFAULT_MAX_DIMENSION,
     DEFAULT_MAX_BYTES
   };

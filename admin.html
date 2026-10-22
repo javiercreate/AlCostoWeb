@@ -14,7 +14,7 @@
   <!-- Font Awesome 6.5.1 Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-  <link rel="stylesheet" href="css/styles.css?v=20261022-finance">
+  <link rel="stylesheet" href="css/styles.css?v=20261022-photo600">
   
   <style>
     /* ==========================================================================
@@ -1546,6 +1546,71 @@
       color: #6B7280;
     }
 
+    /* Deslizadores de retoque manual (Brillo / Vivacidad / Contraste) */
+    .ai-photo-adjust {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .ai-adjust-title {
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: #334155;
+      letter-spacing: 0.2px;
+    }
+
+    .ai-adjust-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+    }
+
+    .ai-adjust-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .ai-adjust-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .ai-adjust-head label {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .ai-adjust-head output {
+      font-size: 0.74rem;
+      font-weight: 800;
+      color: #108910;
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      border-radius: var(--radius-pill, 9999px);
+      padding: 1px 8px;
+      min-width: 44px;
+      text-align: center;
+    }
+
+    .ai-adjust-slider {
+      width: 100%;
+      height: 6px;
+      border-radius: var(--radius-pill, 9999px);
+      background: #E2E8F0;
+      outline: none;
+      accent-color: #108910;
+      cursor: pointer;
+    }
+
     .ai-photo-actions {
       display: flex;
       gap: 8px;
@@ -2089,6 +2154,35 @@
                     <span class="ai-photo-badge" id="aiPhotoDimsBadge">—</span>
                     <span class="ai-photo-hint" id="aiPhotoHint">Fondo transparente listo para la ficha del producto</span>
                   </div>
+
+                  <!-- Deslizadores de retoque manual (antes de guardar la foto) -->
+                  <div class="ai-photo-adjust" id="aiPhotoAdjustBox">
+                    <div class="ai-adjust-title">🎚️ Retoque rápido (opcional)</div>
+                    <div class="ai-adjust-grid">
+                      <div class="ai-adjust-row">
+                        <div class="ai-adjust-head">
+                          <label for="aiAdjBrightness">☀️ Brillo</label>
+                          <output id="aiAdjBrightnessVal" for="aiAdjBrightness">0%</output>
+                        </div>
+                        <input type="range" id="aiAdjBrightness" class="ai-adjust-slider" min="-50" max="50" step="1" value="0">
+                      </div>
+                      <div class="ai-adjust-row">
+                        <div class="ai-adjust-head">
+                          <label for="aiAdjSaturation">🎨 Vivacidad / Saturación</label>
+                          <output id="aiAdjSaturationVal" for="aiAdjSaturation">0%</output>
+                        </div>
+                        <input type="range" id="aiAdjSaturation" class="ai-adjust-slider" min="-50" max="50" step="1" value="0">
+                      </div>
+                      <div class="ai-adjust-row">
+                        <div class="ai-adjust-head">
+                          <label for="aiAdjContrast">🌗 Contraste</label>
+                          <output id="aiAdjContrastVal" for="aiAdjContrast">0%</output>
+                        </div>
+                        <input type="range" id="aiAdjContrast" class="ai-adjust-slider" min="-50" max="50" step="1" value="0">
+                      </div>
+                    </div>
+                  </div>
+
                   <div class="ai-photo-actions">
                     <button type="button" id="useAiPhotoBtn" class="btn-checkout-primary">✅ Usar esta imagen</button>
                     <button type="button" id="retryAiPhotoBtn" class="btn-action">🔄 Reprocesar</button>
@@ -2493,7 +2587,7 @@ CREATE POLICY "Actualización de usuarios" ON usuarios FOR UPDATE USING (true);
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=20261021-orders-realtime"></script>
   <script src="js/products.js?v=20261020-badge-viveres"></script>
-  <script src="js/ai-photo.js?v=20261018-brandbig"></script>
-  <script src="js/admin.js?v=20261022-finance"></script>
+  <script src="js/ai-photo.js?v=20261022-photo600"></script>
+  <script src="js/admin.js?v=20261022-photo600"></script>
 </body>
 </html>
