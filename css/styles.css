@@ -207,9 +207,10 @@ body {
 }
 
 .brand-logo-img {
-  height: 46px;
+  height: auto;
+  max-height: 48px;
   width: auto;
-  max-width: 130px;
+  max-width: min(100%, 320px);
   object-fit: contain;
   display: block;
   border-radius: 8px;
@@ -2615,11 +2616,14 @@ to {
     order: 1;
     font-size: 1.2rem;
     gap: 6px;
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
   }
 .brand-logo-img {
-    height: 36px;
-    max-width: 96px;
+    height: auto;
+    max-height: 40px;
+    width: auto;
+    max-width: min(48vw, 210px);
   }
 .brand-name .logo-top {
     font-size: 1.45rem;
