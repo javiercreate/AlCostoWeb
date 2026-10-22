@@ -14,7 +14,7 @@
   <!-- Font Awesome 6.5.1 Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-  <link rel="stylesheet" href="css/styles.css?v=20261021-views">
+  <link rel="stylesheet" href="css/styles.css?v=20261022-finance">
   
   <style>
     /* ==========================================================================
@@ -229,6 +229,181 @@
         padding: 14px 16px;
         font-size: 0.98rem;
       }
+    }
+
+    /* ==========================================================================
+       ACORDEÓN DEL RESUMEN FINANCIERO (PESTAÑA PEDIDOS)
+       Colapsado por defecto para que los pedidos queden arriba de inmediato.
+       Incluye el selector de periodo: Hoy / Esta Semana / Este Mes / Todos.
+       ========================================================================== */
+    .fin-accordion {
+      margin-bottom: 16px;
+    }
+
+    .fin-accordion-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: white;
+      border: 1px solid #BBF7D0;
+      border-radius: var(--radius-xl);
+      padding: 14px 20px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 800;
+      color: #166534;
+      cursor: pointer;
+      box-shadow: var(--shadow-card);
+      transition: background var(--transition-fast);
+    }
+
+    .fin-accordion-toggle:hover {
+      background: #F0FDF4;
+    }
+
+    .fin-accordion-icon {
+      font-size: 1rem;
+      color: #108910;
+      transition: transform 0.2s ease;
+    }
+
+    .fin-accordion-toggle[aria-expanded="true"] .fin-accordion-icon {
+      transform: rotate(180deg);
+    }
+
+    .fin-accordion-panel[hidden] {
+      display: none; /* sin espacio vertical hasta pulsar el botón */
+    }
+
+    .fin-period-bar {
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .fin-period-label {
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: var(--color-text-secondary);
+      white-space: nowrap;
+    }
+
+    .fin-period-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .fin-period-chip {
+      background: #F8FAFC;
+      border: 1px solid #CBD5E1;
+      color: #334155;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all var(--transition-fast);
+    }
+
+    .fin-period-chip:hover {
+      background: #E2E8F0;
+      color: #0F172A;
+    }
+
+    .fin-period-chip.active {
+      background: #108910;
+      border-color: #108910;
+      color: white;
+      box-shadow: 0 1px 4px rgba(16, 137, 16, 0.3);
+    }
+
+    .fin-period-tag {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: #15803D;
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      border-radius: var(--radius-pill);
+      padding: 1px 8px;
+      text-transform: none;
+      letter-spacing: 0;
+      vertical-align: middle;
+    }
+
+    /* ==========================================================================
+       BARRA DE FILTROS DE PEDIDOS: UNA SOLA LÍNEA CON SCROLL TÁCTIL
+       ========================================================================== */
+    .orders-filters-scroll {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+
+    .orders-filters-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .orders-filters-scroll .filter-tag-chip {
+      flex: 0 0 auto;
+    }
+
+    /* Barra secundaria: acciones compactas a la izquierda y, estrictamente
+       a la derecha, el selector de vista Lista / Mosaico. */
+    .orders-actions-bar {
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 10px 14px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .orders-actions-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .orders-actions-left::-webkit-scrollbar {
+      display: none;
+    }
+
+    .orders-actions-left > * {
+      flex: 0 0 auto;
+    }
+
+    .orders-actions-bar .orders-view-switch {
+      margin-left: auto;
     }
 
     /* Tarjetas de Estadísticas */
@@ -1572,6 +1747,30 @@
          ======================================================================== -->
     <div class="tab-pane active" id="tab-orders">
       
+      <!-- ================================================================
+           PANEL SUPERIOR FINANCIERO EN ACORDEÓN (COLAPSADO POR DEFECTO)
+           Al venir cerrado, los pedidos quedan de inmediato arriba.
+           Dentro va el selector de periodo: Hoy / Semana / Mes / Todos.
+           ================================================================ -->
+      <div class="fin-accordion">
+        <button type="button" id="financeSummaryToggleBtn" class="fin-accordion-toggle" aria-expanded="false" aria-controls="financeSummaryPanel">
+          <span>📊 Ver Resumen Financiero e Indicadores</span>
+          <span class="fin-accordion-icon" aria-hidden="true">▾</span>
+        </button>
+
+        <div id="financeSummaryPanel" class="fin-accordion-panel" hidden>
+
+          <!-- Selector de Periodo Financiero -->
+          <div class="fin-period-bar">
+            <span class="fin-period-label">📅 Periodo de cálculo:</span>
+            <div class="fin-period-chips" id="financePeriodChips" role="group" aria-label="Seleccionar periodo financiero">
+              <button type="button" class="fin-period-chip active" data-finance-period="hoy">🕐 Hoy</button>
+              <button type="button" class="fin-period-chip" data-finance-period="semana">📆 Esta Semana</button>
+              <button type="button" class="fin-period-chip" data-finance-period="mes">🗓️ Este Mes</button>
+              <button type="button" class="fin-period-chip" data-finance-period="todos">📚 Todos</button>
+            </div>
+          </div>
+
       <!-- Estadísticas de Ventas -->
       <div class="stats-dashboard-grid">
         <div class="dash-stat-card">
@@ -1603,9 +1802,9 @@
           <div class="sales-top-row">
             <div style="display: flex; align-items: center; gap: 12px;">
               <div class="dash-stat-icon" style="background: #DCFCE7; color: #166534;">💰</div>
-              <div>
+              <div class="">
                 <div class="dash-stat-value" id="statTotalSalesAmount">$0.00</div>
-                <div class="dash-stat-title">Ventas Totales</div>
+                <div class="dash-stat-title">Ventas Totales<span class="fin-period-tag" id="financePeriodLabel">· Hoy</span></div>
               </div>
             </div>
 
@@ -1646,39 +1845,43 @@
             </div>
           </div>
         </div>
+      </div><!-- /stats-dashboard-grid -->
+        </div><!-- /fin-accordion-panel -->
+      </div><!-- /fin-accordion del Resumen Financiero -->
+
+      <!-- Barra de Filtros de Estados: una sola línea horizontal con scroll táctil -->
+      <div class="orders-filters-scroll" id="orderFilterButtons">
+        <button class="filter-tag-chip active" data-order-filter="all">Todos (<span id="countAllOrders">0</span>)</button>
+        <button class="filter-tag-chip" data-order-filter="nuevo">🟡 Nuevos</button>
+        <button class="filter-tag-chip" data-order-filter="preparacion">👨‍🌾 En Preparación</button>
+        <button class="filter-tag-chip" data-order-filter="camino">🛵 En Camino</button>
+        <button class="filter-tag-chip" data-order-filter="entregado">✅ Entregados</button>
+        <button class="filter-tag-chip" data-order-filter="archivados">📦 Archivados (<span id="countArchivedOrders">0</span>)</button>
       </div>
 
-      <!-- Filtros de Pedidos -->
-      <div style="background: white; border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="orderFilterButtons">
-          <button class="filter-tag-chip active" data-order-filter="all">Todos (<span id="countAllOrders">0</span>)</button>
-          <button class="filter-tag-chip" data-order-filter="nuevo">🟡 Nuevos</button>
-          <button class="filter-tag-chip" data-order-filter="preparacion">👨‍🌾 En Preparación</button>
-          <button class="filter-tag-chip" data-order-filter="camino">🛵 En Camino</button>
-          <button class="filter-tag-chip" data-order-filter="entregado">✅ Entregados</button>
-          <button class="filter-tag-chip" data-order-filter="archivados">📦 Archivados (<span id="countArchivedOrders">0</span>)</button>
-        </div>
-
-        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-          <!-- Selector de vista de pedidos (estilo Google Drive): Lista / Tarjetas.
-               La preferencia se guarda en localStorage (preferredOrdersView). -->
-          <div class="orders-view-switch" role="group" aria-label="Selector de vista de pedidos">
-            <button type="button" class="orders-view-btn active" data-orders-view="list" aria-pressed="true" title="Vista de Lista (tabla compacta)">
-              <i class="fa-solid fa-list" aria-hidden="true"></i>
-            </button>
-            <button type="button" class="orders-view-btn" data-orders-view="grid" aria-pressed="false" title="Vista de Tarjetas (cuadrícula)">
-              <i class="fa-solid fa-th-large" aria-hidden="true"></i>
-            </button>
-          </div>
-
+      <!-- Barra secundaria de acciones compactas; el selector de vista
+           Lista / Mosaico va estrictamente a la DERECHA de esta barra. -->
+      <div class="orders-actions-bar">
+        <div class="orders-actions-left">
           <button class="btn-hero-cta" id="archiveDeliveredBtn" style="padding: 6px 12px; font-size: 0.8rem; background: #EFF6FF; border: 1px solid #BFDBFE; color: #1D4ED8; font-weight: 700;" title="Oculta de la vista del día los pedidos en estado Entregado">
-            📦 Archivar Pedidos Entregados
+            📦 Archivar Entregados
           </button>
           <button class="btn-hero-cta" id="refreshOrdersBtn" style="padding: 6px 12px; font-size: 0.8rem; background: #F3F4F6; border: 1px solid var(--color-border); color: #333;">
             🔄 Refrescar
           </button>
           <button class="btn-hero-cta" id="simulateDemoOrderBtn" style="padding: 6px 12px; font-size: 0.8rem; background: #E8F5E9; border: 1px solid #A7F3D0; color: #003D29; font-weight: 700;">
             + Pedido Demo
+          </button>
+        </div>
+
+        <!-- Selector de vista de pedidos (estilo Google Drive): Lista / Mosaico.
+             La preferencia se guarda en localStorage (preferredOrdersView). -->
+        <div class="orders-view-switch" role="group" aria-label="Selector de vista de pedidos">
+          <button type="button" class="orders-view-btn active" data-orders-view="list" aria-pressed="true" title="Vista de Lista (tabla compacta)">
+            <i class="fa-solid fa-list" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="orders-view-btn" data-orders-view="grid" aria-pressed="false" title="Vista de Tarjetas (cuadrícula)">
+            <i class="fa-solid fa-th-large" aria-hidden="true"></i>
           </button>
         </div>
       </div>
@@ -2291,6 +2494,6 @@ CREATE POLICY "Actualización de usuarios" ON usuarios FOR UPDATE USING (true);
   <script src="js/supabase-config.js?v=20261021-orders-realtime"></script>
   <script src="js/products.js?v=20261020-badge-viveres"></script>
   <script src="js/ai-photo.js?v=20261018-brandbig"></script>
-  <script src="js/admin.js?v=20261021-views"></script>
+  <script src="js/admin.js?v=20261022-finance"></script>
 </body>
 </html>

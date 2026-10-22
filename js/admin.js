@@ -129,6 +129,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const salesPercentageBsEquiv = document.getElementById('salesPercentageBsEquiv');
   const salesPctChipsGroup = document.getElementById('salesPctChipsGroup');
 
+  // Acordeón del Resumen Financiero + selector de periodo (Hoy/Semana/Mes/Todos)
+  const financeSummaryToggleBtn = document.getElementById('financeSummaryToggleBtn');
+  const financeSummaryPanel = document.getElementById('financeSummaryPanel');
+  const financePeriodButtons = document.querySelectorAll('[data-finance-period]');
+  const financePeriodLabel = document.getElementById('financePeriodLabel');
+
   // ==========================================================================
   // INICIALIZACIÓN
   // ==========================================================================
@@ -140,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadArchivedOrders();
     loadOrders();
     setupSalesPercentageEvents();
+    setupFinanceAccordion();
     setupEventListeners();
     updateOrdersViewButtons();
     setupNewOrderAlarmListeners();
@@ -718,7 +725,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let totalSales = 0;
     orders.forEach(o => {
-      if (o.status !== 'cancelado') totalSales += (parseFloat(o.total) || 0);
+      if (o.status !== 'cancelado' && isOrderInFinancePeriod(o)) totalSales += (parseFloat(o.total) || 0);
     });
 
     if (statNewOrdersCount) statNewOrdersCount.textContent = newCount;
@@ -749,7 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof totalSalesAmount === 'undefined') {
       let calcTotal = 0;
       orders.forEach(o => {
-        if (o.status !== 'cancelado') calcTotal += (parseFloat(o.total) || 0);
+        if (o.status !== 'cancelado' && isOrderInFinancePeriod(o)) calcTotal += (parseFloat(o.total) || 0);
       });
       totalSalesAmount = calcTotal;
     }
@@ -807,6 +814,90 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
     }
+  }
+
+  // ==========================================================================
+  // ACORDEÓN DEL RESUMEN FINANCIERO + SELECTOR DE PERÍODO
+  // (Hoy / Esta Semana / Este Mes / Todos). Ventas Totales y el Resultado
+  // de Ganancia (%) se recalculan dinámicamente según el periodo elegido.
+  // El periodo "Hoy" se reinicia solo al cruzar la medianoche.
+  // ==========================================================================
+  const FINANCE_PERIOD_LABELS = {
+    hoy: 'Hoy',
+    semana: 'Esta Semana',
+    mes: 'Este Mes',
+    todos: 'Histórico total'
+  };
+
+  let currentFinancePeriod = localStorage.getItem('alcosto_admin_finance_period') || 'hoy';
+
+  // Inicio del rango activo: medianoche local de hoy, lunes de esta semana o
+  // primer día del mes. "Todos" devuelve null (sin filtro de fecha).
+  function getFinancePeriodStart(period) {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (period === 'semana') {
+      const daysSinceMonday = (start.getDay() + 6) % 7; // lunes = 0
+      start.setDate(start.getDate() - daysSinceMonday);
+    } else if (period === 'mes') {
+      start.setDate(1);
+    } else if (period === 'todos') {
+      return null;
+    }
+    return start;
+  }
+
+  function isOrderInFinancePeriod(order) {
+    const periodStart = getFinancePeriodStart(currentFinancePeriod);
+    if (!periodStart) return true;
+    const createdAt = new Date((order && order.created_at) || '');
+    if (isNaN(createdAt.getTime())) return true; // sin fecha válida: no ocultar
+    return createdAt >= periodStart;
+  }
+
+  function updateFinancePeriodButtons() {
+    financePeriodButtons.forEach(btn => {
+      const active = btn.getAttribute('data-finance-period') === currentFinancePeriod;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+    if (financePeriodLabel) {
+      financePeriodLabel.textContent = `· ${FINANCE_PERIOD_LABELS[currentFinancePeriod] || 'Hoy'}`;
+    }
+  }
+
+  function setupFinanceAccordion() {
+    // Acordeón cerrado por defecto: los pedidos quedan arriba de inmediato.
+    if (financeSummaryToggleBtn && financeSummaryPanel) {
+      financeSummaryToggleBtn.addEventListener('click', () => {
+        const isOpen = financeSummaryToggleBtn.getAttribute('aria-expanded') === 'true';
+        financeSummaryToggleBtn.setAttribute('aria-expanded', String(!isOpen));
+        financeSummaryPanel.hidden = isOpen;
+      });
+    }
+
+    // Selector de periodo: recalcula Ventas Totales y Resultado de Ganancia (%)
+    financePeriodButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentFinancePeriod = btn.getAttribute('data-finance-period') || 'hoy';
+        localStorage.setItem('alcosto_admin_finance_period', currentFinancePeriod);
+        updateFinancePeriodButtons();
+        updateOrdersStats();
+      });
+    });
+
+    updateFinancePeriodButtons();
+
+    // Reinicio automático del acumulado "Hoy" al cruzar la medianoche,
+    // sin necesidad de recargar la página.
+    let lastTrackedDay = new Date().toDateString();
+    setInterval(() => {
+      const today = new Date().toDateString();
+      if (today !== lastTrackedDay) {
+        lastTrackedDay = today;
+        updateOrdersStats();
+      }
+    }, 60 * 1000);
   }
 
   // --- Ítems de pedido tolerantes a la estructura que llega desde Supabase ---
