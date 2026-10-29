@@ -336,7 +336,8 @@ body {
   width: 40px;
   height: 40px;
   border-radius: var(--radius-sm);
-  object-fit: cover;
+  object-fit: contain;
+  padding: 2px;
   background: #eee;
 }
 .suggestion-details {
@@ -572,27 +573,52 @@ body {
   border-color: var(--color-brand-green);
   font-weight: 700;
 }
+/* --------------------------------------------------------------------------
+   CAPA 1 · CONTENEDOR
+   Sticky, scroll horizontal nativo y máscara de degradado en los bordes para
+   que los chips aparezcan y desaparezcan fundidos (sin sombras ni imágenes).
+   -------------------------------------------------------------------------- */
 .dept-bar {
+  position: sticky;
+  /* Se pega justo debajo del header sticky (app.js escribe esta variable).
+     Sin esto la barra quedaba tapada por el header o se dibujaba encima. */
+  top: var(--dept-bar-top, 0px);
+  /* Capa BAJA a propósito: por debajo del header (100), del backdrop del
+     carrito (200/255) y de la barra móvil (250). Así nunca tapa el carrito,
+     los modales, los toasts ni los botones flotantes. */
+  z-index: 90;
   display: flex;
   gap: 8px;
-  padding: 10px 0;
+  padding: 12px 0;
   overflow-x: auto;
+  overflow-y: hidden;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
-  position: sticky;
-  top: 0;
-  z-index: 300;
   background-color: var(--color-bg-body, #F7F7F8);
+  isolation: isolate;
+  /* Aísla layout/estilos: la animación no provoca reflows en el resto de la página */
+  contain: layout style;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
 }
 .dept-bar::-webkit-scrollbar {
   display: none;
 }
-/* Pista del bucle continuo: dos copias idénticas de los chips en fila */
+/* --------------------------------------------------------------------------
+   CAPA 2 · PISTA ANIMADA (bucle infinito en GPU)
+   Solo se anima transform: la capa se promociona con will-change y se compone
+   sobre la GPU, así el navegador no recalcula layout en cada frame.
+   -------------------------------------------------------------------------- */
 .dept-bar-track {
   display: flex;
   width: max-content;
-  animation: dept-bar-marquee 30s linear infinite;
+  animation: dept-bar-marquee 40s linear infinite;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 .dept-bar-group {
   display: flex;
@@ -600,42 +626,130 @@ body {
   padding-right: 8px; /* iguala el pitch para que -50% sea un bucle sin saltos */
   flex-shrink: 0;
 }
+/* La animación se detiene en: hover, foco de teclado, arrastre táctil, fuera de
+   pantalla (IntersectionObserver) y pestaña en segundo plano (app.js). */
 .dept-bar-track.dept-track-paused,
+.dept-bar-track.dept-track-offscreen,
+.dept-bar-track.dept-track-hidden,
 .dept-bar:hover .dept-bar-track,
 .dept-bar:focus-within .dept-bar-track {
   animation-play-state: paused;
 }
 @keyframes dept-bar-marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
   .dept-bar-track { animation: none !important; }
 }
+/* --------------------------------------------------------------------------
+   CAPA 3 · CHIP CON ICONO FONT AWESOME
+   Cada chip define --chip-accent según su departamento; el círculo del icono
+   se tinta con ese color y el chip activo pasa a degradado verde sólido.
+   -------------------------------------------------------------------------- */
 .dept-chip {
+  --chip-accent: var(--color-brand-green);
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   color: var(--color-text-secondary);
   font-size: 0.84rem;
   font-weight: 600;
-  padding: 8px 16px;
+  line-height: 1;
+  padding: 6px 16px 6px 7px;
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: all var(--transition-fast);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.18s ease,
+              border-color 0.18s ease,
+              box-shadow 0.18s ease,
+              color 0.18s ease;
 }
-.dept-chip:hover {
-  background-color: var(--color-surface-hover);
-  border-color: var(--color-border-hover);
+.dept-chip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  font-size: 0.74rem;
+  background: var(--color-brand-soft);
+  background: color-mix(in srgb, var(--chip-accent) 13%, transparent);
+  color: var(--chip-accent);
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+.dept-chip-label {
+  white-space: nowrap;
+}
+.dept-chip:focus-visible {
+  outline: 2px solid var(--color-brand-green);
+  outline-offset: 2px;
+}
+@media (hover: hover) {
+  .dept-chip:hover {
+    background-color: var(--color-surface);
+    border-color: color-mix(in srgb, var(--chip-accent) 45%, var(--color-border));
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    transform: translateY(-2px);
+  }
+  .dept-chip:hover .dept-chip-icon {
+    transform: scale(1.08);
+  }
+}
+.dept-chip:active {
+  transform: translateY(0) scale(0.97);
 }
 .dept-chip.active {
-  background-color: var(--color-brand-soft);
-  color: var(--color-brand-green);
-  border-color: var(--color-brand-green);
+  background-image: linear-gradient(135deg, #108910 0%, #0B6E0B 100%);
+  border-color: transparent;
+  color: #FFFFFF;
   font-weight: 700;
+  box-shadow: 0 6px 16px rgba(16, 137, 16, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.dept-chip.active .dept-chip-icon {
+  background: rgba(255, 255, 255, 0.22);
+  color: #FFFFFF;
+}
+/* --------------------------------------------------------------------------
+   CAPA 4 · COLORES POR DEPARTAMENTO (un solo atributo, cero JS extra)
+   -------------------------------------------------------------------------- */
+.dept-chip[data-value="charcuteria"] { --chip-accent: #DC2626; }
+.dept-chip[data-value="viveres"]     { --chip-accent: #D97706; }
+.dept-chip[data-value="al-mayor"]    { --chip-accent: #7C3AED; }
+.dept-chip[data-value="limpieza"]     { --chip-accent: #0284C7; }
+.dept-chip[data-value="confiteria"]   { --chip-accent: #DB2777; }
+.dept-chip[data-value="lacteos"]      { --chip-accent: #CA8A04; }
+.dept-chip[data-value="bebidas"]      { --chip-accent: #0891B2; }
+.dept-chip[data-value="oferta"]       { --chip-accent: #EA580C; }
+.dept-chip[data-value="popular"]      { --chip-accent: #CA8A04; }
+/* En tema oscuro los acentos se aclaran para mantener contraste AA */
+[data-theme="dark"] .dept-chip[data-value="charcuteria"] { --chip-accent: #F87171; }
+[data-theme="dark"] .dept-chip[data-value="viveres"]     { --chip-accent: #FBBF24; }
+[data-theme="dark"] .dept-chip[data-value="al-mayor"]    { --chip-accent: #A78BFA; }
+[data-theme="dark"] .dept-chip[data-value="limpieza"]     { --chip-accent: #38BDF8; }
+[data-theme="dark"] .dept-chip[data-value="confiteria"]   { --chip-accent: #F472B6; }
+[data-theme="dark"] .dept-chip[data-value="lacteos"]      { --chip-accent: #FACC15; }
+[data-theme="dark"] .dept-chip[data-value="bebidas"]      { --chip-accent: #22D3EE; }
+[data-theme="dark"] .dept-chip[data-value="oferta"]       { --chip-accent: #FB923C; }
+[data-theme="dark"] .dept-chip[data-value="popular"]      { --chip-accent: #FACC15; }
+/* --------------------------------------------------------------------------
+   CAPA 5 · RESPONSIVE
+   -------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .dept-bar { padding: 8px 0; gap: 6px; }
+  .dept-bar-group { gap: 6px; padding-right: 6px; }
+  .dept-chip { font-size: 0.78rem; padding: 5px 13px 5px 6px; gap: 7px; }
+  .dept-chip-icon { width: 23px; height: 23px; font-size: 0.68rem; }
 }
 /* ==========================================================================
    GRID DE PRODUCTOS (ESTILO INSTACART CARDS)
@@ -736,8 +850,9 @@ body {
 .product-image {
   width: 100%;
   height: 100%;
+  /* La imagen completa del empaque siempre visible: sin recortes ni desbordes */
   object-fit: contain;
-  padding: 8px;
+  padding: 6px;
   background: transparent;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   display: block;
@@ -1621,7 +1736,7 @@ body {
   height: 100%;
   object-fit: contain;
   background: transparent;
-  padding: 8px;
+  padding: 6px;
 }
 .modal-product-content {
   display: flex;
@@ -3054,4 +3169,72 @@ to { transform: translateY(0); }}
     width: 38px;
     height: 38px; /* área táctil cómoda en móvil */
   }
+}
+/* ==========================================================================
+   LIQUID GLASS — SOLO iPHONE / iPAD / MAC
+   Se activa únicamente cuando js/app.js detecta plataforma Apple y añade la
+   clase .liquid-glass al <html>. En Windows/Android la clase no existe, así
+   que estas reglas nunca se aplican (0 coste, 0 cambios visuales).
+   Vidrio real: fondo translúcido + blur + saturación + brillo interior.
+   ========================================================================== */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  /* Barra de departamentos */
+  html.liquid-glass .dept-bar {
+    background-color: rgba(247, 247, 248, 0.5);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    backdrop-filter: blur(18px) saturate(180%);
+  }
+  html.liquid-glass .dept-chip {
+    background-color: rgba(255, 255, 255, 0.55);
+    -webkit-backdrop-filter: blur(10px) saturate(170%);
+    backdrop-filter: blur(10px) saturate(170%);
+    border-color: rgba(255, 255, 255, 0.55);
+  }
+  /* Cajón del carrito */
+  html.liquid-glass .cart-drawer {
+    background-color: rgba(255, 255, 255, 0.8);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    backdrop-filter: blur(28px) saturate(180%);
+    border-left: 1px solid rgba(255, 255, 255, 0.5);
+  }
+  /* Modales (checkout, seguimiento, cuenta) */
+  html.liquid-glass .modal-box {
+    background-color: rgba(255, 255, 255, 0.84);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+  /* Tema oscuro: el vidrio se tintá en azul medianoche */
+  html[data-theme="dark"].liquid-glass .dept-bar {
+    background-color: rgba(15, 23, 42, 0.5);
+  }
+  html[data-theme="dark"].liquid-glass .cart-drawer,
+  html[data-theme="dark"].liquid-glass .modal-box {
+    background-color: rgba(30, 41, 59, 0.78);
+    border-color: rgba(148, 163, 184, 0.25);
+  }
+  html[data-theme="dark"].liquid-glass .dept-chip {
+    background-color: rgba(30, 41, 59, 0.55);
+    border-color: rgba(148, 163, 184, 0.25);
+  }
+}
+
+/* ==========================================================================
+   CAMPO INVÁLIDO EN EL CHECKOUT (validación antifraude)
+   Se marca durante 2,6 s para señalar el campo que hay que corregir.
+   ========================================================================== */
+.form-input.input-invalid {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px rgba(217, 45, 32, 0.14);
+  background-color: #FFF5F5;
+  animation: inputInvalidShake 0.32s ease;
+}
+[data-theme="dark"] .form-input.input-invalid {
+  background-color: rgba(217, 45, 32, 0.12);
+}
+@keyframes inputInvalidShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }

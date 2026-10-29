@@ -137,11 +137,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // INICIALIZACIÓN
   // ==========================================================================
   async function init() {
+    initLiquidGlass();
     updateAuthUI();
+    // El carrusel arranca antes de esperar a la base de datos: el lienzo queda
+    // animado desde el primer frame en vez de esperar la carga del catálogo.
+    initDeptBarLoop();
     PRODUCTS_DATA = [];
     await loadCatalogProductsFromDatabase();
     updateCartUI();
-    initDeptBarLoop();
     setupEventListeners();
 
     // Reabrir el seguimiento del pedido activo (si el cliente recargó la página)
@@ -281,30 +284,72 @@ document.addEventListener('DOMContentLoaded', () => {
         ? (state.activeFilterTag === 'all' && value === state.activeCategory)
         : (value === state.activeFilterTag);
       chip.classList.toggle('active', isActive);
+      chip.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
   }
 
+  // El carrusel es sticky: se ancla justo debajo del header para no taparlo ni
+  // quedar escondido detrás de él (su altura cambia al envolver en móvil).
+  function syncDeptBarOffset() {
+    const header = document.querySelector('.site-header');
+    if (!header) return;
+    const headerHeight = Math.round(header.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--dept-bar-top', headerHeight + 'px');
+  }
+
   // Duplica los chips para crear el bucle continuo y configura la velocidad
+  let deptBarLoopWired = false;
   function initDeptBarLoop() {
     if (!deptBarEl) return;
     const track = document.getElementById('deptBarTrack');
     const group = track ? track.querySelector('.dept-bar-group') : null;
     if (!track || !group) return;
 
+    syncDeptBarOffset();
+
     // Solo clonar una vez (idempotente)
     if (!track.querySelector('.dept-bar-group[data-clone]')) {
       const clone = group.cloneNode(true);
       clone.setAttribute('data-clone', 'true');
       clone.setAttribute('aria-hidden', 'true');
-      clone.querySelectorAll('.dept-chip').forEach(btn => btn.setAttribute('tabindex', '-1'));
+      clone.querySelectorAll('.dept-chip').forEach(btn => {
+        btn.setAttribute('tabindex', '-1');
+        btn.setAttribute('aria-hidden', 'true');
+      });
       // Los clones siguen siendo clicables (el listener está delegado en deptBar)
       track.appendChild(clone);
     }
 
-    // Velocidad constante (~45 px/s) proporcional al ancho de una vuelta
-    const halfWidth = track.scrollWidth / 2;
-    if (halfWidth > 0) {
-      track.style.animationDuration = Math.max(18, Math.round(halfWidth / 45)) + 's';
+    // Velocidad constante (~45 px/s) proporcional al ancho de una vuelta.
+    // Se mide solo cuando hace falta: leer scrollWidth fuerza un reflow.
+    const syncLoopSpeed = () => {
+      const halfWidth = track.scrollWidth / 2;
+      if (halfWidth > 0) {
+        track.style.animationDuration = Math.max(18, Math.round(halfWidth / 45)) + 's';
+      }
+    };
+    syncLoopSpeed();
+
+    // Listeners y observers se instalan una sola vez (init puede re-ejecutarse)
+    if (deptBarLoopWired) return;
+    deptBarLoopWired = true;
+
+    // Recalcula el ancho si cambia el tamaño de la pista (rotación, zoom de
+    // fuente, carga de Font Awesome). Debounced para no medir en cada frame.
+    let resizeTimer = null;
+    const scheduleResync = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(syncLoopSpeed, 180);
+    };
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(scheduleResync).observe(track);
+      // Recalcula el anclaje si el header crece/decrece (wrap, zoom de fuente,
+      // carga de Font Awesome).
+      const header = document.querySelector('.site-header');
+      if (header) new ResizeObserver(syncDeptBarOffset).observe(header);
+    } else {
+      window.addEventListener('resize', scheduleResync, { passive: true });
+      window.addEventListener('resize', syncDeptBarOffset, { passive: true });
     }
 
     // Pausar mientras el usuario toca/arrastra para poder pulsar con precisión
@@ -314,7 +359,22 @@ document.addEventListener('DOMContentLoaded', () => {
     deptBarEl.addEventListener('touchend', resume);
     deptBarEl.addEventListener('pointerdown', pause);
     deptBarEl.addEventListener('pointerup', resume);
+    deptBarEl.addEventListener('pointercancel', resume);
     deptBarEl.addEventListener('pointerleave', resume);
+
+    // Rendimiento: no animar si la barra está fuera de pantalla
+    if (typeof IntersectionObserver === 'function') {
+      new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          track.classList.toggle('dept-track-offscreen', !entry.isIntersecting);
+        });
+      }, { rootMargin: '150px 0px' }).observe(deptBarEl);
+    }
+
+    // Rendimiento: pausar con la pestaña en segundo plano
+    document.addEventListener('visibilitychange', () => {
+      track.classList.toggle('dept-track-hidden', document.hidden);
+    });
   }
 
   function renderProducts() {
@@ -960,6 +1020,134 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
+  // LIQUID GLASS: SOLO APPLE (iPhone / iPad / Mac)
+  // En Windows, Android o Linux no se añade la clase y el CSS de vidrio no se
+  // aplica nunca, así que no hay ni cambio visual ni coste de rendimiento.
+  // ==========================================================================
+  function initLiquidGlass() {
+    const ua = navigator.userAgent || '';
+    const isIPadOs = /Macintosh/i.test(ua) && navigator.maxTouchPoints > 1;
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) || isIPadOs;
+    const isMac = !isIOS && /Macintosh|Mac OS X/i.test(ua);
+    if (!isIOS && !isMac) return;
+    document.documentElement.classList.add('liquid-glass');
+    document.documentElement.classList.add(isIOS ? 'liquid-glass-ios' : 'liquid-glass-mac');
+  }
+
+  // ==========================================================================
+  // VALIDACIÓN ANTIFRAUDE DEL CHECKOUT
+  // Primera barrera contra pedidos de broma: teléfonos falsos, direcciones
+  // inventadas, destinos fuera del radio de reparto y ráfagas repetidas.
+  // OJO: esto corre en el navegador y un troll técnico puede saltárselo; la
+  // barrera de verdad es RLS + validación en Supabase (o en una función de
+  // Vercel) para que ningún pedido basura entre a la base de datos.
+  // ==========================================================================
+  const STORE_LAT = 7.807111;
+  const STORE_LNG = -71.186750;
+  const MAX_DELIVERY_KM = 15;
+  const SAME_PHONE_COOLDOWN_MIN = 10;
+  const MAX_ORDERS_PER_DEVICE_DAY = 6;
+
+  function haversineKm(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  // Distancia real (km) entre el GPS del cliente y la tienda. null si no hay GPS.
+  function getOrderDistanceKm() {
+    if (!state.realGpsLocation || typeof state.realGpsLocation.lat !== 'number') return null;
+    return haversineKm(state.realGpsLocation.lat, state.realGpsLocation.lng, STORE_LAT, STORE_LNG);
+  }
+
+  // Detecta texto de relleno: "asdf", "prueba", "xxxx", "dfgh", etc.
+  function isGibberish(text) {
+    const v = String(text || '').toLowerCase().trim();
+    if (!v) return true;
+    const compact = v.replace(/[\s.,-]/g, '');
+    if (/^(.)\1{2,}$/.test(compact)) return true;
+    if (/(asdf|qwer|zxcv|hjkl|prueba|test|testeo|xxx|ninguna|ningun|n\/a|jjjj|1234)/i.test(v)) return true;
+    if (!/[aeiou\u00e1\u00e9\u00ed\u00f3\u00fa]/i.test(compact) && compact.length < 12) return true;
+    return false;
+  }
+
+  function markFieldInvalid(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+    field.classList.add('input-invalid');
+    field.focus({ preventScroll: false });
+    setTimeout(() => field.classList.remove('input-invalid'), 2600);
+  }
+
+  function validateCheckoutOrder() {
+    const name = (document.getElementById('orderName')?.value || '').trim();
+    const phoneRaw = (document.getElementById('orderPhone')?.value || '').trim();
+    const address = (document.getElementById('orderAddress')?.value || '').trim();
+    const isPickup = state.deliveryType === 'pickup';
+
+    if (name.length < 3 || !/[a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1]/i.test(name) || isGibberish(name)) {
+      return { ok: false, field: 'orderName', message: '⚠️ Escribe tu nombre y apellido reales para poder entregarte el pedido.' };
+    }
+
+    const digits = phoneRaw.replace(/\D/g, '');
+    const fakePhone = /^(\d)\1+$/.test(digits)
+      || /^(1234567890|0123456789|12345678|1234567|0000000)$/.test(digits)
+      || /^(\d{2,3})\1+$/.test(digits);
+    if (digits.length < 7 || digits.length > 15 || fakePhone) {
+      return { ok: false, field: 'orderPhone', message: '⚠️ El teléfono no parece válido. Lo usamos para coordinar la entrega.' };
+    }
+
+    if (!isPickup) {
+      const hasGps = Boolean(state.realGpsLocation && state.realGpsLocation.lat);
+      if (!hasGps && (address.length < 10 || isGibberish(address))) {
+        return { ok: false, field: 'orderAddress', message: '⚠️ Escribe una dirección completa (calle, sector y referencia) o usa tu GPS.' };
+      }
+      const distanceKm = getOrderDistanceKm();
+      if (distanceKm !== null && distanceKm > MAX_DELIVERY_KM) {
+        return {
+          ok: false,
+          field: 'orderAddress',
+          message: `🚫 Estás a ${distanceKm.toFixed(0)} km de la tienda y repartimos hasta ${MAX_DELIVERY_KM} km. Escríbenos por WhatsApp para coordinar.`
+        };
+      }
+    }
+
+    return { ok: true };
+  }
+
+  // Frena ráfagas: mismo teléfono repetido o demasiados pedidos por dispositivo.
+  function checkOrderRateLimit(phoneRaw) {
+    try {
+      const orders = JSON.parse(localStorage.getItem('alcosto_orders') || '[]');
+      if (!Array.isArray(orders) || orders.length === 0) return null;
+      const now = Date.now();
+      const digits = String(phoneRaw || '').replace(/\D/g, '');
+      const cooldownMs = SAME_PHONE_COOLDOWN_MIN * 60 * 1000;
+
+      const repeated = orders.find(order => {
+        const samePhone = String(order.customerPhone || '').replace(/\D/g, '') === digits;
+        const age = now - new Date(order.created_at || 0).getTime();
+        return samePhone && age >= 0 && age < cooldownMs;
+      });
+      if (repeated) {
+        return `⏳ Ya registramos un pedido con este teléfono hace menos de ${SAME_PHONE_COOLDOWN_MIN} minutos. Espera un momento o escríbenos por WhatsApp.`;
+      }
+
+      const lastDay = orders.filter(order => now - new Date(order.created_at || 0).getTime() < 24 * 60 * 60 * 1000).length;
+      if (lastDay >= MAX_ORDERS_PER_DEVICE_DAY) {
+        return '⏳ Alcanzaste el límite de pedidos por hoy desde este dispositivo. Escríbenos por WhatsApp para continuar.';
+      }
+    } catch (e) {
+      // Si localStorage está corrupto, no se bloquea al cliente legítimo.
+    }
+    return null;
+  }
+
+  // ==========================================================================
   // DETECCIÓN SATELITAL DE UBICACIÓN REAL (GEOLOCATION API)
   // ==========================================================================
   function detectLiveGpsLocation(btnEl, statusBoxEl, coordsEl, mapLinkEl, inputAddressEl) {
@@ -1471,9 +1659,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Crea el pedido a partir del checkout y abre el seguimiento en vivo
-  function launchLiveOrderTracker() {
-    closeCheckoutModal();
-
+  async function launchLiveOrderTracker() {
     // Recopilar datos del pedido antes de vaciar el carrito
     const nameInput = document.getElementById('orderName');
     const phoneInput = document.getElementById('orderPhone');
@@ -1493,7 +1679,12 @@ document.addEventListener('DOMContentLoaded', () => {
       // Si el cliente escribió su dirección a mano, TAMPOCO se envían GPS para no confundir al repartidor
       gpsCoordinates: (state.deliveryType === 'pickup' || isManualAddressValue(addrInput ? addrInput.value : ''))
         ? null
-        : (state.realGpsLocation || null),
+        : (state.realGpsLocation
+            ? { ...state.realGpsLocation, distanceKm: getOrderDistanceKm() }
+            : null),
+      // Metadato local (no se envía a Supabase): permite al admin distinguir
+      // pedidos validados por GPS de los escritos a mano.
+      distanceKm: getOrderDistanceKm(),
       deliveryAddress: (state.deliveryType === 'pickup') 
         ? `Recogida en Sede Al Costo (${STORE_COORDINATES})` 
         : (addrInput ? addrInput.value.trim() : (state.customerProfile.address || 'Dirección de Entrega')),
@@ -1519,6 +1710,23 @@ document.addEventListener('DOMContentLoaded', () => {
       created_at: new Date().toISOString()
     };
 
+    // 1º: el pedido pasa por /api/orders (validación de servidor + service key
+    // fuera del navegador). Si la API lo rechaza, no se crea nada y el cliente
+    // sigue en el formulario con todos sus datos.
+    const serverResult = await sendOrderToServer(orderData);
+    if (serverResult.rejected) {
+      showToast(`❌ ${serverResult.message}`, 'error');
+      return;
+    }
+
+    // El ID definitivo lo asigna el servidor: así el seguimiento, el admin y
+    // Supabase hablan siempre del mismo pedido.
+    if (serverResult.orderId) {
+      orderData.id = serverResult.orderId;
+    }
+
+    closeCheckoutModal();
+
     // Guardar pedido localmente para que admin.html lo muestre
     try {
       const existingOrders = JSON.parse(localStorage.getItem('alcosto_orders')) || [];
@@ -1535,8 +1743,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Publicar pedido a Supabase si está conectado
-    if (typeof SupabaseService !== 'undefined') {
+    // Si la API no está desplegada todavía, se mantiene el envío directo
+    // (solo como puente durante la migración).
+    if (!serverResult.persisted && typeof SupabaseService !== 'undefined') {
       SupabaseService.sendOrderToSupabase(orderData);
     }
 
@@ -1553,6 +1762,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Abrir la vista de trayectoria con el pedido recién creado
     startOrderTracker(orderData, 'nuevo');
+  }
+
+  // ==========================================================================
+  // ENVÍO DEL PEDIDO A LA API DE VERCEL (/api/orders)
+  // Devuelve:
+  //   { rejected: true, message }  → el servidor lo rechazó (no se crea nada)
+  //   { rejected: false, persisted: true }  → guardado en Supabase por la API
+  //   { rejected: false, persisted: false } → API ausente/caída (modo puente)
+  // ==========================================================================
+  async function sendOrderToServer(orderData) {
+    if (!/^https?:$/.test(location.protocol)) {
+      return { rejected: false, persisted: false };
+    }
+
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      });
+
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data && data.warning) console.warn('API de pedidos:', data.warning);
+        return { rejected: false, persisted: true, orderId: (data && data.orderId) || null };
+      }
+
+      // Sin endpoint desplegado (404/405): se sigue con el flujo antiguo.
+      if (res.status === 404 || res.status === 405) {
+        console.warn('API /api/orders no disponible todavía: se usa el envío directo a Supabase.');
+        return { rejected: false, persisted: false };
+      }
+
+      const data = await res.json().catch(() => ({}));
+      const serverMessage = data && data.error ? data.error : '';
+
+      if (res.status === 400 || res.status === 409 || res.status === 429) {
+        return { rejected: true, message: serverMessage || 'El servidor no aceptó el pedido.' };
+      }
+
+      console.warn('API de pedidos respondió', res.status, serverMessage);
+      return { rejected: false, persisted: false };
+    } catch (error) {
+      console.warn('No se pudo contactar la API de pedidos:', error);
+      return { rejected: false, persisted: false };
+    }
   }
 
   // ==========================================================================
@@ -2218,6 +2473,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (addrInput) addrInput.focus();
             return;
           }
+        }
+
+        // Antifraude: datos reales, dentro del radio de reparto y sin ráfagas
+        const validation = validateCheckoutOrder();
+        if (!validation.ok) {
+          showToast(validation.message, 'error');
+          markFieldInvalid(validation.field);
+          return;
+        }
+
+        const phoneValue = document.getElementById('orderPhone')?.value || '';
+        const rateLimitMessage = checkOrderRateLimit(phoneValue);
+        if (rateLimitMessage) {
+          showToast(rateLimitMessage, 'warning');
+          return;
         }
 
         launchLiveOrderTracker();

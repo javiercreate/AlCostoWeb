@@ -1,0 +1,412 @@
+{
+  "name": "AlCosto - Productos con Imagen Oficial",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "### 1. De dónde salen los productos\n**Nodo: Leer Productos (Google Sheets)**\n\nEste nodo abre la hoja de cálculo **Productos** de tu Google Sheet y trae fila por fila los artículos del minimarket: **Marca, Producto, Gramaje, Precio y Categoría**.\n\nEjemplo de fila que sale de aquí:\n\n- Marca: Harina PAN\n- Producto: Harina de maíz blanco\n- Gramaje: 1 kg\n\n💡 Aquí solo se **leen datos**. Todavía no hay IA ni búsquedas.",
+        "height": 230,
+        "width": 300,
+        "color": 1
+      },
+      "id": "a1000000-0000-4000-8000-000000000011",
+      "name": "Nota 1: Leer Productos",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -740,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2. Se arma la palabra clave\n**Nodo: Generar Búsqueda de Imagen**\n\nAquí se le da formato al texto: se juntan *Marca + Producto + Gramaje* para crear la búsqueda.\n\nEjemplo:\n\n- Harina PAN + Harina de maíz blanco + 1 kg\n- 👉 **\"Harina PAN 1 kg\"**\n\n💡 Ese texto sale por la propiedad **`query`** y es exactamente lo que recibe el Agente en el paso 3.",
+        "height": 230,
+        "width": 280,
+        "color": 1
+      },
+      "id": "a1000000-0000-4000-8000-000000000012",
+      "name": "Nota 2: Generar Búsqueda de Imagen",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -440,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 3. El cerebro de la IA busca la foto\n**Buscar Imagen con IA (Agent) + OpenAI Chat Model + Tavily Web Search Tool**\n\nLos 3 nodos de esta columna trabajan juntos:\n\n1. **Agente** (el cerebro): recibe la propiedad `query` ($json.query), decide qué buscar y arma la respuesta final.\n2. **OpenAI Chat Model**: el modelo que *piensa* (gpt-4o-mini). Credencial: **OpenAI API**.\n3. **Tavily Web Search Tool**: la *mano* que navega la web. Llama a la API de Tavily, busca el empaque real en MercadoLibre, supermercados y sitios de marca, y devuelve enlaces directos de imagen.\n\n✅ Regla del Agente: responder **solo** con `{\"link\":\"...\",\"product\":\"...\"}`.\n\n🔑 Credencial: Header Auth **Tavily API Key** (Authorization: Bearer tvly-...).",
+        "height": 360,
+        "width": 340,
+        "color": 1
+      },
+      "id": "a1000000-0000-4000-8000-000000000013",
+      "name": "Nota 3: Cerebro IA + Tavily",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 4. Se ordena la respuesta de la IA\n**Nodo: Transformar a JSON Limpio**\n\nLa IA a veces contesta con texto de más, con comillas raras o con Markdown. Este nodo **limpia todo** y deja una fila por producto con:\n\n- `nombre`\n- `precio`\n- `categoria`\n- `imagen_url` ← el enlace directo de la foto\n\n💡 Si no hubo foto, `imagen_url` sale vacío y el paso 5 decide qué hacer.",
+        "height": 230,
+        "width": 300,
+        "color": 1
+      },
+      "id": "a1000000-0000-4000-8000-000000000014",
+      "name": "Nota 4: Transformar a JSON Limpio",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        20,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 5. Control de calidad + Plan B\n**Nodos: ¿Imagen Vacía? y Plan B: Imagen de Reserva**\n\nAquí se verifica si la IA encontró la foto:\n\n- **Sí hay enlace** → el producto sigue normal por la rama de la derecha.\n- **`imagen_url` vacía** (la IA no encontró foto, falló la API key o hubo error) → entra el **Plan B** y se pone la imagen por defecto `img/logo-alcosto-placeholder.png`.\n\n💡 Así el flujo **nunca falla**: todos los productos salen con alguna imagen.",
+        "height": 250,
+        "width": 440,
+        "color": 1
+      },
+      "id": "a1000000-0000-4000-8000-000000000015",
+      "name": "Nota 5: Control de calidad y Plan B",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        340,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 6. Se junta y se exporta todo\n**Nodos: Unir Resultados y Exportar JSON Final**\n\n1. **Unir Resultados**: mezcla las dos ramas (foto de la IA + Plan B) en una sola lista.\n2. **Exportar JSON Final**: entrega el resultado actualizado con todos los productos y sus imágenes.\n\nSalidas:\n\n- `productos` → arreglo JSON\n- `productos_json` → el mismo arreglo en texto, listo para copiar o guardar.",
+        "height": 230,
+        "width": 540,
+        "color": 1
+      },
+      "id": "a1000000-0000-4000-8000-000000000016",
+      "name": "Nota 6: Unir y Exportar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        800,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "PEGA_AQUI_ID_DE_TU_GOOGLE_SHEET"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Productos"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Leer Productos (Google Sheets)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -620,
+        300
+      ],
+      "notes": "Paso 1: lee la hoja con las columnas Marca, Producto, Gramaje, Precio y Categoria. Configura la credencial de Google Sheets y el ID de la hoja."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const limpia = (v) => String(v === undefined || v === null ? '' : v).replace(/\\s+/g, ' ').trim();\nreturn $input.all().map((item, i) => {\n  const j = item.json || {};\n  const marca = limpia(j.Marca);\n  const producto = limpia(j.Producto);\n  const gramaje = limpia(j.Gramaje);\n  const nombre = [marca, producto, gramaje].filter(Boolean).join(' ');\n  return {\n    json: Object.assign({}, j, { Marca: marca, Producto: producto, Gramaje: gramaje, nombre: nombre, query: nombre }),\n    pairedItem: { item: i },\n  };\n});"
+      },
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "Generar Búsqueda de Imagen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        300
+      ],
+      "notes": "Paso 2: arma la búsqueda concatenando \"{Marca} {Producto} {Gramaje}\" y deja el texto completo en la propiedad query (y en nombre). Ese query es lo que recibe el Agente."
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.query }}",
+        "options": {
+          "systemMessage": "Eres un agente especializado en encontrar la imagen del empaque de productos de minimarket y supermercado (marcas venezolanas, colombianas e importadas: Harina PAN, arroz Mary, galletas, snacks, bebidas, etc.).\n\nRECIBES: el nombre de un producto armado desde Google Sheets (marca + producto + gramaje), por ejemplo \"Harina PAN 1 kg\".\n\nDEBES HACER:\n1. Usa SIEMPRE la herramienta de búsqueda web conectada, llamada \"Tavily Web Search Tool\", al menos una vez antes de responder. Su parámetro \"query\" es el texto de búsqueda. Puedes llamarla varias veces con distintos términos si la primera búsqueda no sirve.\n2. Prioriza la foto del empaque real del producto (tal como se vende) en MercadoLibre (mercadolibre.com.ve, mercadolibre.com.co), supermercados y e-commerce locales (Rappi, Central Madeirense, Excelsior Gama, Automercados, Almacen Pao, Éxito, Jumbo, etc.), sitios oficiales de la marca y, en su defecto, la web global.\n3. Descarta logotipos sueltos, imágenes genéricas, recetas, personas y capturas de pantalla. Prefiere URLs directas de imagen (.jpg, .png, .webp) de CDNs de e-commerce o las URLs del campo \"images\" que devuelve la herramienta.\n\nRESPUESTA OBLIGATORIA:\nDevuelve únicamente un objeto JSON plano, sin texto explicativo, sin saludos y sin Markdown:\n{\"link\":\"URL_DIRECTA_DE_LA_IMAGEN\",\"product\":\"NOMBRE_DEL_PRODUCTO\"}\n\n- \"link\" debe ser la URL directa de la imagen del empaque (nunca una página HTML ni un enlace de búsqueda) y debe empezar por http:// o https://.\n- Si tras varios intentos no hay ninguna imagen válida, responde exactamente: {\"link\":\"\",\"product\":\"NOMBRE_DEL_PRODUCTO\"}",
+          "maxIterations": 4
+        }
+      },
+      "id": "a1000000-0000-4000-8000-000000000003",
+      "name": "Buscar Imagen con IA (Agent)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        -140,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput",
+      "notes": "Paso 3 (reemplaza al antiguo HTTP Request de Google Custom Search): Agente de IA que recibe $json.query, usa la herramienta de búsqueda web Tavily y devuelve SOLO un JSON con link + product. Requiere la credencial OpenAI en el sub-nodo OpenAI Chat Model y la credencial Header Auth \"Tavily API Key\" en el sub-nodo Tavily Web Search Tool. Si falla, no detiene el flujo (Plan B)."
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000009",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -140,
+        560
+      ],
+      "notes": "Modelo de lenguaje conectado al Agente (ai_languageModel). Conecta tu credencial OpenAI (OpenAI API key) y elige el modelo (gpt-4o-mini por defecto). Para Anthropic, sustituye este nodo por \"Anthropic Chat Model\" y su credencial."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $fromAI('query', 'Producto y tipo de empaque a buscar, por ejemplo: Harina PAN 1 kg', 'string'), search_depth: 'basic', max_results: 5, include_images: true, include_answer: false }) }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000010",
+      "name": "Tavily Web Search Tool",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -140,
+        60
+      ],
+      "notes": "Herramienta de búsqueda web conectada al puerto Tool del Agente (patrón oficial de n8n: HTTP Request como tool). $fromAI() deja que el modelo rellene la query. Credencial requerida: Header Auth \"Tavily API Key\" con cabecera Authorization y valor Bearer tvly-TU_API_KEY (app.tavily.com, plan gratis 1.000 busquedas/mes). include_images: true devuelve las URLs de fotos del producto en \"images\"."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const get = (obj, keys) => {\n  for (const k of keys) {\n    const v = obj[k];\n    if (v !== undefined && v !== null && String(v).trim() !== '') return v;\n  }\n  const found = Object.keys(obj).find((k) => keys.some((kk) => kk.toLowerCase() === k.toLowerCase()));\n  return found !== undefined && obj[found] !== null ? obj[found] : '';\n};\n\nconst aPrecio = (v) => {\n  if (typeof v === 'number') return v;\n  if (v === undefined || v === null || String(v).trim() === '') return '';\n  const limpio = String(v).replace(/[^0-9.-]/g, '');\n  const n = Number(limpio);\n  return limpio !== '' && Number.isFinite(n) ? n : v;\n};\n\n// Quita cercados de codigo (tres comillas invertidas) que el modelo a veces agrega\nconst limpiaTexto = (t) => {\n  const fence = String.fromCharCode(96).repeat(3);\n  let s = String(t).trim();\n  while (s.indexOf(fence) === 0) s = s.slice(fence.length).trim();\n  const cierre = s.lastIndexOf(fence);\n  if (cierre > 0 && cierre === s.length - fence.length) s = s.slice(0, cierre).trim();\n  return s;\n};\n\nconst esUrl = (u) => typeof u === 'string' && /^https?:\\/\\//i.test(String(u).trim());\n\n// El Agente devuelve su respuesta en $json.output como texto\nconst extraerImagen = (res) => {\n  if (!res || res.error) return '';\n  let salida = res.output;\n  if (salida === undefined || salida === null) return '';\n  if (typeof salida === 'object') salida = JSON.stringify(salida);\n  const texto = limpiaTexto(salida);\n  if (!texto) return '';\n\n  const candidatos = [texto];\n  const bloque = texto.match(/\\{[\\s\\S]*\\}/);\n  if (bloque && bloque[0] !== texto) candidatos.push(bloque[0]);\n\n  for (const c of candidatos) {\n    try {\n      const obj = JSON.parse(c);\n      const url = obj.link || obj.image_url || obj.url || obj.imagen || '';\n      if (esUrl(url)) return String(url).trim();\n    } catch (e) {}\n  }\n\n  const mImagen = texto.match(/https?:\\/\\/[^\\s\"'<>()]+\\.(?:png|jpe?g|webp|gif)(?:\\?[^\\s\"'<>()]*)?/i);\n  if (mImagen) return mImagen[0];\n  const mUrl = texto.match(/https?:\\/\\/[^\\s\"'<>()]+/);\n  return mUrl ? mUrl[0] : '';\n};\n\nconst base = $('Generar Búsqueda de Imagen').all();\nconst salida = [];\n\n$input.all().forEach((item, i) => {\n  const fila = (base[i] && base[i].json) || item.json || {};\n  const nombre = String(get(fila, ['nombre']) || '').trim();\n  if (!nombre) return;\n  salida.push({\n    json: {\n      nombre: nombre,\n      precio: aPrecio(get(fila, ['Precio', 'precio'])),\n      categoria: String(get(fila, ['Categoria', 'categoria']) || '').trim(),\n      imagen_url: extraerImagen(item.json),\n    },\n    pairedItem: { item: i },\n  });\n});\n\nreturn salida;"
+      },
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "name": "Transformar a JSON Limpio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        300
+      ],
+      "notes": "Paso 4: deja cada producto como { nombre, precio, categoria, imagen_url }. Lee el JSON que devolvio el Agente en $json.output (acepta markdown, texto con el JSON embebido o una URL directa). Si no hubo imagen, imagen_url queda vacio y entra el Plan B."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a2000000-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.imagen_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000005",
+      "name": "¿Imagen Vacía?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        340,
+        300
+      ],
+      "notes": "Paso 5 (control de errores): si imagen_url viene vacio (Agente sin resultado, sin API key o con error), sale por la rama TRUE hacia el Plan B."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const PLACEHOLDER = 'img/logo-alcosto-placeholder.png';\nreturn $input.all().map((item, i) => ({\n  json: Object.assign({}, item.json, { imagen_url: PLACEHOLDER }),\n  pairedItem: { item: i },\n}));"
+      },
+      "id": "a1000000-0000-4000-8000-000000000006",
+      "name": "Plan B: Imagen de Reserva",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        180
+      ],
+      "notes": "Plan B: asigna la URL de reserva img/logo-alcosto-placeholder.png cuando la IA no encontro imagen."
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 2
+      },
+      "id": "a1000000-0000-4000-8000-000000000007",
+      "name": "Unir Resultados",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        820,
+        300
+      ],
+      "notes": "Une la rama normal (imagen de la IA) con la rama del Plan B (imagen de reserva)."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const productos = $input.all().map((item) => item.json);\nreturn [\n  {\n    json: {\n      total: productos.length,\n      productos: productos,\n      productos_json: JSON.stringify(productos, null, 2),\n    },\n  },\n];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000008",
+      "name": "Exportar JSON Final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        300
+      ],
+      "notes": "Paso 6: entrega el arreglo final de productos en JSON estandar (productos) y su version en texto (productos_json)."
+    }
+  ],
+  "connections": {
+    "Leer Productos (Google Sheets)": {
+      "main": [
+        [
+          {
+            "node": "Generar Búsqueda de Imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Búsqueda de Imagen": {
+      "main": [
+        [
+          {
+            "node": "Buscar Imagen con IA (Agent)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Buscar Imagen con IA (Agent)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Web Search Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Buscar Imagen con IA (Agent)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Imagen con IA (Agent)": {
+      "main": [
+        [
+          {
+            "node": "Transformar a JSON Limpio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transformar a JSON Limpio": {
+      "main": [
+        [
+          {
+            "node": "¿Imagen Vacía?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Imagen Vacía?": {
+      "main": [
+        [
+          {
+            "node": "Plan B: Imagen de Reserva",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unir Resultados",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Plan B: Imagen de Reserva": {
+      "main": [
+        [
+          {
+            "node": "Unir Resultados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unir Resultados": {
+      "main": [
+        [
+          {
+            "node": "Exportar JSON Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

@@ -12,13 +12,15 @@
   <!-- Fuente Inter con carga resiliente -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Preconexión al CDN de iconos: ahorra ~100 ms en el primer pintado de los chips -->
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 
   <!-- Font Awesome 6.5.1 Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <!-- Estilos CSS -->
-  <link rel="stylesheet" href="css/styles.css?v=20261022-logobanner">
+  <link rel="stylesheet" href="css/styles.css?v=20261029-api">
 </head>
 <body>
 
@@ -97,11 +99,6 @@
                   <span>Mis Datos de Entrega</span>
                 </button>
 
-                <a href="admin.html" class="user-menu-link-btn" style="text-decoration: none; color: inherit;">
-                  <i class="fa-solid fa-gauge-high" style="color: #D97706;"></i>
-                  <span>Panel Administrador</span>
-                </a>
-
                 <!-- Enlace cuando SÍ ha iniciado sesión -->
                 <div id="userMenuLoggedActions" style="display: none; border-top: 1px solid #F1F5F9; margin-top: 6px; padding-top: 6px;">
                   <button type="button" class="user-menu-link-btn danger" id="btnLogoutUser">
@@ -138,20 +135,52 @@
   <main>
     <div class="container">
 
-      <!-- Barra Única de Botones Directos de Departamentos (bucle continuo + scroll horizontal) -->
+      <!-- Barra Única de Botones Directos de Departamentos
+           Carrusel continuo: cada chip lleva un icono Font Awesome en una
+           "capa" circular tintada con el color de su departamento. -->
       <nav class="dept-bar" id="deptBar" aria-label="Departamentos">
         <div class="dept-bar-track" id="deptBarTrack">
           <div class="dept-bar-group">
-            <button class="dept-chip active" data-filter-type="dept" data-value="todos">🛒 Todos</button>
-            <button class="dept-chip" data-filter-type="dept" data-value="charcuteria">🥩 Charcutería y Embutidos</button>
-            <button class="dept-chip" data-filter-type="dept" data-value="viveres">🥫 Víveres y Granos</button>
-            <button class="dept-chip" data-filter-type="dept" data-value="al-mayor">📦 Ventas al Mayor (Bultos)</button>
-            <button class="dept-chip" data-filter-type="dept" data-value="limpieza">🧼 Limpieza y Hogar</button>
-            <button class="dept-chip" data-filter-type="dept" data-value="confiteria">🍬 Confitería y Dulces</button>
-            <button class="dept-chip" data-filter-type="dept" data-value="lacteos">🧀 Lácteos y Quesos</button>
-            <button class="dept-chip" data-filter-type="dept" data-value="bebidas">🥤 Bebidas y Refrescos</button>
-            <button class="dept-chip" data-filter-type="tag" data-value="oferta">🔥 En Oferta</button>
-            <button class="dept-chip" data-filter-type="tag" data-value="popular">⭐ Más Vendidos</button>
+            <button class="dept-chip active" data-filter-type="dept" data-value="todos" aria-pressed="true" title="Ver todo el catálogo">
+              <span class="dept-chip-icon" aria-hidden="true"><i class="fa-solid fa-basket-shopping"></i></span>
+              <span class="dept-chip-label">Todos</span>
+            </button>
+            <button class="dept-chip" data-filter-type="dept" data-value="charcuteria" aria-pressed="false" title="Charcutería y Embutidos">
+              <span class="dept-chip-icon" aria-hidden="true"><i class="fa-solid fa-drumstick-bite"></i></span>
+              <span class="dept-chip-label">Charcutería y Embutidos</span>
+            </button>
+            <button class="dept-chip" data-filter-type="dept" data-value="viveres" aria-pressed="false" title="Víveres y Granos">
+              <span class="dept-chip-icon" aria-hidden="true"><i class="fa-solid fa-wheat-awn"></i></span>
+              <span class="dept-chip-label">Víveres y Granos</span>
+            </button>
+            <button class="dept-chip" data-filter-type="dept" data-value="al-mayor" aria-pressed="false" title="Ventas al Mayor (Bultos)">
+              <span class="dept-chip-icon" aria-hidden="true"><i class="fa-solid fa-boxes-stacked"></i></span>
+              <span class="dept-chip-label">Ventas al Mayor (Bultos)</span>
+            </button>
+            <button class="dept-chip" data-filter-type="dept" data-value="limpieza" aria-pressed="false" title="Limpieza y Hogar">
+              <span class="dept-chip-icon" aria-hidden="true"><i class="fa-solid fa-spray-can-sparkles"></i></span>
+              <span class="dept-chip-label">Limpieza y Hogar</span>
+            </button>
+            <button class="dept-chip" data-filter-type="dept" data-value="confiteria" aria-pressed="false" title="Confitería y Dulces">
+              <span class="dept-chip-icon" aria-hidden="true"><i class="fa-solid fa-candy-cane"></i></span>
+              <span class="dept-chip-label">Confitería y Dulces</span>
+            </button>
+            <button class="dept-chip" data-filter-type="dept" data-value="lacteos" aria-pressed="false" title="Lácteos y Quesos">
+              <span class="dept-chip-icon" aria-hidden="true"><i class="fa-solid fa-cheese"></i></span>
+              <span class="dept-chip-label">Lácteos y Quesos</span>
+            </button>
+            <button class="dept-chip" data-filter-type="dept" data-value="bebidas" aria-pressed="false" title="Bebidas y Refrescos">
+              <span class="dept-chip-icon" aria-hidden="true"><i class="fa-solid fa-bottle-water"></i></span>
+              <span class="dept-chip-label">Bebidas y Refrescos</span>
+            </button>
+            <button class="dept-chip" data-filter-type="tag" data-value="oferta" aria-pressed="false" title="Productos en oferta">
+              <span class="dept-chip-icon" aria-hidden="true"><i class="fa-solid fa-fire-flame-curved"></i></span>
+              <span class="dept-chip-label">En Oferta</span>
+            </button>
+            <button class="dept-chip" data-filter-type="tag" data-value="popular" aria-pressed="false" title="Los más vendidos">
+              <span class="dept-chip-icon" aria-hidden="true"><i class="fa-solid fa-star"></i></span>
+              <span class="dept-chip-label">Más Vendidos</span>
+            </button>
           </div>
           <!-- Segundo grupo (clon para el bucle) inyectado por app.js -->
         </div>
@@ -266,7 +295,6 @@
             <li><a href="privacidad.html#gps" style="color: #38BDF8;">🛰️ Uso de Ubicación GPS</a></li>
             <li><a href="privacidad.html#pagos">🛡️ Seguridad en Transacciones</a></li>
             <li><a href="privacidad.html#cookies">🍪 Almacenamiento y Cookies</a></li>
-            <li><a href="admin.html" style="color: #FBBF24; font-weight: 700;">⚙️ Panel Administrativo</a></li>
           </ul>
 
           <h4 style="margin-top: 20px; margin-bottom: 10px;">Métodos de Pago</h4>
@@ -447,152 +475,125 @@
       <button class="modal-close-btn" id="closeCheckoutModalBtn" aria-label="Cerrar">✕</button>
       
       <div class="checkout-header">
-        <h3>Finalizar Pedido Al Costo</h3>
-        <p>Revisa tus datos y selecciona tu horario y método de pago preferido.</p>
+        <h3>Finalizar Pedido</h3>
+        <p>Confirma tus datos, cómo lo recibes y cómo pagas.</p>
       </div>
 
-      <form id="checkoutForm">
-        <!-- ===================================================================
-             1° PASO: DATOS DE CONTACTO DEL CLIENTE
-             =================================================================== -->
+      <form id="checkoutForm" novalidate>
+        <!-- 1 · CONTACTO -->
         <div class="checkout-step-block">
-          <div class="checkout-step-title"><span class="checkout-step-num">1</span> Datos de contacto</div>
+          <div class="checkout-step-title"><span class="checkout-step-num">1</span> Tus datos</div>
 
           <div class="checkout-form-grid">
             <div class="form-group">
-              <label for="orderName">Nombre Completo *</label>
-              <input type="text" id="orderName" class="form-input" required placeholder="Ej: Fernando Gómez">
+              <label for="orderName">Nombre y apellido *</label>
+              <input type="text" id="orderName" class="form-input" required placeholder="Ej: Fernando Gómez" autocomplete="name">
             </div>
 
             <div class="form-group">
-              <label for="orderPhone">Teléfono de Contacto *</label>
-              <input type="tel" id="orderPhone" class="form-input" required placeholder="Ej: 0412-1234567 o +34 600 000 000">
+              <label for="orderPhone">Teléfono / WhatsApp *</label>
+              <input type="tel" id="orderPhone" class="form-input" required placeholder="Ej: 0412-1234567" autocomplete="tel" inputmode="tel">
             </div>
           </div>
         </div>
 
-        <!-- ===================================================================
-             2° PASO: ADVERTENCIA Y DIRECCIÓN MANUAL DE ENTREGA
-             =================================================================== -->
+        <!-- 2 · ENTREGA -->
         <div class="checkout-step-block">
-          <div class="checkout-step-title"><span class="checkout-step-num">2</span> Dirección de entrega</div>
+          <div class="checkout-step-title"><span class="checkout-step-num">2</span> Entrega</div>
+
+          <div class="dispatch-mode-selector">
+            <button type="button" class="dispatch-mode-btn active" id="btnModeDelivery" data-mode="delivery">
+              <span class="dispatch-mode-icon">🛵</span>
+              <span class="dispatch-mode-name">Delivery</span>
+              <span class="dispatch-mode-desc">A tu puerta</span>
+            </button>
+            <button type="button" class="dispatch-mode-btn" id="btnModePickup" data-mode="pickup">
+              <span class="dispatch-mode-icon">🏪</span>
+              <span class="dispatch-mode-name">Retirar en tienda</span>
+              <span class="dispatch-mode-desc">Envío $0.00</span>
+            </button>
+          </div>
 
           <!-- Dirección y GPS: se ocultan por completo si elige Retirar en Tienda -->
           <div id="checkoutDeliverySection">
-            <!-- AVISO DESTACADO: SI EL DESTINO ES OTRO, ESCRIBIRLO A MANO -->
-            <div class="gps-manual-alert" id="checkoutManualAlert" style="margin-top: 0; margin-bottom: 10px;">
-              <span class="gps-manual-alert-icon">✍️</span>
-              <div class="gps-manual-alert-body">
-                <strong class="gps-manual-alert-title">⚠️ ¿Tu dirección de destino NO es la misma desde donde haces el pedido?</strong>
-                <p class="gps-manual-alert-text">Colócala por escrito en el recuadro de abajo. En cuanto empieces a escribir, las coordenadas GPS se ocultan automáticamente para que no haya confusión con el repartidor.</p>
-              </div>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <label for="orderAddress" style="margin: 0;">Dirección / Referencia de Entrega *</label>
-              <button type="button" id="btnRefreshCheckoutGps" style="background: none; border: none; color: #166534; font-size: 0.78rem; font-weight: 700; cursor: pointer; text-decoration: underline;">
-                📍 Capturar / Actualizar GPS en Vivo
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 4px;">
+              <label for="orderAddress" style="margin: 0;">Dirección de entrega *</label>
+              <button type="button" id="btnRefreshCheckoutGps" style="background: none; border: none; color: #166534; font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap;">
+                <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i> Usar mi GPS
               </button>
             </div>
-            <input type="text" id="orderAddress" class="form-input" placeholder="Calle, sector, referencia de llegada">
+            <input type="text" id="orderAddress" class="form-input" placeholder="Calle, sector y referencia de llegada" autocomplete="street-address">
             <div id="checkoutGpsBadge" style="display: none; font-size: 0.76rem; color: #15803D; font-weight: 600; margin-top: 4px;">
-              🛰️ Coordenadas GPS fijadas: <span id="checkoutGpsCoords"></span> (<a href="#" id="checkoutGpsMapLink" target="_blank" style="color: #0284C7; font-weight: 700;">Ver mapa</a>)
+              🛰️ GPS fijado: <span id="checkoutGpsCoords"></span> (<a href="#" id="checkoutGpsMapLink" target="_blank" style="color: #0284C7; font-weight: 700;">Ver mapa</a>)
             </div>
             <div id="checkoutManualNotice" class="gps-manual-mode-badge" style="display: none;">
-              ✍️ <strong>Dirección manual activa:</strong> las coordenadas GPS quedaron pausadas. Borra el texto del recuadro si deseas volver a mostrarlas.
+              ✍️ <strong>Dirección escrita a mano:</strong> las coordenadas GPS quedan pausadas.
             </div>
           </div>
 
           <!-- Info de la sede: solo visible si elige Retirar en Tienda -->
           <div id="checkoutPickupInfo" class="pickup-info-box" style="display: none;">
-            <strong style="color: #1e3a8a;">📍 Sede Principal Al Costo:</strong>
-            <div style="font-size: 0.8rem; font-family: monospace; color: #1e40af; margin: 3px 0;">Coordenadas: 7º48'25.6"N 71º11'12.3"W</div>
-            <div style="font-size: 0.8rem; color: #475569; margin-bottom: 4px;">⏱️ Listo para recoger en 15 minutos • Envío $0.00</div>
+            <strong style="color: #1e3a8a;">📍 Sede Al Costo</strong>
+            <div style="font-size: 0.8rem; color: #475569; margin: 3px 0 4px;">⏱️ Listo en 15 minutos • Envío $0.00</div>
             <a href="https://www.google.com/maps?q=7.807111,-71.186750" target="_blank" style="color: #0284C7; font-weight: 700; text-decoration: none; font-size: 0.82rem;">
-              🗺️ Ver ubicación de la tienda en Google Maps →
+              🗺️ Ver ubicación en Google Maps →
             </a>
           </div>
         </div>
 
-        <!-- ===================================================================
-             3° PASO: SELECCIÓN DE MODALIDAD DE DESPACHO (2 BOTONES PARALELOS)
-             =================================================================== -->
+        <!-- 3 · HORARIO Y PAGO -->
         <div class="checkout-step-block">
-          <div class="checkout-step-title"><span class="checkout-step-num">3</span> Modalidad de despacho</div>
-
-          <div class="dispatch-mode-selector">
-            <button type="button" class="dispatch-mode-btn active" id="btnModeDelivery" data-mode="delivery">
-              <span class="dispatch-mode-icon">🛵</span>
-              <span class="dispatch-mode-name">Delivery GPS</span>
-              <span class="dispatch-mode-desc">Te lo llevamos a tu puerta con ubicación en vivo</span>
-            </button>
-            <button type="button" class="dispatch-mode-btn" id="btnModePickup" data-mode="pickup">
-              <span class="dispatch-mode-icon">🏪</span>
-              <span class="dispatch-mode-name">Retirar en Tienda</span>
-              <span class="dispatch-mode-desc">Recoge tu pedido en nuestra sede • Envío $0.00</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- ===================================================================
-             4° PASO: CONFIRMACIÓN DE ENTREGA Y PAGO
-             =================================================================== -->
-        <div class="checkout-step-block">
-          <div class="checkout-step-title"><span class="checkout-step-num">4</span> Horario y método de pago</div>
+          <div class="checkout-step-title"><span class="checkout-step-num">3</span> Horario y pago</div>
 
           <div class="checkout-form-grid">
             <div class="form-group">
-              <label for="orderSlot">Horario de Entrega Deseado</label>
+              <label for="orderSlot">Horario de entrega</label>
               <select id="orderSlot" class="form-select">
-                <option value="now">Lo antes posible (Hoy en 30-45 min)</option>
+                <option value="now">Lo antes posible (30-45 min)</option>
                 <option value="afternoon">Hoy: 5:00 PM - 6:30 PM</option>
                 <option value="night">Hoy: 7:00 PM - 8:30 PM</option>
-                <option value="tomorrow">Mañana por la mañana (9:00 AM - 11:00 AM)</option>
+                <option value="tomorrow">Mañana: 9:00 AM - 11:00 AM</option>
               </select>
             </div>
 
             <div class="form-group">
-              <label for="orderInstructions">Instrucciones para el Shopper</label>
-              <input type="text" id="orderInstructions" class="form-input" placeholder="Ej: Dejar en la portería o tocar timbre">
+              <label for="orderInstructions">Nota para el shopper</label>
+              <input type="text" id="orderInstructions" class="form-input" placeholder="Ej: tocar timbre, dejar en portería">
             </div>
           </div>
 
-          <div style="margin-bottom: 12px; font-weight: 700; font-size: 0.9rem;">
-            Método de Pago:
+          <div class="payment-methods-selector">
+            <div class="payment-method-card active" data-pay-type="pagomovil">
+              <div class="payment-method-icon"><i class="fa-solid fa-mobile-screen-button" style="color: #108910;"></i></div>
+              <div class="payment-method-name">Pago Móvil</div>
+            </div>
+            <div class="payment-method-card" data-pay-type="zelle">
+              <div class="payment-method-icon"><i class="fa-solid fa-dollar-sign" style="color: #7C3AED;"></i></div>
+              <div class="payment-method-name">Zelle</div>
+            </div>
+            <div class="payment-method-card" data-pay-type="binance">
+              <div class="payment-method-icon"><i class="fa-brands fa-bitcoin" style="color: #F59E0B;"></i></div>
+              <div class="payment-method-name">Binance Pay</div>
+            </div>
+            <div class="payment-method-card" data-pay-type="cash">
+              <div class="payment-method-icon"><i class="fa-solid fa-money-bill-wave" style="color: #059669;"></i></div>
+              <div class="payment-method-name">Efectivo</div>
+            </div>
           </div>
 
-        <div class="payment-methods-selector">
-          <div class="payment-method-card active" data-pay-type="pagomovil">
-            <div class="payment-method-icon"><i class="fa-solid fa-mobile-screen-button" style="color: #108910;"></i></div>
-            <div class="payment-method-name">Pago Móvil (Bs)</div>
+          <!-- Caja de Información Dinámica del Pago Seleccionado (Sincronizada con Supabase) -->
+          <div class="payment-details-box" id="paymentDetailsBox">
+            <!-- Renderizado dinámico vía app.js -->
           </div>
-          <div class="payment-method-card" data-pay-type="zelle">
-            <div class="payment-method-icon"><i class="fa-solid fa-dollar-sign" style="color: #7C3AED;"></i></div>
-            <div class="payment-method-name">Zelle (USD)</div>
-          </div>
-          <div class="payment-method-card" data-pay-type="binance">
-            <div class="payment-method-icon"><i class="fa-brands fa-bitcoin" style="color: #F59E0B;"></i></div>
-            <div class="payment-method-name">Binance Pay (USDT)</div>
-          </div>
-          <div class="payment-method-card" data-pay-type="cash">
-            <div class="payment-method-icon"><i class="fa-solid fa-money-bill-wave" style="color: #059669;"></i></div>
-            <div class="payment-method-name">Efectivo contra entrega</div>
-          </div>
-        </div>
 
-        <!-- Caja de Información Dinámica del Pago Seleccionado (Sincronizada con Supabase) -->
-        <div class="payment-details-box" id="paymentDetailsBox">
-          <!-- Renderizado dinámico vía app.js -->
+          <div style="background: var(--color-bg-body); border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600; color: #444;">Total del pedido</span>
+            <span id="checkoutTotalSummary" style="font-size: 1.35rem; font-weight: 800; color: var(--color-brand-green);">$0.00</span>
+          </div>
         </div>
-
-        <div style="background: var(--color-bg-body); border-radius: 12px; padding: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-weight: 600; color: #444;">Total final del pedido:</span>
-          <span id="checkoutTotalSummary" style="font-size: 1.35rem; font-weight: 800; color: var(--color-brand-green);">$0.00</span>
-        </div>
-        </div><!-- /4° paso -->
 
         <button type="submit" class="btn-checkout-primary">
-          Confirmar y Asignar Shopper 🛵
+          Confirmar pedido 🛵
         </button>
       </form>
     </div>
@@ -841,8 +842,8 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <script src="js/supabase-config.js?v=20261020-badge-viveres"></script>
-  <script src="js/products.js?v=20261020-badge-viveres"></script>
-  <script src="js/app.js?v=20261020-badge-viveres"></script>
+  <script src="js/supabase-config.js?v=20261029-api"></script>
+  <script src="js/products.js?v=20261029-api"></script>
+  <script src="js/app.js?v=20261029-api"></script>
 </body>
 </html>

@@ -11,8 +11,8 @@
 // - Realce automático de color estilo iPhone inmediatamente después de
 //   remover el fondo: exposición +12%, vivacidad/saturación +28% (con extra
 //   para colores apagados) y contraste +12% (define sombras y punto negro).
-// - Salida optimizada para e-commerce: lienzo cuadrado fijo de 600x600 px,
-//   formato WebP (con transparencia) o PNG como respaldo, < 260 KB.
+// - Salida optimizada para e-commerce: lienzo cuadrado fijo de 600x600 px con  //   margen transparente de seguridad alrededor del producto detectado (10-15 px),
+//   formato WebP (con transparencia) o JPEG como respaldo, calidad 0.8, < 80 KB.
 // ==========================================================================
 
 (function (global) {
@@ -24,6 +24,9 @@
   const DEFAULT_MAX_DIMENSION = 900;
   // Lienzo cuadrado de exportación del editor de fotos: 600 x 600 px HD.
   const DEFAULT_EXPORT_SIZE = 600;
+  // Margen de seguridad transparente (px del lienzo de salida) añadido
+  // alrededor del objeto detectado: evita que la base del empaque quede recortada.
+  const DEFAULT_CROP_PADDING = 14; // dentro del rango pedido de 10 a 15 px
   // Realce automático "foto vivo" (estilo iPhone) aplicado tras remover el fondo.
   // Dentro de los rangos pedidos: brillo +10~15%, vivacidad +25~30%, contraste +10~15%.
   const AUTO_ENHANCE = {
@@ -32,10 +35,11 @@
     vibrance: 0.12, // +12% extra SOLO en colores apagados (vivacidad)
     contrast: 1.12 // +12% de contraste: define bordes, texturas y punto negro
   };
-  const DEFAULT_MAX_BYTES = 260 * 1024; // 260 KB
+  const DEFAULT_MAX_BYTES = 80 * 1024; // 80 KB: por debajo del límite pedido (60-80 KB)
   const AI_MODEL = 'isnet_quint8'; // modelo ligero (~42 MB) tras la primera descarga
-  // Calidad mínima 0.66 y escala mínima 0.72: antes bajaba a 0.40 / 0.48 y la foto salía borrosa
-  const QUALITY_STEPS = [0.92, 0.86, 0.8, 0.74, 0.7, 0.66];
+  // Calidad inicial 0.8 (especificación de compresión) con pasos mínimos de 0.66
+  // para que fotos muy complejas sigan rozando el objetivo de peso sin verse borrosas
+  const QUALITY_STEPS = [0.8, 0.74, 0.7, 0.66];
   const SCALE_STEPS = [1, 0.9, 0.82, 0.72];
 
   let bgRemovalModulePromise = null;
@@ -324,12 +328,52 @@
 
   // --------------------------------------------------------------------------
   // LIENZO CUADRADO DE EXPORTACIÓN (600 x 600 px): encaja el producto al
-  // centro con proporción conservada y fondo transparente (letterbox).
+  // centro con proporción conservada y fondo transparente (letterbox),
+  // añadiendo un margen de seguridad transparente (10-15 px) alrededor del
+  // objeto realmente visible para que la base del empaque nunca quede "mordida".
   // --------------------------------------------------------------------------
-  function fitToSquareCanvas(sourceCanvas, size) {
+
+  // Límites del contenido visible (píxeles con algo de opacidad) en un lienzo
+  function computeOpaqueBounds(canvas) {
+    const { width, height } = drawableSize(canvas);
+    if (!width || !height) return null;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    let data;
+    try {
+      data = ctx.getImageData(0, 0, width, height).data;
+    } catch (err) {
+      return null;
+    }
+
+    let minX = width, minY = height, maxX = -1, maxY = -1;
+    for (let y = 0; y < height; y++) {
+      const row = y * width * 4;
+      for (let x = 0; x < width; x++) {
+        if (data[row + x * 4 + 3] > 8) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0 || maxY < 0) return null; // totalmente transparente
+    return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+  }
+
+  function fitToSquareCanvas(sourceCanvas, size, padding) {
     const target = size || DEFAULT_EXPORT_SIZE;
+    const pad = (typeof padding === 'number' && padding >= 0)
+      ? padding
+      : DEFAULT_CROP_PADDING;
     const { width, height } = drawableSize(sourceCanvas);
     if (!width || !height) throw new Error('La imagen capturada está vacía');
+
+    // Se mide el objeto realmente visible: así el margen se garantiza alrededor
+    // del producto, no del marco de la foto original.
+    const bounds = computeOpaqueBounds(sourceCanvas) || { x: 0, y: 0, width, height };
 
     const canvas = document.createElement('canvas');
     canvas.width = target;
@@ -338,10 +382,16 @@
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    const scale = Math.min(target / width, target / height);
-    const drawW = Math.max(1, Math.round(width * scale));
-    const drawH = Math.max(1, Math.round(height * scale));
-    ctx.drawImage(sourceCanvas, Math.round((target - drawW) / 2), Math.round((target - drawH) / 2), drawW, drawH);
+    // El objeto (más su margen de seguridad) debe caber dentro del lienzo
+    const available = Math.max(1, target - pad * 2);
+    const scale = Math.min(available / bounds.width, available / bounds.height);
+    const drawW = Math.max(1, Math.round(bounds.width * scale));
+    const drawH = Math.max(1, Math.round(bounds.height * scale));
+    ctx.drawImage(
+      sourceCanvas,
+      bounds.x, bounds.y, bounds.width, bounds.height,
+      Math.round((target - drawW) / 2), Math.round((target - drawH) / 2), drawW, drawH
+    );
     return canvas;
   }
 

@@ -1313,7 +1313,8 @@
       width: 46px;
       height: 46px;
       border-radius: var(--radius-sm);
-      object-fit: cover;
+      object-fit: contain;
+      padding: 3px;
       background: #eee;
       flex-shrink: 0;
     }
@@ -2191,7 +2192,7 @@
               </div>
               <!-- Preview de imagen subida -->
               <div id="imagePreviewContainer" style="display: none; margin-top: 10px; align-items: center; gap: 12px; background: #F9FAFB; padding: 8px 12px; border-radius: 8px; border: 1px dashed #D1D5DB;">
-                <img id="imagePreview" src="" alt="Vista previa" style="width: 55px; height: 55px; object-fit: cover; border-radius: 6px; border: 1px solid #E5E7EB;">
+                <img id="imagePreview" src="" alt="Vista previa" style="width: 55px; height: 55px; object-fit: contain; padding: 3px; border-radius: 6px; border: 1px solid #E5E7EB; background: #F9FAFB;">
                 <div style="flex: 1;">
                   <span style="font-size: 0.82rem; font-weight: 700; color: #111827; display: block;" id="imagePreviewName">Imagen seleccionada</span>
                   <span style="font-size: 0.75rem; color: #108910;">✓ Lista para guardar con el producto</span>

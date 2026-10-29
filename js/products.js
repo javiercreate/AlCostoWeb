@@ -296,28 +296,128 @@ function getActiveProducts() {
   return PRODUCTS_DATA;
 }
 
+// ==========================================================================
+// COMPRESIÓN DE IMÁGENES ANTES DE PERSISTIR (localStorage / base de datos)
+// Toda foto en base64 que vaya a guardarse se re-dimensiona con un lienzo
+// HTML5 a un máximo de 600 x 600 px y se exporta en image/webp (o image/jpeg
+// como respaldo) con calidad 0.8. Esto mantiene cada foto por debajo de
+// ~60-80 KB y evita el QuotaExceededError de localStorage.
+// ==========================================================================
+const STORAGE_IMAGE_MAX_DIM = 600;
+const STORAGE_IMAGE_QUALITY = 0.8;
+// Umbral en caracteres del dataURL (~100K caracteres base64 ≈ 75 KB binarios)
+const STORAGE_HEAVY_IMAGE_CHARS = 100 * 1024;
+
+function loadImageFromDataUrlForStorage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('No se pudo decodificar la imagen'));
+    img.src = dataUrl;
+  });
+}
+
+// Re-dimensiona (máx. 600 x 600 px) y comprime una foto base64 con Canvas
+async function compressImageForStorage(dataUrl) {
+  const img = await loadImageFromDataUrlForStorage(dataUrl);
+  const width = img.naturalWidth || img.width;
+  const height = img.naturalHeight || img.height;
+  if (!width || !height) return dataUrl;
+
+  const scale = Math.min(1, STORAGE_IMAGE_MAX_DIM / Math.max(width, height));
+  const targetW = Math.max(1, Math.round(width * scale));
+  const targetH = Math.max(1, Math.round(height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, targetW, targetH);
+
+  // WebP comprime mucho mejor conservando la transparencia; JPEG es el respaldo
+  try {
+    const webp = canvas.toDataURL('image/webp', STORAGE_IMAGE_QUALITY);
+    if (webp.indexOf('data:image/webp') === 0) return webp;
+  } catch (e) {}
+  return canvas.toDataURL('image/jpeg', STORAGE_IMAGE_QUALITY);
+}
+
+function isHeavyStorageImage(image) {
+  return typeof image === 'string' &&
+    image.indexOf('data:image') === 0 &&
+    image.length > STORAGE_HEAVY_IMAGE_CHARS;
+}
+
+// Comprime en paralelo todas las fotos pesadas de una lista de productos
+async function compressProductsImagesForStorage(list) {
+  if (!Array.isArray(list)) return [];
+  const compressed = await Promise.all(list.map(async (p) => {
+    if (!p || typeof p !== 'object' || !isHeavyStorageImage(p.image)) return p;
+    try {
+      const smaller = await compressImageForStorage(p.image);
+      return (smaller && smaller.length < p.image.length) ? { ...p, image: smaller } : p;
+    } catch (err) {
+      console.warn(`No se pudo comprimir la foto de "${p.name || p.id}":`, err);
+      return p;
+    }
+  }));
+  return compressed;
+}
+
+// Secuencia de escrituras: un guardado lento (compresión async) que llegue
+// tarde nunca pisa a uno más reciente ya persistido.
+let activeProductsSaveSeq = 0;
+
 // Guardar productos y sincronizar instantáneamente con todas las pestañas de index.html
 function saveActiveProducts(productsList) {
   if (!Array.isArray(productsList)) return;
   // Bloqueo: jamás permitir que productos demo predeterminados se guarden o republicuen
   productsList = sanitizeProductImages(stripLegacyDefaultProducts(productsList));
+  PRODUCTS_DATA = productsList;
+
+  const seq = ++activeProductsSaveSeq;
+  const hasHeavyImages = productsList.some(p => isHeavyStorageImage(p && p.image));
+
+  if (!hasHeavyImages) {
+    // Ruta rápida: las fotos ya están por debajo del límite, se guarda de inmediato
+    persistActiveProducts(productsList, seq);
+  } else {
+    // Fotos pesadas: comprimir con Canvas ANTES de escribir en localStorage
+    console.info('Comprimiendo fotos del catálogo a máx. 600 x 600 px (WebP/JPEG 0.8) antes de guardar...');
+    compressProductsImagesForStorage(productsList)
+      .then((list) => {
+        if (seq !== activeProductsSaveSeq) return; // un guardado más reciente ya ganó
+        persistActiveProducts(list, seq);
+      })
+      .catch((err) => {
+        console.warn('No se pudieron comprimir las fotos, se intenta guardar sin comprimir:', err);
+        if (seq === activeProductsSaveSeq) persistActiveProducts(productsList, seq);
+      });
+  }
+}
+
+function persistActiveProducts(productsList, seq) {
   try {
     localStorage.setItem('alcosto_custom_products', JSON.stringify(productsList));
   } catch (quotaError) {
     console.warn('Alcanzado límite de localStorage, optimizando imágenes...', quotaError);
-    // Si la cuota de localStorage se llena por fotos pesadas, aseguramos que los datos se guarden
+    // Último recurso: se descartan las fotos aún pesadas para no perder el catálogo
     const optimized = productsList.map(p => {
-      if (p.image && p.image.length > 200000 && p.image.startsWith('data:image')) {
+      if (p && isHeavyStorageImage(p.image)) {
         return { ...p, image: '' };
       }
       return p;
     });
     try {
       localStorage.setItem('alcosto_custom_products', JSON.stringify(optimized));
+      productsList = optimized;
     } catch (e2) {
       console.error('Error crítico guardando productos:', e2);
     }
   }
+  if (seq !== activeProductsSaveSeq) return;
+
   PRODUCTS_DATA = productsList;
 
   // Notificar en la ventana actual y en otras ventanas/pestañas

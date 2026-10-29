@@ -2298,9 +2298,10 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = (event) => {
           const img = new Image();
           img.onload = () => {
-            // 900px en el lado largo: suficiente para tarjetas Retina/HiDPI y el
-            // modal de vista rápida sin verse pixelado (antes 500px se veía borroso)
-            const maxDim = 900;
+            // 600px en el lado largo: resolución máxima pedida para fichas de
+            // producto (junto con la foto IA de 600x600). Mantiene la foto nítida
+            // en tarjetas Retina y el modal de vista rápida, y por debajo de 80 KB.
+            const maxDim = 600;
             let width = img.width;
             let height = img.height;
             if (width > height && width > maxDim) {
@@ -2349,7 +2350,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const outputMime = webpSupported ? 'image/webp' : (isPng ? 'image/png' : 'image/jpeg');
-            const outputQuality = (outputMime === 'image/png') ? undefined : 0.86;
+            // Calidad 0.8 (80%) pedida para mantener cada foto por debajo de 60-80 KB
+            const outputQuality = (outputMime === 'image/png') ? undefined : 0.8;
 
             const compressedDataUrl = canvas.toDataURL(outputMime, outputQuality);
             prodImageInput.value = compressedDataUrl;
