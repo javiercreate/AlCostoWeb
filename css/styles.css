@@ -3170,59 +3170,194 @@ to { transform: translateY(0); }}
     height: 38px; /* área táctil cómoda en móvil */
   }
 }
+
 /* ==========================================================================
-   LIQUID GLASS — SOLO iPHONE / iPAD / MAC
-   Se activa únicamente cuando js/app.js detecta plataforma Apple y añade la
-   clase .liquid-glass al <html>. En Windows/Android la clase no existe, así
-   que estas reglas nunca se aplican (0 coste, 0 cambios visuales).
-   Vidrio real: fondo translúcido + blur + saturación + brillo interior.
+   MENÚ DE CUENTA Y SUGERENCIAS EN MÓVIL
+   El header usa overflow-x: hidden en celular, así que un desplegable
+   absoluto quedaba recortado. En móvil pasan a panel fijo bajo el header.
+   --dept-bar-top la escribe app.js con la altura real del header.
    ========================================================================== */
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  /* Barra de departamentos */
-  html.liquid-glass .dept-bar {
-    background-color: rgba(247, 247, 248, 0.5);
-    -webkit-backdrop-filter: blur(18px) saturate(180%);
-    backdrop-filter: blur(18px) saturate(180%);
+@media (max-width: 768px) {
+  .user-account-menu {
+    position: fixed;
+    top: calc(var(--dept-bar-top, 110px) + 6px);
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: min(70vh, calc(100vh - var(--dept-bar-top, 110px) - 100px));
+    max-height: min(70dvh, calc(100dvh - var(--dept-bar-top, 110px) - 100px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 14px;
+    border-radius: 20px;
+    z-index: 390;
   }
-  html.liquid-glass .dept-chip {
-    background-color: rgba(255, 255, 255, 0.55);
-    -webkit-backdrop-filter: blur(10px) saturate(170%);
-    backdrop-filter: blur(10px) saturate(170%);
-    border-color: rgba(255, 255, 255, 0.55);
+
+  .search-suggestions-dropdown {
+    position: fixed;
+    top: calc(var(--dept-bar-top, 110px) + 6px);
+    left: 12px;
+    right: 12px;
+    max-height: 60vh;
+    max-height: 60dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 390;
   }
-  /* Cajón del carrito */
-  html.liquid-glass .cart-drawer {
-    background-color: rgba(255, 255, 255, 0.8);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    backdrop-filter: blur(28px) saturate(180%);
-    border-left: 1px solid rgba(255, 255, 255, 0.5);
-  }
-  /* Modales (checkout, seguimiento, cuenta) */
-  html.liquid-glass .modal-box {
-    background-color: rgba(255, 255, 255, 0.84);
-    -webkit-backdrop-filter: blur(30px) saturate(180%);
-    backdrop-filter: blur(30px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  }
-  /* Tema oscuro: el vidrio se tintá en azul medianoche */
-  html[data-theme="dark"].liquid-glass .dept-bar {
-    background-color: rgba(15, 23, 42, 0.5);
-  }
-  html[data-theme="dark"].liquid-glass .cart-drawer,
-  html[data-theme="dark"].liquid-glass .modal-box {
-    background-color: rgba(30, 41, 59, 0.78);
-    border-color: rgba(148, 163, 184, 0.25);
-  }
-  html[data-theme="dark"].liquid-glass .dept-chip {
-    background-color: rgba(30, 41, 59, 0.55);
-    border-color: rgba(148, 163, 184, 0.25);
+
+  /* Con el menú abierto, la barra flotante se retira para no taparlo */
+  body.account-menu-open .mobile-bottom-nav,
+  body.account-menu-open .mobile-bottom-nav.visible {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%) translateX(140%);
   }
 }
 
 /* ==========================================================================
+   LIQUID GLASS v2 — SOLO iPHONE / iPAD / MAC
+   Se activa cuando app.js añade .liquid-glass al <html> (detección Apple) o
+   cuando se fuerza con ?glass=1 / window.AlCostoGlass.enable().
+   Vidrio: translúcido + blur alto + saturación + brillo especular.
+   ========================================================================== */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html.liquid-glass .dept-bar,
+  html.liquid-glass .cart-drawer,
+  html.liquid-glass .modal-box,
+  html.liquid-glass .user-account-menu,
+  html.liquid-glass .search-suggestions-dropdown,
+  html.liquid-glass .dept-chip:not(.active) {
+    -webkit-backdrop-filter: blur(26px) saturate(190%);
+    backdrop-filter: blur(26px) saturate(190%);
+  }
+
+  /* Barra de departamentos: deja ver el catálogo pasar por debajo */
+  html.liquid-glass .dept-bar {
+    background-color: rgba(248, 250, 252, 0.42);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.12));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+  }
+
+  /* Chips: vidrio fino con borde luminoso */
+  html.liquid-glass .dept-chip:not(.active) {
+    background-color: rgba(255, 255, 255, 0.5);
+    background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.18));
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  /* Cajón del carrito */
+  html.liquid-glass .cart-drawer {
+    background-color: rgba(255, 255, 255, 0.72);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.15));
+    border-left: 1px solid rgba(255, 255, 255, 0.55);
+    box-shadow: -8px 0 40px rgba(15, 23, 42, 0.18);
+  }
+
+  /* Modales y menús flotantes: el vidrio más marcado */
+  html.liquid-glass .modal-box,
+  html.liquid-glass .user-account-menu,
+  html.liquid-glass .search-suggestions-dropdown {
+    background-color: rgba(255, 255, 255, 0.68);
+    background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.3) 40%, rgba(255, 255, 255, 0.12) 65%, rgba(255, 255, 255, 0.5) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+      0 24px 60px rgba(15, 23, 42, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  /* Tema oscuro: vidrio ahumado azul medianoche */
+  html[data-theme="dark"].liquid-glass .dept-bar {
+    background-color: rgba(15, 23, 42, 0.45);
+    background-image: linear-gradient(180deg, rgba(30, 41, 59, 0.55), rgba(15, 23, 42, 0.2));
+    border-bottom-color: rgba(148, 163, 184, 0.25);
+  }
+  html[data-theme="dark"].liquid-glass .dept-chip:not(.active),
+  html[data-theme="dark"].liquid-glass .cart-drawer,
+  html[data-theme="dark"].liquid-glass .modal-box,
+  html[data-theme="dark"].liquid-glass .user-account-menu,
+  html[data-theme="dark"].liquid-glass .search-suggestions-dropdown {
+    background-color: rgba(30, 41, 59, 0.68);
+    background-image: linear-gradient(145deg, rgba(51, 65, 85, 0.7) 0%, rgba(30, 41, 59, 0.45) 55%, rgba(30, 41, 59, 0.65) 100%);
+    border-color: rgba(148, 163, 184, 0.28);
+  }
+}
+
+/* Sin soporte de blur, el "vidrio" sería una caja transparente ilegible:
+   se mantiene sólido y legible. */
+@supports not ((backdrop-filter: blur(1px)) and (-webkit-backdrop-filter: blur(1px))) {
+  html.liquid-glass .dept-bar,
+  html.liquid-glass .cart-drawer,
+  html.liquid-glass .modal-box,
+  html.liquid-glass .user-account-menu,
+  html.liquid-glass .search-suggestions-dropdown {
+    background-color: var(--color-surface);
+    background-image: none;
+  }
+}
+
+/* ==========================================================================
+   MODO RENDIMIENTO (html.perf-lite)
+   Se activa en equipos de gama baja o con ahorro de datos. Apaga lo que más
+   cuesta pintar (marquee continuo, blur de fondo, sombras grandes, hover con
+   transform) y deja la web ligera, sin quitar ninguna función.
+   ========================================================================== */
+html.perf-lite .dept-bar-track {
+  animation: none !important;
+  will-change: auto;
+}
+html.perf-lite .dept-chip {
+  transition: none;
+}
+html.perf-lite .dept-chip:hover {
+  transform: none;
+  box-shadow: none;
+}
+html.perf-lite .site-header {
+  background-image: linear-gradient(to bottom, #381f12, #2a160c);
+}
+html.perf-lite .brand-logo-img {
+  filter: none;
+}
+html.perf-lite .modal-overlay,
+html.perf-lite .drawer-backdrop {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html.perf-lite .product-card {
+  transition: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+html.perf-lite .product-card:hover {
+  transform: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+html.perf-lite .floating-wa-btn,
+html.perf-lite .active-order-fab,
+html.perf-lite .cart-header-btn {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+html.perf-lite .search-suggestions-dropdown,
+html.perf-lite .user-account-menu {
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.16);
+}
+/* El modo ligero siempre gana al vidrio: sin blur, fondo sólido y legible */
+html.perf-lite.liquid-glass .dept-bar,
+html.perf-lite.liquid-glass .cart-drawer,
+html.perf-lite.liquid-glass .modal-box,
+html.perf-lite.liquid-glass .user-account-menu,
+html.perf-lite.liquid-glass .search-suggestions-dropdown,
+html.perf-lite.liquid-glass .dept-chip {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-image: none;
+}
+
+/* ==========================================================================
    CAMPO INVÁLIDO EN EL CHECKOUT (validación antifraude)
-   Se marca durante 2,6 s para señalar el campo que hay que corregir.
+   Se marca durante 2,6 s para señalar qué campo hay que corregir.
    ========================================================================== */
 .form-input.input-invalid {
   border-color: var(--color-danger);

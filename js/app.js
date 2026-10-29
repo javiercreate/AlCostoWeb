@@ -137,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // INICIALIZACIÓN
   // ==========================================================================
   async function init() {
+    initPerformanceMode();
     initLiquidGlass();
     updateAuthUI();
     // El carrusel arranca antes de esperar a la base de datos: el lienzo queda
@@ -1021,17 +1022,110 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ==========================================================================
   // LIQUID GLASS: SOLO APPLE (iPhone / iPad / Mac)
-  // En Windows, Android o Linux no se añade la clase y el CSS de vidrio no se
-  // aplica nunca, así que no hay ni cambio visual ni coste de rendimiento.
+  // Se activa automáticamente en Apple con soporte de backdrop-filter.
+  // Para forzarlo o apagarlo desde el navegador:
+  //   ?glass=1  → activado     ?glass=0  → apagado
+  //   window.AlCostoGlass.enable() / .disable() / .reset()
+  // En Windows/Android/Linux queda apagado (no hay clase y el CSS no aplica).
   // ==========================================================================
-  function initLiquidGlass() {
+  function detectApplePlatform() {
     const ua = navigator.userAgent || '';
-    const isIPadOs = /Macintosh/i.test(ua) && navigator.maxTouchPoints > 1;
-    const isIOS = /iPhone|iPad|iPod/i.test(ua) || isIPadOs;
-    const isMac = !isIOS && /Macintosh|Mac OS X/i.test(ua);
-    if (!isIOS && !isMac) return;
-    document.documentElement.classList.add('liquid-glass');
-    document.documentElement.classList.add(isIOS ? 'liquid-glass-ios' : 'liquid-glass-mac');
+    const dataPlatform = (navigator.userAgentData && navigator.userAgentData.platform) || '';
+    const platform = dataPlatform || navigator.platform || '';
+    const iPadOs = /Mac(intosh|Intel)/i.test(platform) && navigator.maxTouchPoints > 1;
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) || /iPhone|iPad|iPod/i.test(platform) || iPadOs;
+    const isMac = !isIOS && (/Macintosh/i.test(ua) || /Mac OS X/i.test(ua) || /^mac/i.test(platform));
+    return { isIOS, isMac, isApple: isIOS || isMac };
+  }
+
+  function supportsBackdropFilter() {
+    if (typeof CSS === 'undefined' || typeof CSS.supports !== 'function') return false;
+    return CSS.supports('-webkit-backdrop-filter', 'blur(2px)') || CSS.supports('backdrop-filter', 'blur(2px)');
+  }
+
+  function initLiquidGlass() {
+    const root = document.documentElement;
+    const { isIOS, isMac, isApple } = detectApplePlatform();
+    const supported = supportsBackdropFilter();
+
+    let forced = null;
+    let saved = null;
+    try {
+      forced = new URLSearchParams(window.location.search).get('glass');
+      saved = localStorage.getItem('alcosto_liquid_glass');
+    } catch (e) {}
+
+    let enabled;
+    if (forced === '1') enabled = true;
+    else if (forced === '0') enabled = false;
+    else if (saved === 'on') enabled = true;
+    else if (saved === 'off') enabled = false;
+    else enabled = isApple && supported;
+
+    root.classList.toggle('liquid-glass', enabled);
+    root.classList.toggle('liquid-glass-ios', enabled && isIOS);
+    root.classList.toggle('liquid-glass-mac', enabled && isMac);
+
+    // API pública mínima para verificar/forzar desde la consola del navegador
+    window.AlCostoGlass = {
+      enabled,
+      apple: isApple,
+      supported,
+      enable() {
+        try { localStorage.setItem('alcosto_liquid_glass', 'on'); } catch (e) {}
+        root.classList.add('liquid-glass');
+        this.enabled = true;
+        return 'Liquid Glass activado';
+      },
+      disable() {
+        try { localStorage.setItem('alcosto_liquid_glass', 'off'); } catch (e) {}
+        root.classList.remove('liquid-glass', 'liquid-glass-ios', 'liquid-glass-mac');
+        this.enabled = false;
+        return 'Liquid Glass desactivado';
+      },
+      reset() {
+        try { localStorage.removeItem('alcosto_liquid_glass'); } catch (e) {}
+        return 'Ajuste borrado: se vuelve a la detección automática';
+      }
+    };
+
+    console.info(`[AlCosto] Liquid Glass ${enabled ? 'ON' : 'OFF'} · Apple: ${isApple} · backdrop-filter: ${supported}`);
+  }
+
+  // ==========================================================================
+  // MODO RENDIMIENTO PARA GAMA BAJA
+  // Detecta móviles lentos (poca RAM, pocos núcleos, ahorro de datos o red 2G)
+  // y añade .perf-lite: el CSS apaga marquee, blur, sombras grandes y hover
+  // pesado. La web sigue funcionando igual, solo cuesta menos pintarla.
+  // ==========================================================================
+  function initPerformanceMode() {
+    const root = document.documentElement;
+    const nav = navigator;
+    const connection = nav.connection || nav.mozConnection || nav.webkitConnection || {};
+    const cores = Number(nav.hardwareConcurrency || 0);
+    const memory = Number(nav.deviceMemory || 0);
+    const effectiveType = String(connection.effectiveType || '');
+
+    const reducedMotion = window.matchMedia
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false;
+
+    const lowEnd = Boolean(connection.saveData)
+      || reducedMotion
+      || /(^|-)2g$/.test(effectiveType)
+      || (cores > 0 && cores <= 4)
+      || (memory > 0 && memory <= 4);
+
+    root.classList.toggle('perf-lite', lowEnd);
+
+    // Si a mitad de navegación se activa el ahorro de datos, se adapta en vivo.
+    if (connection && typeof connection.addEventListener === 'function') {
+      connection.addEventListener('change', () => {
+        root.classList.toggle('perf-lite', Boolean(connection.saveData) || /(^|-)2g$/.test(String(connection.effectiveType || '')));
+      });
+    }
+
+    console.info(`[AlCosto] Modo rendimiento: ${lowEnd ? 'LITE' : 'completo'} (cores: ${cores || '?'}, RAM: ${memory || '?'} GB, red: ${effectiveType || '?'})`);
   }
 
   // ==========================================================================
@@ -2505,16 +2599,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Menú Desplegable de Cuenta de Usuario
     if (userAccountBtn && userAccountMenu) {
+      // En móvil el menú es un panel fijo: se oculta la barra inferior
+      // mientras está abierto para que no lo tape.
+      const syncAccountMenuBody = (isOpen) => {
+        document.body.classList.toggle('account-menu-open', isOpen);
+      };
+
       userAccountBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const isOpen = userAccountMenu.classList.toggle('active');
         userAccountBtn.setAttribute('aria-expanded', String(isOpen));
+        syncAccountMenuBody(isOpen);
       });
 
       document.addEventListener('click', (e) => {
         if (!e.target.closest('#userAccountDropdownWrapper')) {
           userAccountMenu.classList.remove('active');
           userAccountBtn.setAttribute('aria-expanded', 'false');
+          syncAccountMenuBody(false);
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && userAccountMenu.classList.contains('active')) {
+          userAccountMenu.classList.remove('active');
+          userAccountBtn.setAttribute('aria-expanded', 'false');
+          syncAccountMenuBody(false);
+          userAccountBtn.focus();
         }
       });
     }

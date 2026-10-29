@@ -1,0 +1,80 @@
+{
+  "name": "AlCosto - Pedido Nuevo (desde la web)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pedido-nuevo",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b2000000-0000-4000-8000-000000000001",
+      "name": "Pedido nuevo (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "alcosto-pedido-nuevo"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Formata el pedido que llega de la API de Vercel (POST /api/orders)\nconst items = ($json.body?.items || [])\n  .map((i) => `${i.quantity} x ${i.product?.name} = $${Number(i.product?.price * i.quantity).toFixed(2)}`)\n  .join('\\n');\n\nconst body = $json.body || {};\n\nreturn [\n  {\n    json: {\n      eventId: body.event || 'pedido.nuevo',\n      orderId: body.orderId || 'SIN-ID',\n      nombre: body.customerName || '',\n      telefono: body.customerPhone || '',\n      modalidad: body.deliveryType === 'pickup' ? 'Retirar en tienda' : 'Delivery',\n      direccion: body.deliveryAddress || '',\n      horario: body.deliverySlot || '',\n      pago: body.paymentMethod || '',\n      subtotal: body.subtotal ?? 0,\n      envio: body.deliveryFee ?? 0,\n      propina: body.tip ?? 0,\n      total: body.total ?? 0,\n      creado: body.createdAt || new Date().toISOString(),\n      productos: items,\n      resumen: `🛍️ Pedido ${body.orderId}\\n👤 ${body.customerName}\\n📞 ${body.customerPhone}\\n📍 ${body.deliveryAddress || 'Retiro en tienda'}\\n\\n${items}\\n\\n💰 Total: $${Number(body.total || 0).toFixed(2)}`\n    }\n  }\n];"
+      },
+      "id": "b2000000-0000-4000-8000-000000000002",
+      "name": "Formatear Pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"ok\": true,\n  \"message\": \"Pedido recibido por n8n\"\n}",
+        "options": {}
+      },
+      "id": "b2000000-0000-4000-8000-000000000003",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Pedido nuevo (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Formatear Pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear Pedido": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
