@@ -1,0 +1,215 @@
+{
+  "exportado": "2026-11-19T15:52:27.058Z",
+  "imagenes": [
+    {
+      "id": "prod-3958",
+      "name": "Sardina Marbella",
+      "file": "sardina-marbella.png",
+      "bytes": 254207
+    },
+    {
+      "id": "prod-8543",
+      "name": "Aceitunas negras enteras osole",
+      "file": "aceitunas-negras-enteras-osole.png",
+      "bytes": 146873
+    },
+    {
+      "id": "prod-6500",
+      "name": "Aceitunas verdes rellenas con pasta de pimiento",
+      "file": "aceitunas-verdes-rellenas-con-pasta-de-pimiento.png",
+      "bytes": 156299
+    },
+    {
+      "id": "prod-2103",
+      "name": "Piri piri  Aji Picante Iberia",
+      "file": "piri-piri-aji-picante-iberia.png",
+      "bytes": 112214
+    },
+    {
+      "id": "prod-5560",
+      "name": "Barbe cue",
+      "file": "barbe-cue.png",
+      "bytes": 135593
+    },
+    {
+      "id": "prod-4314",
+      "name": "Guisantes hidratados tigo",
+      "file": "guisantes-hidratados-tigo.png",
+      "bytes": 210644
+    },
+    {
+      "id": "prod-1948",
+      "name": "Margarina Mavesa",
+      "file": "margarina-mavesa.jpg",
+      "bytes": 26945
+    },
+    {
+      "id": "prod-9268",
+      "name": "Harina pan",
+      "file": "harina-pan.jpg",
+      "bytes": 27292
+    },
+    {
+      "id": "prod-9246",
+      "name": "Ketchup pampero",
+      "file": "ketchup-pampero.jpg",
+      "bytes": 19109
+    },
+    {
+      "id": "prod-6565",
+      "name": "Rikesa cheddar",
+      "file": "rikesa-cheddar.jpg",
+      "bytes": 31707
+    },
+    {
+      "id": "prod-9538",
+      "name": "Rikesa cheddar",
+      "file": "rikesa-cheddar-2.jpg",
+      "bytes": 28161
+    },
+    {
+      "id": "prod-1356",
+      "name": "Mayonesa mavesa",
+      "file": "mayonesa-mavesa.jpg",
+      "bytes": 20907
+    },
+    {
+      "id": "prod-1383",
+      "name": "Mayonesa mavesa",
+      "file": "mayonesa-mavesa-2.jpg",
+      "bytes": 21437
+    },
+    {
+      "id": "prod-4409",
+      "name": "Mayonesa mavesa",
+      "file": "mayonesa-mavesa-3.jpg",
+      "bytes": 19535
+    },
+    {
+      "id": "prod-0339",
+      "name": "Margarina la pampa",
+      "file": "margarina-la-pampa.jpg",
+      "bytes": 20246
+    },
+    {
+      "id": "prod-0301",
+      "name": "Margarina la pampa",
+      "file": "margarina-la-pampa-2.jpg",
+      "bytes": 30282
+    },
+    {
+      "id": "prod-2218",
+      "name": "Harina Masantoni",
+      "file": "harina-masantoni.png",
+      "bytes": 380269
+    },
+    {
+      "id": "prod-5997",
+      "name": "Ají picante Piri Piri Iberia",
+      "file": "aji-picante-piri-piri-iberia.png",
+      "bytes": 134229
+    },
+    {
+      "id": "prod-6923",
+      "name": "Ketchup Heinz",
+      "file": "ketchup-heinz.jpg",
+      "bytes": 14606
+    },
+    {
+      "id": "prod-1984",
+      "name": "ketchup Iberia",
+      "file": "ketchup-iberia.jpg",
+      "bytes": 13741
+    },
+    {
+      "id": "prod-8824",
+      "name": "ketchup pampero",
+      "file": "ketchup-pampero-2.jpg",
+      "bytes": 18745
+    },
+    {
+      "id": "prod-7664",
+      "name": "Margarina Mavesa",
+      "file": "margarina-mavesa-2.jpg",
+      "bytes": 28834
+    },
+    {
+      "id": "prod-8832",
+      "name": "Salsa Fritz",
+      "file": "salsa-fritz.png",
+      "bytes": 166540
+    },
+    {
+      "id": "prod-8552",
+      "name": "Margarina Mavesa",
+      "file": "margarina-mavesa-3.jpg",
+      "bytes": 26945
+    },
+    {
+      "id": "prod-5561",
+      "name": "Arroz diamante agua blanca",
+      "file": "arroz-diamante-agua-blanca.png",
+      "bytes": 393199
+    },
+    {
+      "id": "prod-7510",
+      "name": "Atún margarita",
+      "file": "atun-margarita.png",
+      "bytes": 248401
+    },
+    {
+      "id": "prod-2156",
+      "name": "Caraotas rojas en lata",
+      "file": "caraotas-rojas-en-lata.png",
+      "bytes": 184092
+    },
+    {
+      "id": "prod-8553",
+      "name": "Jungla mash salsa picante roja",
+      "file": "jungla-mash-salsa-picante-roja.png",
+      "bytes": 107554
+    },
+    {
+      "id": "prod-5282",
+      "name": "Mayo chipotle Mash",
+      "file": "mayo-chipotle-mash.jpg",
+      "bytes": 83076
+    },
+    {
+      "id": "prod-3265",
+      "name": "Alcaparras en vinagre Ainoa",
+      "file": "alcaparras-en-vinagre-ainoa.png",
+      "bytes": 167476
+    },
+    {
+      "id": "prod-8301",
+      "name": "Gisantes verdes vivaldi",
+      "file": "gisantes-verdes-vivaldi.png",
+      "bytes": 239739
+    },
+    {
+      "id": "prod-6274",
+      "name": "Mostaza Iberia",
+      "file": "mostaza-iberia.png",
+      "bytes": 216717
+    },
+    {
+      "id": "prod-0770",
+      "name": "Mayo chipotle",
+      "file": "mayo-chipotle.png",
+      "bytes": 148543
+    },
+    {
+      "id": "prod-6200",
+      "name": "Tomates pelados enteros Deliziare",
+      "file": "tomates-pelados-enteros-deliziare.png",
+      "bytes": 271222
+    },
+    {
+      "id": "prod-8720",
+      "name": "Mostaza Iberia",
+      "file": "mostaza-iberia-2.png",
+      "bytes": 153088
+    }
+  ]
+}
