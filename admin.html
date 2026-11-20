@@ -2071,6 +2071,7 @@
                 <option value="confiteria">🍬 Confitería y Dulces</option>
                 <option value="bebidas">🥤 Bebidas y Refrescos</option>
                 <option value="lacteos">🧀 Lácteos y Quesos</option>
+                <option value="combos">🎁 Combos Navideños</option>
               </select>
             </div>
 
@@ -2107,6 +2108,11 @@
             <div class="form-group">
               <label for="prodBadge">Insignia / Badge</label>
               <input type="text" id="prodBadge" class="form-input" placeholder="ej: Al Mayor 📦, Fresco">
+            </div>
+
+            <div class="form-group span-full">
+              <label for="prodDescription">Qué incluye / Descripción</label>
+              <textarea id="prodDescription" class="form-input" rows="2" placeholder="Ej: 1 harina de maíz, 1 jamón, 1 queso, 1 refresco 2L"></textarea>
             </div>
 
             <div class="form-group span-full">
@@ -2232,6 +2238,7 @@
             <option value="confiteria">🍬 Confitería</option>
             <option value="bebidas">🥤 Bebidas</option>
             <option value="lacteos">🧀 Lácteos</option>
+            <option value="combos">🎁 Combos Navideños</option>
           </select>
         </div>
 
@@ -2590,7 +2597,7 @@ CREATE POLICY "Actualización de usuarios" ON usuarios FOR UPDATE USING (true);
        Si la CDN no carga, el panel sigue en tiempo real con el polling de js/admin.js. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=20261021-orders-realtime"></script>
-  <script src="js/products.js?v=20261020-badge-viveres"></script>
+  <script src="js/products.js?v=20261120-combos"></script>
   <script src="js/ai-photo.js?v=20261022-photo600"></script>
   <script src="js/admin.js?v=20261022-photo600"></script>
 </body>

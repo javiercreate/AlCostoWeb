@@ -152,6 +152,7 @@ if (typeof window !== 'undefined') {
 const CATEGORIES = [
   { id: 'todos', name: 'Todos', icon: 'fa-solid fa-border-all', badge: 'Catálogo' },
   { id: 'al-mayor', name: 'Al Mayor', icon: 'fa-solid fa-boxes-stacked', badge: 'Ahorro Bulto' },
+  { id: 'combos', name: 'Combos Navideños', icon: 'fa-solid fa-gift', badge: 'Navidad' },
   { id: 'charcuteria', name: 'Charcutería', icon: 'fa-solid fa-bacon', badge: 'Fresco' },
   { id: 'viveres', name: 'Víveres', icon: 'fa-solid fa-wheat-awn', badge: 'Básicos' },
   { id: 'lacteos', name: 'Lácteos', icon: 'fa-solid fa-cheese', badge: 'Frescura' },

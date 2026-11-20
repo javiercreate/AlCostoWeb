@@ -3373,3 +3373,19 @@ html.perf-lite.liquid-glass .dept-chip {
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
 }
+
+/* ---------- Departamento de Combos (Navideños) ---------- */
+.dept-chip[data-value="combos"] { --chip-accent: #16A34A; }
+[data-theme="dark"] .dept-chip[data-value="combos"] { --chip-accent: #4ADE80; }
+
+/* Contenido del combo: qué productos incluye, debajo del nombre en la tarjeta */
+.product-combo-contents {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--color-text-muted, #6B7280);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

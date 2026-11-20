@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   // Orden de los departamentos en la tienda: al entrar manda Víveres y después
   // Charcutería, Bebidas, Limpieza y Hogar, y el resto.
-  const DEPT_ORDER = ['viveres', 'charcuteria', 'bebidas', 'limpieza', 'lacteos', 'confiteria', 'al-mayor'];
+  const DEPT_ORDER = ['viveres', 'charcuteria', 'bebidas', 'limpieza', 'lacteos', 'confiteria', 'combos', 'al-mayor'];
   const deptRank = (category) => {
     const index = DEPT_ORDER.indexOf(category);
     return index === -1 ? DEPT_ORDER.length : index;
@@ -521,6 +521,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
 
             <h3 class="product-title" title="${product.name}">${product.name}</h3>
+
+            ${product.category === 'combos' && product.description ? `<p class="product-combo-contents">🎁 ${product.description}</p>` : ''}
 
             <div class="product-price-row">
               <div class="price-primary-row">
