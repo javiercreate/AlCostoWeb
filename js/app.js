@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- ESTADO DE LA APLICACIÓN ---
   const state = {
     cart: JSON.parse(localStorage.getItem('alcosto_cart')) || {},
-    activeCategory: 'todos',
+    activeCategory: 'viveres',
     activeFilterTag: 'all',
     searchQuery: '',
     sortBy: 'relevance',
@@ -230,6 +230,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   // FILTRADO Y RENDERIZADO DE PRODUCTOS
   // ==========================================================================
+  // Orden de los departamentos en la tienda: al entrar manda Víveres y después
+  // Charcutería, Bebidas, Limpieza y Hogar, y el resto.
+  const DEPT_ORDER = ['viveres', 'charcuteria', 'bebidas', 'limpieza', 'lacteos', 'confiteria', 'al-mayor'];
+  const deptRank = (category) => {
+    const index = DEPT_ORDER.indexOf(category);
+    return index === -1 ? DEPT_ORDER.length : index;
+  };
+
   function getFilteredProducts() {
     return PRODUCTS_DATA.filter(prod => {
       // Filtro por categoría ("Al Mayor" incluye también productos mayoristas, como el chip anterior)
@@ -270,7 +278,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (state.sortBy === 'price-low') return a.price - b.price;
       if (state.sortBy === 'price-high') return b.price - a.price;
       if (state.sortBy === 'rating') return b.rating - a.rating;
-      return 0; // relevance
+      // relevancia: primero los víveres y luego el resto de departamentos en orden
+      return deptRank(a.category) - deptRank(b.category);
     });
   }
 
